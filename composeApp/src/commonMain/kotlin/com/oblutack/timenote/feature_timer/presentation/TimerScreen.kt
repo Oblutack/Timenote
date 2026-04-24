@@ -1,6 +1,5 @@
 package com.oblutack.timenote.feature_timer.presentation
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -8,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -19,17 +19,22 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
-import com.oblutack.timenote.feature_timer.domain.mockTimelineEvents
+import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimerScreen() {
+fun TimerScreen(
+    viewModel: TimerViewModel = viewModel { TimerViewModel() }
+) {
+    val state by viewModel.state.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -46,7 +51,7 @@ fun TimerScreen() {
         Spacer(modifier = Modifier.height(48.dp))
 
         Text(
-            text = "00:45:00",
+            text = state.displayTime,
             fontSize = 64.sp,
             fontWeight = FontWeight.Light,
             color = TextPrimary
@@ -55,8 +60,8 @@ fun TimerScreen() {
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
-            value = "",
-            onValueChange = {},
+            value = state.currentNote,
+            onValueChange = { viewModel.onAction(TimerAction.UpdateNoteInput(it)) },
             placeholder = { Text("What are you working on?", color = TextSecondary) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
@@ -77,22 +82,52 @@ fun TimerScreen() {
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Button(
-                onClick = {},
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = DefaultAccentColor,
-                    contentColor = Color.White
-                ),
-                shape = RoundedCornerShape(24.dp),
-                modifier = Modifier.padding(end = 16.dp)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Start")
-                Spacer(Modifier.width(8.dp))
-                Text("Start")
+            if (!state.isRunning) {
+                Button(
+                    onClick = { viewModel.onAction(TimerAction.Start) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DefaultAccentColor,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.padding(end = 16.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Start")
+                    Spacer(Modifier.width(8.dp))
+                    Text("Start")
+                }
+            } else if (!state.isPaused) {
+                Button(
+                    onClick = { viewModel.onAction(TimerAction.Pause) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DefaultAccentColor,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.padding(end = 16.dp)
+                ) {
+                    Icon(Icons.Default.Pause, contentDescription = "Pause")
+                    Spacer(Modifier.width(8.dp))
+                    Text("Pause")
+                }
+            } else {
+                Button(
+                    onClick = { viewModel.onAction(TimerAction.Resume) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = DefaultAccentColor,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp),
+                    modifier = Modifier.padding(end = 16.dp)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = "Resume")
+                    Spacer(Modifier.width(8.dp))
+                    Text("Resume")
+                }
             }
 
             OutlinedButton(
-                onClick = {},
+                onClick = { viewModel.onAction(TimerAction.End) },
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = TextSecondary,
                     containerColor = SurfaceDark
@@ -107,7 +142,7 @@ fun TimerScreen() {
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedButton(
-            onClick = {},
+            onClick = { viewModel.onAction(TimerAction.AddNote) },
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = TextSecondary
             ),
@@ -131,10 +166,10 @@ fun TimerScreen() {
             )
 
             LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                itemsIndexed(mockTimelineEvents) { index, event ->
+                itemsIndexed(state.timelineEvents) { index, event ->
                     TimelineItem(
                         event = event,
-                        isLastItem = index == mockTimelineEvents.size - 1
+                        isLastItem = index == state.timelineEvents.size - 1
                     )
                 }
             }
