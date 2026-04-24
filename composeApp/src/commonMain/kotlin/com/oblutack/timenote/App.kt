@@ -1,49 +1,117 @@
 package com.oblutack.timenote
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.Image
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.safeContentPadding
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import org.jetbrains.compose.resources.painterResource
+import androidx.compose.ui.graphics.Color
+import com.oblutack.timenote.feature_timer.presentation.TimerScreen
 
-import timenote.composeapp.generated.resources.Res
-import timenote.composeapp.generated.resources.compose_multiplatform
+// ==========================================
+// 1. THEME DEFINITION
+// ==========================================
+val BackgroundDark = Color(0xFF121212)
+val SurfaceDark = Color(0xFF1E1E1E)
+val TextPrimary = Color(0xFFFFFFFF)
+val TextSecondary = Color(0xFFAAAAAA)
+val DefaultAccentColor = Color(0xFF4FA8F9) // Dynamic accent color later
+
+private val TimenoteColorScheme = darkColorScheme(
+    background = BackgroundDark,
+    surface = SurfaceDark,
+    primary = DefaultAccentColor,
+    onPrimary = Color.White,
+    onBackground = TextPrimary,
+    onSurface = TextPrimary
+)
 
 @Composable
-@Preview
+fun TimenoteTheme(content: @Composable () -> Unit) {
+    MaterialTheme(
+        colorScheme = TimenoteColorScheme,
+        content = content
+    )
+}
+
+// ==========================================
+// 2. NAVIGATION ENUMS
+// ==========================================
+enum class Screen {
+    Timer, History
+}
+
+// ==========================================
+// 3. MAIN APP ENTRY POINT
+// ==========================================
+@Composable
 fun App() {
-    MaterialTheme {
-        var showContent by remember { mutableStateOf(false) }
-        Column(
-            modifier = Modifier
-                .background(MaterialTheme.colorScheme.primaryContainer)
-                .safeContentPadding()
-                .fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Button(onClick = { showContent = !showContent }) {
-                Text("Click me!")
-            }
-            AnimatedVisibility(showContent) {
-                val greeting = remember { Greeting().greet() }
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
+    TimenoteTheme {
+        var currentScreen by remember { mutableStateOf(Screen.Timer) }
+
+        Scaffold(
+            bottomBar = {
+                NavigationBar(
+                    containerColor = SurfaceDark,
+                    contentColor = TextSecondary
                 ) {
-                    Image(painterResource(Res.drawable.compose_multiplatform), null)
-                    Text("Compose: $greeting")
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Timer") },
+                        label = { Text("Timer") },
+                        selected = currentScreen == Screen.Timer,
+                        onClick = { currentScreen = Screen.Timer },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = DefaultAccentColor,
+                            selectedTextColor = DefaultAccentColor,
+                            unselectedIconColor = TextSecondary,
+                            unselectedTextColor = TextSecondary,
+                            indicatorColor = Color.Transparent
+                        )
+                    )
+                    NavigationBarItem(
+                        icon = { Icon(Icons.Default.DateRange, contentDescription = "History") },
+                        label = { Text("History") },
+                        selected = currentScreen == Screen.History,
+                        onClick = { currentScreen = Screen.History },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = DefaultAccentColor,
+                            selectedTextColor = DefaultAccentColor,
+                            unselectedIconColor = TextSecondary,
+                            unselectedTextColor = TextSecondary,
+                            indicatorColor = Color.Transparent
+                        )
+                    )
+                }
+            }
+        ) { innerPadding ->
+            Crossfade(
+                targetState = currentScreen,
+                modifier = Modifier.padding(innerPadding).fillMaxSize().background(BackgroundDark)
+            ) { screen ->
+                when (screen) {
+                    Screen.Timer -> TimerScreen() // We are about to create this!
+                    Screen.History -> HistoryScreenPlaceholder()
                 }
             }
         }
+    }
+}
+
+// ==========================================
+// 4. PLACEHOLDER (For History)
+// ==========================================
+@Composable
+fun HistoryScreenPlaceholder() {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+    ) {
+        Text("History & Organization", style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
+        Text("Weekly calendar and sessions will go here.", color = TextSecondary)
     }
 }
