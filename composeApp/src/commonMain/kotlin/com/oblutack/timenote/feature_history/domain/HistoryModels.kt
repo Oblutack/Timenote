@@ -1,24 +1,26 @@
 package com.oblutack.timenote.feature_history.domain
 
 import androidx.compose.ui.graphics.Color
+import com.oblutack.timenote.core.ColorSerializer
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
+import kotlinx.serialization.Serializable
 
-// Represents a category/folder
+@Serializable
 data class TimenoteFolder(
     val id: String,
     val name: String,
     val sessionCount: Int,
-    val color: Color
+    @Serializable(with = ColorSerializer::class) val color: Color
 )
 
-// OFFICIALLY RENAMED: PastSession is now Timenote!
+@Serializable
 data class Timenote(
     val id: String,
     val title: String,
     val description: String,
     val duration: String,
     val tags: List<TimenoteFolder>,
-    val timelineEvents: List<TimelineEvent> // <-- NEW: We now save the entire timeline!
+    val timelineEvents: List<TimelineEvent>
 )
 
 val mockFolders = listOf(
