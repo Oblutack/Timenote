@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import com.oblutack.timenote.feature_history.presentation.HistoryScreen
 import com.oblutack.timenote.feature_timer.presentation.TimerScreen
 
 // ==========================================
@@ -94,24 +95,9 @@ fun App() {
             ) { screen ->
                 when (screen) {
                     Screen.Timer -> TimerScreen() // We are about to create this!
-                    Screen.History -> HistoryScreenPlaceholder()
+                    Screen.History -> HistoryScreen()
                 }
             }
         }
-    }
-}
-
-// ==========================================
-// 4. PLACEHOLDER (For History)
-// ==========================================
-@Composable
-fun HistoryScreenPlaceholder() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-    ) {
-        Text("History & Organization", style = MaterialTheme.typography.headlineMedium, color = TextPrimary)
-        Text("Weekly calendar and sessions will go here.", color = TextSecondary)
     }
 }
