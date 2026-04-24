@@ -10,6 +10,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -17,6 +19,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
@@ -24,10 +27,13 @@ import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.feature_history.domain.PastSession
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.mockFolders
-import com.oblutack.timenote.feature_history.domain.mockSessions
 
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(
+    viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
+) {
+    val recentSessions by viewModel.sessions.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -95,7 +101,7 @@ fun HistoryScreen() {
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(mockSessions) { session ->
+            items(recentSessions) { session ->
                 SessionCard(session)
             }
         }

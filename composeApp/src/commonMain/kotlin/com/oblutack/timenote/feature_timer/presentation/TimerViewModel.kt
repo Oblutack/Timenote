@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.oblutack.timenote.data.repository.SessionRepository
+import com.oblutack.timenote.feature_history.domain.PastSession
 
 data class TimerState(
     val displayTime: String = "00:00:00",
@@ -32,8 +34,11 @@ class TimerViewModel : ViewModel() {
     val state: StateFlow<TimerState> = _state.asStateFlow()
 
     private var timerJob: Job? = null
+
+    // Internal counters
     private var activeSeconds = 0
-    private var pauseSeconds = 0
+    private var currentPauseSeconds = 0 // Tracks the current break length
+    private var totalPauseSeconds = 0   // Accumulates ALL breaks for the chronological timeline
 
     fun onAction(action: TimerAction) {
         when (action) {
@@ -57,11 +62,11 @@ class TimerViewModel : ViewModel() {
     private fun startTimer() {
         if (_state.value.isRunning) return
 
-        // If there's already a finished session on the screen, clear it before starting a new one!
         if (activeSeconds > 0 && !_state.value.isPaused) {
             _state.update { TimerState() }
             activeSeconds = 0
-            pauseSeconds = 0
+            currentPauseSeconds = 0
+            totalPauseSeconds = 0
         }
 
         addEventToTimeline("Session Started", EventType.START)
@@ -77,27 +82,37 @@ class TimerViewModel : ViewModel() {
 
     private fun resumeTimer() {
         if (!_state.value.isPaused) return
-        val pauseDurationStr = formatTime(pauseSeconds)
+
+        val pauseDurationStr = formatTime(currentPauseSeconds)
         addEventToTimeline("Resumed (Break was $pauseDurationStr)", EventType.RESUME)
-        pauseSeconds = 0
+
+        currentPauseSeconds = 0 // Reset for the next break
         _state.update { it.copy(isPaused = false) }
     }
 
     private fun endTimer() {
-        if (!_state.value.isRunning && !_state.value.isPaused) return // Already ended
+        if (!_state.value.isRunning && !_state.value.isPaused) return
 
         timerJob?.cancel()
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
 
-        // Add the End event to the timeline so they can see it!
         addEventToTimeline("Session Ended: $title", EventType.END)
-
-        // We DO NOT reset the state here. We just mark it as not running.
-        // This leaves the whole timeline and title on the screen for review.
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
-        // (Later we will wire up the actual Room database save right here)
-        println("Auto-saving session: $title with ${_state.value.timelineEvents.size} events.")
+        // --- NEW: Save the session to our Repository! ---
+        val finalDuration = formatTime(activeSeconds + totalPauseSeconds)
+        val waypointCount = _state.value.timelineEvents.size
+
+        val newSession = PastSession(
+            id = platformSpecificId(),
+            title = title,
+            description = "$waypointCount waypoints recorded",
+            duration = finalDuration,
+            tags = emptyList() // We will add the ability to select Folders/Tags later!
+        )
+
+        SessionRepository.saveSession(newSession)
+        println("Session Saved to Repository: $title")
     }
 
     private fun saveNote() {
@@ -121,19 +136,19 @@ class TimerViewModel : ViewModel() {
             while (true) {
                 delay(1000L)
                 if (_state.value.isPaused) {
-                    pauseSeconds++
+                    currentPauseSeconds++
+                    totalPauseSeconds++ // This keeps the chronological timeline moving!
                 } else {
                     activeSeconds++
-                    _state.update { it.copy(displayTime = formatTime(activeSeconds)) }
+                    _state.update { it.copy(displayTime = formatTime(activeSeconds + totalPauseSeconds)) }
                 }
             }
         }
     }
 
     private fun addEventToTimeline(title: String, type: EventType, color: Color? = null) {
-        // Use activeSeconds + pauseSeconds so the timeline reflects REAL elapsed time,
-        // even if the main timer is currently paused!
-        val totalElapsedSeconds = activeSeconds + pauseSeconds
+        // Use totalPauseSeconds so the timeline always moves forward chronologically!
+        val totalElapsedSeconds = activeSeconds + totalPauseSeconds
 
         val newEvent = TimelineEvent(
             id = platformSpecificId(),
@@ -141,7 +156,7 @@ class TimerViewModel : ViewModel() {
             timestamp = formatTime(totalElapsedSeconds),
             type = type,
             isLastItem = false,
-            color = color // Apply color
+            color = color
         )
 
         _state.update { currentState ->
