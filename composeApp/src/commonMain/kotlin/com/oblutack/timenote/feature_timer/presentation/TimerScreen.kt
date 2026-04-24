@@ -29,6 +29,7 @@ import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.ui.draw.alpha
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +52,27 @@ fun TimerScreen(
         )
 
         Spacer(modifier = Modifier.height(48.dp))
+
+        // --- NEW: Smooth Fade-In "Last Session" Label ---
+        // 1. Determine if we should show it
+        val showLastLabel = !state.isRunning && !state.isPaused && state.timelineEvents.isNotEmpty()
+
+        // 2. Animate the opacity (alpha) from 0f (invisible) to 1f (fully visible)
+        val labelAlpha by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (showLastLabel) 1f else 0f,
+            label = "fadeAnimation"
+        )
+
+        // 3. Always draw the text to reserve the space, but apply the animated alpha!
+        Text(
+            text = "YOUR LAST TIMENOTE",
+            color = TextSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.alpha(labelAlpha)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
 
         Text(
             text = state.displayTime,
