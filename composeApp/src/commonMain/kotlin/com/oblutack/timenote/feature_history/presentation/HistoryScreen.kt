@@ -2,6 +2,7 @@ package com.oblutack.timenote.feature_history.presentation
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -24,12 +25,13 @@ import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.feature_history.domain.PastSession
+import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.mockFolders
 
 @Composable
 fun HistoryScreen(
+    onTimenoteClick: (String) -> Unit,
     viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
 ) {
     val recentSessions by viewModel.sessions.collectAsState()
@@ -102,7 +104,7 @@ fun HistoryScreen(
             modifier = Modifier.fillMaxWidth()
         ) {
             items(recentSessions) { session ->
-                SessionCard(session)
+                SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
             }
         }
     }
@@ -142,12 +144,13 @@ fun FolderCard(folder: TimenoteFolder) {
 }
 
 @Composable
-fun SessionCard(session: PastSession) {
+fun SessionCard(session: Timenote, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceDark)
+            .clickable { onClick() }
             .padding(16.dp)
     ) {
         Row(

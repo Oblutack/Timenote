@@ -13,7 +13,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.oblutack.timenote.data.repository.SessionRepository
-import com.oblutack.timenote.feature_history.domain.PastSession
+import com.oblutack.timenote.feature_history.domain.Timenote
 
 data class TimerState(
     val displayTime: String = "00:00:00",
@@ -103,16 +103,17 @@ class TimerViewModel : ViewModel() {
         val finalDuration = formatTime(activeSeconds + totalPauseSeconds)
         val waypointCount = _state.value.timelineEvents.size
 
-        val newSession = PastSession(
+        val newTimenote = Timenote( // <-- Changed to Timenote
             id = platformSpecificId(),
             title = title,
             description = "$waypointCount waypoints recorded",
             duration = finalDuration,
-            tags = emptyList() // We will add the ability to select Folders/Tags later!
+            tags = emptyList(),
+            timelineEvents = _state.value.timelineEvents // <-- PASSING THE FULL TIMELINE!
         )
 
-        SessionRepository.saveSession(newSession)
-        println("Session Saved to Repository: $title")
+        SessionRepository.saveTimenote(newTimenote) // <-- Updated method name
+        println("Timenote Saved to Repository: $title")
     }
 
     private fun saveNote() {

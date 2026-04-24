@@ -43,8 +43,10 @@ fun TimenoteTheme(content: @Composable () -> Unit) {
 // 2. NAVIGATION ENUMS
 // ==========================================
 enum class Screen {
-    Timer, History
+    Timer, History, Details
 }
+
+
 
 // ==========================================
 // 3. MAIN APP ENTRY POINT
@@ -53,6 +55,7 @@ enum class Screen {
 fun App() {
     TimenoteTheme {
         var currentScreen by remember { mutableStateOf(Screen.Timer) }
+        var selectedTimenoteId by remember { mutableStateOf<String?>(null) }
 
         Scaffold(
             bottomBar = {
@@ -94,8 +97,22 @@ fun App() {
                 modifier = Modifier.padding(innerPadding).fillMaxSize().background(BackgroundDark)
             ) { screen ->
                 when (screen) {
-                    Screen.Timer -> TimerScreen() // We are about to create this!
-                    Screen.History -> HistoryScreen()
+                    Screen.Timer -> TimerScreen()
+                    Screen.History -> HistoryScreen(
+                        onTimenoteClick = { id ->
+                            selectedTimenoteId = id
+                            currentScreen = Screen.Details
+                        }
+                    )
+                    Screen.Details -> {
+                        selectedTimenoteId?.let { id ->
+                            // Make sure you import TimenoteDetailScreen at the top of App.kt!
+                            com.oblutack.timenote.feature_history.presentation.TimenoteDetailScreen(
+                                timenoteId = id,
+                                onBackClick = { currentScreen = Screen.History } // Goes back to History
+                            )
+                        }
+                    }
                 }
             }
         }

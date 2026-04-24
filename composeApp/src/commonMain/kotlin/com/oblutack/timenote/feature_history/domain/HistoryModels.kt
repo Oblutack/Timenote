@@ -1,6 +1,7 @@
 package com.oblutack.timenote.feature_history.domain
 
 import androidx.compose.ui.graphics.Color
+import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 
 // Represents a category/folder
 data class TimenoteFolder(
@@ -10,34 +11,26 @@ data class TimenoteFolder(
     val color: Color
 )
 
-// Represents a completed timer session
-data class PastSession(
+// OFFICIALLY RENAMED: PastSession is now Timenote!
+data class Timenote(
     val id: String,
     val title: String,
     val description: String,
     val duration: String,
-    val tags: List<TimenoteFolder>
+    val tags: List<TimenoteFolder>,
+    val timelineEvents: List<TimelineEvent> // <-- NEW: We now save the entire timeline!
 )
 
-// Mock Data based exactly on your Figma design
 val mockFolders = listOf(
-    TimenoteFolder("1", "Work", 12, Color(0xFF4FA8F9)),   // Blue
-    TimenoteFolder("2", "Study", 8, Color(0xFF4CAF50)),   // Green
-    TimenoteFolder("3", "Fitness", 5, Color(0xFFFF9800)), // Orange
-    TimenoteFolder("4", "Personal", 3, Color(0xFF9C27B0)) // Purple
+    TimenoteFolder("1", "Work", 12, Color(0xFF4FA8F9)),
+    TimenoteFolder("2", "Study", 8, Color(0xFF4CAF50)),
+    TimenoteFolder("3", "Fitness", 5, Color(0xFFFF9800)),
+    TimenoteFolder("4", "Personal", 3, Color(0xFF9C27B0))
 )
 
+// We update the mock data to use the new Timenote class and empty events
 val mockSessions = listOf(
-    PastSession(
-        id = "1", title = "Deep Work Session", description = "Product roadmap planning", duration = "2h 45m",
-        tags = listOf(mockFolders[0]) // Work tag
-    ),
-    PastSession(
-        id = "2", title = "React Advanced Patterns", description = "Compound components study", duration = "3h 15m",
-        tags = listOf(mockFolders[1]) // Study tag
-    ),
-    PastSession(
-        id = "3", title = "Morning Workout", description = "Full body strength training", duration = "45m",
-        tags = listOf(mockFolders[2]) // Fitness tag
-    )
+    Timenote("1", "Deep Work Session", "Product roadmap planning", "2h 45m", listOf(mockFolders[0]), emptyList()),
+    Timenote("2", "React Advanced Patterns", "Compound components study", "3h 15m", listOf(mockFolders[1]), emptyList()),
+    Timenote("3", "Morning Workout", "Full body strength training", "45m", listOf(mockFolders[2]), emptyList())
 )
