@@ -56,6 +56,14 @@ class TimerViewModel : ViewModel() {
 
     private fun startTimer() {
         if (_state.value.isRunning) return
+
+        // If there's already a finished session on the screen, clear it before starting a new one!
+        if (activeSeconds > 0 && !_state.value.isPaused) {
+            _state.update { TimerState() }
+            activeSeconds = 0
+            pauseSeconds = 0
+        }
+
         addEventToTimeline("Session Started", EventType.START)
         _state.update { it.copy(isRunning = true, isPaused = false) }
         startTicking()
@@ -76,19 +84,20 @@ class TimerViewModel : ViewModel() {
     }
 
     private fun endTimer() {
+        if (!_state.value.isRunning && !_state.value.isPaused) return // Already ended
+
         timerJob?.cancel()
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
 
-        // TODO: In our next major step, we will take the title, duration,
-        // and timelineEvents and save them to the local Database right here!
+        // Add the End event to the timeline so they can see it!
+        addEventToTimeline("Session Ended: $title", EventType.END)
+
+        // We DO NOT reset the state here. We just mark it as not running.
+        // This leaves the whole timeline and title on the screen for review.
+        _state.update { it.copy(isRunning = false, isPaused = false) }
+
+        // (Later we will wire up the actual Room database save right here)
         println("Auto-saving session: $title with ${_state.value.timelineEvents.size} events.")
-
-        // Reset the ENTIRE screen back to factory defaults for the next session
-        _state.update { TimerState() }
-
-        // Reset our internal hidden counters
-        activeSeconds = 0
-        pauseSeconds = 0
     }
 
     private fun saveNote() {
@@ -122,10 +131,14 @@ class TimerViewModel : ViewModel() {
     }
 
     private fun addEventToTimeline(title: String, type: EventType, color: Color? = null) {
+        // Use activeSeconds + pauseSeconds so the timeline reflects REAL elapsed time,
+        // even if the main timer is currently paused!
+        val totalElapsedSeconds = activeSeconds + pauseSeconds
+
         val newEvent = TimelineEvent(
             id = platformSpecificId(),
             title = title,
-            timestamp = formatTime(activeSeconds),
+            timestamp = formatTime(totalElapsedSeconds),
             type = type,
             isLastItem = false,
             color = color // Apply color
