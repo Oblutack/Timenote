@@ -78,8 +78,17 @@ class TimerViewModel : ViewModel() {
     private fun endTimer() {
         timerJob?.cancel()
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
-        addEventToTimeline("Session Ended: $title", EventType.END)
-        _state.update { it.copy(isRunning = false, isPaused = false) }
+
+        // TODO: In our next major step, we will take the title, duration,
+        // and timelineEvents and save them to the local Database right here!
+        println("Auto-saving session: $title with ${_state.value.timelineEvents.size} events.")
+
+        // Reset the ENTIRE screen back to factory defaults for the next session
+        _state.update { TimerState() }
+
+        // Reset our internal hidden counters
+        activeSeconds = 0
+        pauseSeconds = 0
     }
 
     private fun saveNote() {
