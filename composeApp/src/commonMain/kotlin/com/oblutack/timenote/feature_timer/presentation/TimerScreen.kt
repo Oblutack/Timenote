@@ -27,6 +27,8 @@ import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -60,9 +62,9 @@ fun TimerScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
-            value = state.currentNote,
-            onValueChange = { viewModel.onAction(TimerAction.UpdateNoteInput(it)) },
-            placeholder = { Text("What are you working on?", color = TextSecondary) },
+            value = state.sessionTitle,
+            onValueChange = { viewModel.onAction(TimerAction.UpdateSessionTitle(it)) },
+            placeholder = { Text("Session Title", color = TextSecondary) },
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(
@@ -142,7 +144,7 @@ fun TimerScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         OutlinedButton(
-            onClick = { viewModel.onAction(TimerAction.AddNote) },
+            onClick = { viewModel.onAction(TimerAction.OpenAddNoteDialog) },
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = TextSecondary
             ),
@@ -152,6 +154,7 @@ fun TimerScreen(
         }
 
         Spacer(modifier = Modifier.height(32.dp))
+
 
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -175,6 +178,71 @@ fun TimerScreen(
             }
         }
     }
+
+    if (state.isAddNoteDialogOpen) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { viewModel.onAction(TimerAction.CloseAddNoteDialog) }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(16.dp))
+                    .padding(16.dp)
+            ) {
+                Text("Add Note", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = state.dialogNoteText,
+                    onValueChange = { viewModel.onAction(TimerAction.UpdateDialogNoteText(it)) },
+                    placeholder = { Text("Write note here...", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = BackgroundDark,
+                        unfocusedContainerColor = BackgroundDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    listOf(
+                        Color(0xFF4FA8F9), Color(0xFF4CAF50),
+                        Color(0xFFFF9800), Color(0xFF9C27B0)
+                    ).forEach { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(color, androidx.compose.foundation.shape.CircleShape)
+                                .let {
+                                    if (color == state.dialogNoteColor) {
+                                        it.border(2.dp, Color.White, androidx.compose.foundation.shape.CircleShape)
+                                    } else it
+                                }
+                                .clickable { viewModel.onAction(TimerAction.UpdateDialogNoteColor(color)) }
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { viewModel.onAction(TimerAction.CloseAddNoteDialog) }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                    Button(
+                        onClick = { viewModel.onAction(TimerAction.SaveNote) },
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                    ) {
+                        Text("Save Note")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -194,10 +262,11 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean) {
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val circleRadius = 5.dp.toPx()
                 val circleCenterY = 10.dp.toPx()
+                val nodeColor = event.color ?: DefaultAccentColor
 
                 // Outer circle (stroke)
                 drawCircle(
-                    color = DefaultAccentColor,
+                    color = nodeColor,
                     radius = circleRadius,
                     center = Offset(size.width / 2, circleCenterY),
                     style = Stroke(width = 1.5.dp.toPx())
@@ -205,7 +274,7 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean) {
 
                 // Inner filled circle
                 drawCircle(
-                    color = DefaultAccentColor,
+                    color = nodeColor,
                     radius = circleRadius * 0.5f,
                     center = Offset(size.width / 2, circleCenterY)
                 )
