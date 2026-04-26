@@ -40,6 +40,23 @@ class TimerViewModel : ViewModel() {
     private var currentPauseSeconds = 0 // Tracks the current break length
     private var totalPauseSeconds = 0   // Accumulates ALL breaks for the chronological timeline
 
+    init {
+        viewModelScope.launch {
+            com.oblutack.timenote.data.repository.SessionRepository.timenotes.collect { notes ->
+                // If the timer is NOT running, and the screen is currently blank...
+                if (!_state.value.isRunning && !_state.value.isPaused && _state.value.timelineEvents.isEmpty()) {
+                    // Grab the absolute newest note from the database (the first one in the list)
+                    notes.firstOrNull()?.let { lastNote ->
+                        _state.update { it.copy(
+                            displayTime = lastNote.duration,
+                            sessionTitle = lastNote.title,
+                            timelineEvents = lastNote.timelineEvents
+                        )}
+                    }
+                }
+            }
+        }
+    }
     fun onAction(action: TimerAction) {
         when (action) {
             is TimerAction.Start -> startTimer()
@@ -62,8 +79,12 @@ class TimerViewModel : ViewModel() {
     private fun startTimer() {
         if (_state.value.isRunning) return
 
+        // If there's already a finished session on the screen, clear the timeline but PRESERVE the new title!
         if (activeSeconds > 0 && !_state.value.isPaused) {
-            _state.update { TimerState() }
+            val typedTitle = _state.value.sessionTitle // Save what they just typed!
+
+            _state.update { TimerState(sessionTitle = typedTitle) } // Reset everything ELSE
+
             activeSeconds = 0
             currentPauseSeconds = 0
             totalPauseSeconds = 0
@@ -176,7 +197,7 @@ class TimerViewModel : ViewModel() {
         return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     }
 
-    private fun platformSpecificId(): String = (0..100000).random().toString()
+    private fun platformSpecificId(): String = com.oblutack.timenote.getCurrentTimeMillis().toString()
 }
 
 sealed class TimerAction {
