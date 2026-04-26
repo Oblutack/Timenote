@@ -1,23 +1,45 @@
 package com.oblutack.timenote.data.repository
 
+import com.oblutack.timenote.data.database.TimenoteDao
+import com.oblutack.timenote.data.database.toDomain
+import com.oblutack.timenote.data.database.toEntity
 import com.oblutack.timenote.feature_history.domain.Timenote
-import com.oblutack.timenote.feature_history.domain.mockSessions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 object SessionRepository {
 
-    // Uses the new Timenote class
-    private val _timenotes = MutableStateFlow<List<Timenote>>(mockSessions)
+    private var dao: TimenoteDao? = null
+    private val coroutineScope = CoroutineScope(Dispatchers.Default)
+
+    // We start with an empty list instead of mock data!
+    private val _timenotes = MutableStateFlow<List<Timenote>>(emptyList())
     val timenotes: StateFlow<List<Timenote>> = _timenotes.asStateFlow()
 
-    fun saveTimenote(timenote: Timenote) {
-        _timenotes.update { currentList -> listOf(timenote) + currentList }
+    // We call this when the App launches to connect the Database
+    fun initialize(timenoteDao: TimenoteDao) {
+        dao = timenoteDao
+
+        // This listens to the database FOREVER.
+        // If the database changes, the UI updates instantly!
+        coroutineScope.launch {
+            timenoteDao.getAllTimenotes().collect { entityList ->
+                _timenotes.value = entityList.map { it.toDomain() }
+            }
+        }
     }
 
-    // NEW: A helper function to fetch a single Timenote by its ID for the Details screen!
+    fun saveTimenote(timenote: Timenote) {
+        coroutineScope.launch {
+            // Convert to Entity and Save to Hard Drive!
+            dao?.insertTimenote(timenote.toEntity())
+        }
+    }
+
     fun getTimenoteById(id: String): Timenote? {
         return _timenotes.value.find { it.id == id }
     }

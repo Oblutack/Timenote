@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.feature_history.presentation.HistoryScreen
 import com.oblutack.timenote.feature_timer.presentation.TimerScreen
+import com.oblutack.timenote.data.database.AppDatabase
 
 // ==========================================
 // 1. THEME DEFINITION
@@ -52,7 +53,14 @@ enum class Screen {
 // 3. MAIN APP ENTRY POINT
 // ==========================================
 @Composable
-fun App() {
+fun App(database: AppDatabase? = null) {
+
+    // --- NEW: Connect the Database to the Repository! ---
+    LaunchedEffect(database) {
+        if (database != null) {
+            com.oblutack.timenote.data.repository.SessionRepository.initialize(database.timenoteDao())
+        }
+    }
     TimenoteTheme {
         var currentScreen by remember { mutableStateOf(Screen.Timer) }
         var selectedTimenoteId by remember { mutableStateOf<String?>(null) }

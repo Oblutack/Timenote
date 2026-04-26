@@ -1,0 +1,31 @@
+package com.oblutack.timenote.data.database
+
+import com.oblutack.timenote.feature_history.domain.Timenote
+import com.oblutack.timenote.feature_history.domain.TimenoteFolder
+import com.oblutack.timenote.feature_timer.domain.TimelineEvent
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+
+// 1. Translates a Timenote into a Database Entity (Turns lists into JSON Strings)
+fun Timenote.toEntity(): TimenoteEntity {
+    return TimenoteEntity(
+        id = this.id,
+        title = this.title,
+        description = this.description,
+        duration = this.duration,
+        tagsJson = Json.encodeToString(this.tags),
+        timelineEventsJson = Json.encodeToString(this.timelineEvents)
+    )
+}
+
+// 2. Translates a Database Entity back into a Timenote (Turns JSON Strings back into lists)
+fun TimenoteEntity.toDomain(): Timenote {
+    return Timenote(
+        id = this.id,
+        title = this.title,
+        description = this.description,
+        duration = this.duration,
+        tags = Json.decodeFromString<List<TimenoteFolder>>(this.tagsJson),
+        timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson)
+    )
+}
