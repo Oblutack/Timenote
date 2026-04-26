@@ -21,6 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.rememberSwipeToDismissBoxState
+import androidx.compose.material3.SwipeToDismissBoxValue
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ExperimentalMaterial3Api
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
@@ -29,6 +36,7 @@ import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.mockFolders
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
     onTimenoteClick: (String) -> Unit,
@@ -103,8 +111,41 @@ fun HistoryScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(recentSessions) { session ->
-                SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
+            items(recentSessions, key = { it.id }) { session ->
+                val dismissState = rememberSwipeToDismissBoxState(
+                    confirmValueChange = { value ->
+                        if (value == SwipeToDismissBoxValue.EndToStart) {
+                            viewModel.deleteTimenote(session.id)
+                            true
+                        } else {
+                            false
+                        }
+                    }
+                )
+
+                SwipeToDismissBox(
+                    state = dismissState,
+                    enableDismissFromStartToEnd = false,
+                    backgroundContent = {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(Color(0xFFE53935))
+                                .padding(end = 24.dp),
+                            contentAlignment = Alignment.CenterEnd
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "Delete",
+                                tint = Color.White
+                            )
+                        }
+                    },
+                    content = {
+                        SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
+                    }
+                )
             }
         }
     }

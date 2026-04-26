@@ -43,4 +43,10 @@ object SessionRepository {
     fun getTimenoteById(id: String): Timenote? {
         return _timenotes.value.find { it.id == id }
     }
+
+    fun deleteTimenote(id: String) {
+        coroutineScope.launch {
+            dao?.deleteTimenote(id)
+        }
+    }
 }
