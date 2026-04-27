@@ -3,7 +3,8 @@ package com.oblutack.timenote.data.database
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
-@Database(entities = [TimenoteEntity::class], version = 1)
+// NEW: Added TagEntity, bumped version to 2
+@Database(entities = [TimenoteEntity::class, TagEntity::class], version = 2)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun timenoteDao(): TimenoteDao
 }
