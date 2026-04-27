@@ -12,8 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.oblutack.timenote.data.repository.SessionRepository
-import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 
 data class TimerState(
@@ -28,8 +26,8 @@ data class TimerState(
     val dialogNoteText: String = "",
     val dialogNoteColor: Color = Color(0xFF4FA8F9),
 
-    // NEW: Progressive Disclosure Category State
-    val selectedCategory: TimenoteFolder? = null,
+    // Multi-select Category State
+    val selectedCategories: List<TimenoteFolder> = emptyList(),
     val isCategoryPopupOpen: Boolean = false
 )
 
@@ -42,15 +40,13 @@ class TimerViewModel : ViewModel() {
 
     // Internal counters
     private var activeSeconds = 0
-    private var currentPauseSeconds = 0 // Tracks the current break length
-    private var totalPauseSeconds = 0   // Accumulates ALL breaks for the chronological timeline
+    private var currentPauseSeconds = 0
+    private var totalPauseSeconds = 0
 
     init {
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.timenotes.collect { notes ->
-                // If the timer is NOT running, and the screen is currently blank...
                 if (!_state.value.isRunning && !_state.value.isPaused && _state.value.timelineEvents.isEmpty()) {
-                    // Grab the absolute newest note from the database (the first one in the list)
                     notes.firstOrNull()?.let { lastNote ->
                         _state.update { it.copy(
                             displayTime = lastNote.duration,
@@ -62,6 +58,7 @@ class TimerViewModel : ViewModel() {
             }
         }
     }
+
     fun onAction(action: TimerAction) {
         when (action) {
             is TimerAction.Start -> startTimer()
@@ -78,21 +75,32 @@ class TimerViewModel : ViewModel() {
             is TimerAction.UpdateDialogNoteColor -> _state.update { it.copy(dialogNoteColor = action.color) }
             is TimerAction.SaveNote -> saveNote()
 
-            // NEW: Handle Categories
-            is TimerAction.SelectCategory -> _state.update { it.copy(selectedCategory = action.category) }
-            is TimerAction.SkipCategoryAndSave -> executeSave(null)
-            is TimerAction.ConfirmCategoryAndSave -> executeSave(action.category)
+            // NEW: Multi-Select Category Logic
+            is TimerAction.ToggleCategory -> {
+                _state.update { currentState ->
+                    val currentList = currentState.selectedCategories
+                    // If the category is already in the list, remove it. If it's not, add it!
+                    val newList = if (currentList.any { it.id == action.category.id }) {
+                        currentList.filter { it.id != action.category.id }
+                    } else {
+                        currentList + action.category
+                    }
+                    currentState.copy(selectedCategories = newList)
+                }
+            }
+            is TimerAction.SkipCategoriesAndSave -> executeSave(emptyList())
+            is TimerAction.ConfirmCategoriesAndSave -> executeSave(_state.value.selectedCategories)
         }
     }
 
     private fun startTimer() {
         if (_state.value.isRunning) return
 
-        if (activeSeconds > 0 && !_state.value.isPaused) {
+        if (_state.value.timelineEvents.isNotEmpty()) {
             val typedTitle = _state.value.sessionTitle
-            val pickedCategory = _state.value.selectedCategory // Preserve the category!
+            val pickedCategories = _state.value.selectedCategories
 
-            _state.update { TimerState(sessionTitle = typedTitle, selectedCategory = pickedCategory) }
+            _state.update { TimerState(sessionTitle = typedTitle, selectedCategories = pickedCategories) }
             activeSeconds = 0
             currentPauseSeconds = 0
             totalPauseSeconds = 0
@@ -111,11 +119,9 @@ class TimerViewModel : ViewModel() {
 
     private fun resumeTimer() {
         if (!_state.value.isPaused) return
-
         val pauseDurationStr = formatTime(currentPauseSeconds)
         addEventToTimeline("Resumed (Break was $pauseDurationStr)", EventType.RESUME)
-
-        currentPauseSeconds = 0 // Reset for the next break
+        currentPauseSeconds = 0
         _state.update { it.copy(isPaused = false) }
     }
 
@@ -127,47 +133,41 @@ class TimerViewModel : ViewModel() {
         addEventToTimeline("Session Ended: $title", EventType.END)
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
-        // --- THE PROGRESSIVE DISCLOSURE MAGIC ---
-        if (_state.value.selectedCategory != null) {
-            // Power user! They already picked a category. Save instantly.
-            executeSave(_state.value.selectedCategory)
+        // --- MULTI-SELECT DISCLOSURE MAGIC ---
+        if (_state.value.selectedCategories.isNotEmpty()) {
+            // They picked at least one category. Save instantly.
+            executeSave(_state.value.selectedCategories)
         } else {
-            // They forgot. Pop open the bottom sheet to ask them!
+            // They picked none. Pop open the bottom sheet to ask them!
             _state.update { it.copy(isCategoryPopupOpen = true) }
         }
     }
 
-    private fun executeSave(category: TimenoteFolder?) {
+    private fun executeSave(categories: List<TimenoteFolder>) {
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
         val finalDuration = formatTime(activeSeconds + totalPauseSeconds)
         val waypointCount = _state.value.timelineEvents.size
-
-        // If they picked a category, put it in the list. Otherwise, leave it empty.
-        val tagsList = if (category != null) listOf(category) else emptyList()
 
         val newTimenote = com.oblutack.timenote.feature_history.domain.Timenote(
             id = platformSpecificId(),
             title = title,
             description = "$waypointCount waypoints recorded",
             duration = finalDuration,
-            tags = tagsList,
+            tags = categories, // Saving the full list!
             timelineEvents = _state.value.timelineEvents
         )
 
         com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(newTimenote)
 
-        // Close the popup and update the state so the screen shows the category they just picked!
-        _state.update { it.copy(isCategoryPopupOpen = false, selectedCategory = category) }
+        _state.update { it.copy(isCategoryPopupOpen = false, selectedCategories = categories) }
     }
 
     private fun saveNote() {
         val noteText = _state.value.dialogNoteText
         if (noteText.isBlank() || !_state.value.isRunning) return
 
-        // Pass the custom color from the dialog!
         addEventToTimeline("Note: $noteText", EventType.NOTE, _state.value.dialogNoteColor)
 
-        // Close dialog and reset
         _state.update { it.copy(
             isAddNoteDialogOpen = false,
             dialogNoteText = "",
@@ -182,7 +182,7 @@ class TimerViewModel : ViewModel() {
                 delay(1000L)
                 if (_state.value.isPaused) {
                     currentPauseSeconds++
-                    totalPauseSeconds++ // This keeps the chronological timeline moving!
+                    totalPauseSeconds++
                 } else {
                     activeSeconds++
                     _state.update { it.copy(displayTime = formatTime(activeSeconds + totalPauseSeconds)) }
@@ -192,7 +192,6 @@ class TimerViewModel : ViewModel() {
     }
 
     private fun addEventToTimeline(title: String, type: EventType, color: Color? = null) {
-        // Use totalPauseSeconds so the timeline always moves forward chronologically!
         val totalElapsedSeconds = activeSeconds + totalPauseSeconds
 
         val newEvent = TimelineEvent(
@@ -237,8 +236,8 @@ sealed class TimerAction {
     data class UpdateDialogNoteColor(val color: Color) : TimerAction()
     data object SaveNote : TimerAction()
 
-    // NEW: Category Actions
-    data class SelectCategory(val category: TimenoteFolder) : TimerAction()
-    data object SkipCategoryAndSave : TimerAction()
-    data class ConfirmCategoryAndSave(val category: TimenoteFolder) : TimerAction()
+    // Multi-select Category Actions
+    data class ToggleCategory(val category: TimenoteFolder) : TimerAction()
+    data object SkipCategoriesAndSave : TimerAction()
+    data object ConfirmCategoriesAndSave : TimerAction()
 }

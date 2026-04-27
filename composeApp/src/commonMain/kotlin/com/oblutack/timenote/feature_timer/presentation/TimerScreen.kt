@@ -4,6 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +32,8 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import com.oblutack.timenote.feature_history.domain.mockFolders
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -98,6 +102,43 @@ fun TimerScreen(
                 unfocusedTextColor = TextPrimary
             )
         )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            items(mockFolders) { folder ->
+                val isSelected = state.selectedCategories.any { it.id == folder.id }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(if (isSelected) folder.color.copy(alpha = 0.2f) else SurfaceDark)
+                        .then(
+                            if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(50))
+                            else Modifier
+                        )
+                        .clickable { viewModel.onAction(TimerAction.ToggleCategory(folder)) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .size(8.dp)
+                                .background(folder.color, androidx.compose.foundation.shape.CircleShape)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = folder.name,
+                            color = TextPrimary,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -260,6 +301,67 @@ fun TimerScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
                     ) {
                         Text("Save Note")
+                    }
+                }
+            }
+        }
+    }
+
+    if (state.isCategoryPopupOpen) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(16.dp))
+                    .padding(24.dp)
+            ) {
+                Text("Save Timenote", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Select a category:", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    mockFolders.forEach { folder ->
+                        val isSelected = state.selectedCategories.any { it.id == folder.id }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(if (isSelected) folder.color.copy(alpha = 0.2f) else Color.Transparent)
+                                .then(
+                                    if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(8.dp))
+                                    else Modifier
+                                )
+                                .clickable { viewModel.onAction(TimerAction.ToggleCategory(folder)) }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(12.dp)
+                                    .background(folder.color, androidx.compose.foundation.shape.CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(
+                                text = folder.name,
+                                color = TextPrimary,
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) }) {
+                        Text("Skip", color = TextSecondary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { viewModel.onAction(TimerAction.ConfirmCategoriesAndSave) }) {
+                        Text("Save", color = DefaultAccentColor)
                     }
                 }
             }
