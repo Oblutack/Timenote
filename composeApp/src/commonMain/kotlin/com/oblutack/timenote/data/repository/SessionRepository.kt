@@ -4,6 +4,8 @@ import com.oblutack.timenote.data.database.TimenoteDao
 import com.oblutack.timenote.data.database.toDomain
 import com.oblutack.timenote.data.database.toEntity
 import com.oblutack.timenote.feature_history.domain.Timenote
+import com.oblutack.timenote.feature_history.domain.TimenoteFolder
+import com.oblutack.timenote.feature_history.domain.mockFolders
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,27 +18,47 @@ object SessionRepository {
     private var dao: TimenoteDao? = null
     private val coroutineScope = CoroutineScope(Dispatchers.Default)
 
-    // We start with an empty list instead of mock data!
     private val _timenotes = MutableStateFlow<List<Timenote>>(emptyList())
     val timenotes: StateFlow<List<Timenote>> = _timenotes.asStateFlow()
 
-    // We call this when the App launches to connect the Database
+    // NEW: StateFlow for our Custom Tags!
+    private val _tags = MutableStateFlow<List<TimenoteFolder>>(emptyList())
+    val tags: StateFlow<List<TimenoteFolder>> = _tags.asStateFlow()
+
     fun initialize(timenoteDao: TimenoteDao) {
         dao = timenoteDao
 
-        // This listens to the database FOREVER.
-        // If the database changes, the UI updates instantly!
+        // Listen to Timenotes
         coroutineScope.launch {
             timenoteDao.getAllTimenotes().collect { entityList ->
                 _timenotes.value = entityList.map { it.toDomain() }
+            }
+        }
+
+        // NEW: Listen to Tags
+        coroutineScope.launch {
+            timenoteDao.getAllTags().collect { entityList ->
+                val loadedTags = entityList.map { it.toDomain() }
+
+                // Smart UX: If the database has no tags, inject the default ones!
+                if (loadedTags.isEmpty()) {
+                    mockFolders.forEach { saveTag(it) }
+                } else {
+                    _tags.value = loadedTags
+                }
             }
         }
     }
 
     fun saveTimenote(timenote: Timenote) {
         coroutineScope.launch {
-            // Convert to Entity and Save to Hard Drive!
             dao?.insertTimenote(timenote.toEntity())
+        }
+    }
+
+    fun deleteTimenote(id: String) {
+        coroutineScope.launch {
+            dao?.deleteTimenote(id)
         }
     }
 
@@ -44,9 +66,10 @@ object SessionRepository {
         return _timenotes.value.find { it.id == id }
     }
 
-    fun deleteTimenote(id: String) {
+    // NEW: Save a Custom Tag to the Database
+    fun saveTag(tag: TimenoteFolder) {
         coroutineScope.launch {
-            dao?.deleteTimenote(id)
+            dao?.insertTag(tag.toEntity())
         }
     }
 }

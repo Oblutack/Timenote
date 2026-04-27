@@ -28,7 +28,13 @@ data class TimerState(
 
     // Multi-select Category State
     val selectedCategories: List<TimenoteFolder> = emptyList(),
-    val isCategoryPopupOpen: Boolean = false
+    val isCategoryPopupOpen: Boolean = false,
+
+    val availableTags: List<TimenoteFolder> = emptyList(),
+
+    val isCreateTagDialogOpen: Boolean = false,
+    val newTagName: String = "",
+    val newTagColor: Color = Color(0xFF4FA8F9)
 )
 
 class TimerViewModel : ViewModel() {
@@ -90,6 +96,23 @@ class TimerViewModel : ViewModel() {
             }
             is TimerAction.SkipCategoriesAndSave -> executeSave(emptyList())
             is TimerAction.ConfirmCategoriesAndSave -> executeSave(_state.value.selectedCategories)
+            is TimerAction.OpenCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = true) }
+            is TimerAction.CloseCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "") }
+            is TimerAction.UpdateNewTagName -> _state.update { it.copy(newTagName = action.name) }
+            is TimerAction.UpdateNewTagColor -> _state.update { it.copy(newTagColor = action.color) }
+            is TimerAction.SaveNewTag -> {
+                val name = _state.value.newTagName
+                if (name.isNotBlank()) {
+                    val newTag = TimenoteFolder(
+                        id = platformSpecificId(),
+                        name = name,
+                        sessionCount = 0,
+                        color = _state.value.newTagColor
+                    )
+                    com.oblutack.timenote.data.repository.SessionRepository.saveTag(newTag)
+                }
+                _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "") }
+            }
         }
     }
 
@@ -240,4 +263,10 @@ sealed class TimerAction {
     data class ToggleCategory(val category: TimenoteFolder) : TimerAction()
     data object SkipCategoriesAndSave : TimerAction()
     data object ConfirmCategoriesAndSave : TimerAction()
+
+    data object OpenCreateTagDialog : TimerAction()
+    data object CloseCreateTagDialog : TimerAction()
+    data class UpdateNewTagName(val name: String) : TimerAction()
+    data class UpdateNewTagColor(val color: Color) : TimerAction()
+    data object SaveNewTag : TimerAction()
 }
