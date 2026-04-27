@@ -109,7 +109,7 @@ fun TimerScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            items(mockFolders) { folder ->
+            items(state.availableTags) { folder ->
                 val isSelected = state.selectedCategories.any { it.id == folder.id }
                 Box(
                     modifier = Modifier
@@ -136,6 +136,23 @@ fun TimerScreen(
                             fontWeight = FontWeight.Medium
                         )
                     }
+                }
+            }
+            item {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(SurfaceDark)
+                        .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                        .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "+ New",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }
@@ -349,6 +366,23 @@ fun TimerScreen(
                             )
                         }
                     }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = "+ New",
+                            color = TextSecondary,
+                            fontSize = 16.sp
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -361,6 +395,74 @@ fun TimerScreen(
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = { viewModel.onAction(TimerAction.ConfirmCategoriesAndSave) }) {
+                        Text("Save", color = DefaultAccentColor)
+                    }
+                }
+            }
+        }
+    }
+
+    if (state.isCreateTagDialogOpen) {
+        androidx.compose.ui.window.Dialog(onDismissRequest = { viewModel.onAction(TimerAction.CloseCreateTagDialog) }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(16.dp))
+                    .padding(24.dp)
+            ) {
+                Text("Create New Tag", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = state.newTagName,
+                    onValueChange = { viewModel.onAction(TimerAction.UpdateNewTagName(it)) },
+                    placeholder = { Text("Tag name...", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = BackgroundDark,
+                        unfocusedContainerColor = BackgroundDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    listOf(
+                        Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
+                        Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
+                    ).forEach { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(color, androidx.compose.foundation.shape.CircleShape)
+                                .let {
+                                    if (color == state.newTagColor) {
+                                        it.border(2.dp, Color.White, androidx.compose.foundation.shape.CircleShape)
+                                    } else it
+                                }
+                                .clickable { viewModel.onAction(TimerAction.UpdateNewTagColor(color)) }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { viewModel.onAction(TimerAction.CloseCreateTagDialog) }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = { viewModel.onAction(TimerAction.SaveNewTag) }) {
                         Text("Save", color = DefaultAccentColor)
                     }
                 }

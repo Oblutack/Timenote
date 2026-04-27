@@ -50,6 +50,7 @@ class TimerViewModel : ViewModel() {
     private var totalPauseSeconds = 0
 
     init {
+        // 1. Listen for past Timenotes
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.timenotes.collect { notes ->
                 if (!_state.value.isRunning && !_state.value.isPaused && _state.value.timelineEvents.isEmpty()) {
@@ -61,6 +62,13 @@ class TimerViewModel : ViewModel() {
                         )}
                     }
                 }
+            }
+        }
+
+        // --- THE MISSING LINK: Listen for the Tags! ---
+        viewModelScope.launch {
+            com.oblutack.timenote.data.repository.SessionRepository.tags.collect { dbTags ->
+                _state.update { it.copy(availableTags = dbTags) }
             }
         }
     }
