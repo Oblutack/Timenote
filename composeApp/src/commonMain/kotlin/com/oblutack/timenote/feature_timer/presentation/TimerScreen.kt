@@ -79,6 +79,19 @@ fun TimerScreen(
             letterSpacing = 1.5.sp,
             modifier = Modifier.alpha(labelAlpha)
         )
+
+        // --- NEW: Display the actual name of the last session ---
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = state.lastSessionTitle.ifEmpty { "Untitled Session" }.uppercase(), // <-- Uppercase added here!
+            color = TextSecondary,             // <-- Changed to Gray
+            fontSize = 14.sp,                  // <-- Matched size
+            fontWeight = FontWeight.SemiBold,  // <-- Matched weight
+            letterSpacing = 1.5.sp,            // <-- Matched premium letter spacing
+            modifier = Modifier.alpha(labelAlpha)
+        )
+        // --------------------------------------------------------
+
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(

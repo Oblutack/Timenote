@@ -19,6 +19,7 @@ data class TimerState(
     val isRunning: Boolean = false,
     val isPaused: Boolean = false,
     val sessionTitle: String = "",
+    val lastSessionTitle: String = "",
     val timelineEvents: List<TimelineEvent> = emptyList(),
 
     // Dialog State
@@ -58,7 +59,8 @@ class TimerViewModel : ViewModel() {
                     notes.firstOrNull()?.let { lastNote ->
                         _state.update { it.copy(
                             displayTime = lastNote.duration,
-                            sessionTitle = lastNote.title,
+                            lastSessionTitle = lastNote.title,
+                            sessionTitle = "",
                             timelineEvents = lastNote.timelineEvents
                         )}
                     }
@@ -196,13 +198,19 @@ class TimerViewModel : ViewModel() {
             title = title,
             description = "$waypointCount waypoints recorded",
             duration = finalDuration,
-            tags = categories, // Saving the full list!
+            tags = categories,
             timelineEvents = _state.value.timelineEvents
         )
 
         com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(newTimenote)
 
-        _state.update { it.copy(isCategoryPopupOpen = false, selectedCategories = categories) }
+        // NEW: Save the title for the UI to display, and clear the input field!
+        _state.update { it.copy(
+            isCategoryPopupOpen = false,
+            selectedCategories = categories,
+            lastSessionTitle = title,
+            sessionTitle = ""
+        ) }
     }
 
     private fun saveNote() {
