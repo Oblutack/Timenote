@@ -34,7 +34,8 @@ data class TimerState(
 
     val isCreateTagDialogOpen: Boolean = false,
     val newTagName: String = "",
-    val newTagColor: Color = Color(0xFF4FA8F9)
+    val newTagColor: Color = Color(0xFF4FA8F9),
+    val isTagMenuExpanded: Boolean = false
 )
 
 class TimerViewModel : ViewModel() {
@@ -121,6 +122,7 @@ class TimerViewModel : ViewModel() {
                 }
                 _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "") }
             }
+            is TimerAction.ToggleTagMenu -> _state.update { it.copy(isTagMenuExpanded = !it.isTagMenuExpanded) }
         }
     }
 
@@ -128,10 +130,20 @@ class TimerViewModel : ViewModel() {
         if (_state.value.isRunning) return
 
         if (_state.value.timelineEvents.isNotEmpty()) {
+            // Grab the current inputs AND the tags loaded from the database
             val typedTitle = _state.value.sessionTitle
             val pickedCategories = _state.value.selectedCategories
+            val currentTags = _state.value.availableTags
 
-            _state.update { TimerState(sessionTitle = typedTitle, selectedCategories = pickedCategories) }
+            // Create the fresh state, but keep our tags!
+            _state.update {
+                TimerState(
+                    sessionTitle = typedTitle,
+                    selectedCategories = pickedCategories,
+                    availableTags = currentTags
+                )
+            }
+
             activeSeconds = 0
             currentPauseSeconds = 0
             totalPauseSeconds = 0
@@ -277,4 +289,6 @@ sealed class TimerAction {
     data class UpdateNewTagName(val name: String) : TimerAction()
     data class UpdateNewTagColor(val color: Color) : TimerAction()
     data object SaveNewTag : TimerAction()
+
+    data object ToggleTagMenu : TimerAction()
 }

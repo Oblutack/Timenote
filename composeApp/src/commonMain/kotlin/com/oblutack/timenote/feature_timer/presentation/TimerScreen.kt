@@ -33,7 +33,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import com.oblutack.timenote.feature_history.domain.mockFolders
+import com.oblutack.timenote.feature_timer.domain.EventType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -105,11 +108,30 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyRow(
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(state.availableTags) { folder ->
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(50))
+                    .background(SurfaceDark)
+                    .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                    .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "+ New",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            val visibleTags = if (state.isTagMenuExpanded) state.availableTags else state.availableTags.take(4)
+            visibleTags.forEach { folder ->
                 val isSelected = state.selectedCategories.any { it.id == folder.id }
                 Box(
                     modifier = Modifier
@@ -138,17 +160,18 @@ fun TimerScreen(
                     }
                 }
             }
-            item {
+
+            if (state.availableTags.size > 4) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(SurfaceDark)
                         .border(1.dp, TextSecondary, RoundedCornerShape(50))
-                        .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
+                        .clickable { viewModel.onAction(TimerAction.ToggleTagMenu) }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
-                        text = "+ New",
+                        text = if (!state.isTagMenuExpanded) "+ ${state.availableTags.size - 4}" else "Show Less",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -338,7 +361,7 @@ fun TimerScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    mockFolders.forEach { folder ->
+                    state.availableTags.forEach { folder ->
                         val isSelected = state.selectedCategories.any { it.id == folder.id }
                         Row(
                             modifier = Modifier
@@ -486,16 +509,23 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean) {
                 .fillMaxHeight(),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val circleRadius = 5.dp.toPx()
+                // 1. Determine size and color based on EventType
+                val isStartOrEnd = event.type == EventType.START || event.type == EventType.END
+                val circleRadius = if (isStartOrEnd) 7.dp.toPx() else 5.dp.toPx()
                 val circleCenterY = 10.dp.toPx()
-                val nodeColor = event.color ?: DefaultAccentColor
+
+                val nodeColor = when (event.type) {
+                    EventType.START -> Color(0xFF4CAF50) // Green
+                    EventType.END -> Color(0xFFE53935)   // Red
+                    else -> event.color ?: DefaultAccentColor
+                }
 
                 // Outer circle (stroke)
                 drawCircle(
                     color = nodeColor,
                     radius = circleRadius,
                     center = Offset(size.width / 2, circleCenterY),
-                    style = Stroke(width = 1.5.dp.toPx())
+                    style = Stroke(width = if (isStartOrEnd) 2.dp.toPx() else 1.5.dp.toPx())
                 )
 
                 // Inner filled circle
@@ -517,7 +547,6 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean) {
                 }
             }
         }
-
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(

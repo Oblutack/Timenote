@@ -29,6 +29,7 @@ import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
+import com.oblutack.timenote.feature_timer.domain.EventType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -133,15 +134,22 @@ fun TimenoteTimelineItem(event: TimelineEvent, isLastItem: Boolean) {
                 .fillMaxHeight(),
         ) {
             Canvas(modifier = Modifier.fillMaxSize()) {
-                val circleRadius = 5.dp.toPx()
+                // 1. Determine size and color based on EventType
+                val isStartOrEnd = event.type == EventType.START || event.type == EventType.END
+                val circleRadius = if (isStartOrEnd) 7.dp.toPx() else 5.dp.toPx()
                 val circleCenterY = 10.dp.toPx()
-                val nodeColor = event.color ?: DefaultAccentColor
+
+                val nodeColor = when (event.type) {
+                    EventType.START -> Color(0xFF4CAF50) // Green
+                    EventType.END -> Color(0xFFE53935)   // Red
+                    else -> event.color ?: DefaultAccentColor
+                }
 
                 drawCircle(
                     color = nodeColor,
                     radius = circleRadius,
                     center = Offset(size.width / 2, circleCenterY),
-                    style = Stroke(width = 1.5.dp.toPx())
+                    style = Stroke(width = if (isStartOrEnd) 2.dp.toPx() else 1.5.dp.toPx())
                 )
 
                 drawCircle(
@@ -161,7 +169,6 @@ fun TimenoteTimelineItem(event: TimelineEvent, isLastItem: Boolean) {
                 }
             }
         }
-
         Spacer(modifier = Modifier.width(16.dp))
 
         Column(
