@@ -121,79 +121,109 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        @OptIn(ExperimentalLayoutApi::class)
-        FlowRow(
+        Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.Start
         ) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(SurfaceDark)
-                    .border(1.dp, TextSecondary, RoundedCornerShape(50))
-                    .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .background(if (state.selectedCategories.isNotEmpty()) SurfaceDark else Color.Transparent)
+                    .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(50))
+                    .clickable { viewModel.onAction(TimerAction.ToggleTagsRowVisibility) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
                 Text(
-                    text = "+ New",
-                    color = TextSecondary,
+                    text = when {
+                        state.isTagsRowVisible -> "- Tags"
+                        state.selectedCategories.isNotEmpty() -> "${state.selectedCategories.size} Tags Selected"
+                        else -> "+ Tags"
+                    },
+                    color = if (state.selectedCategories.isNotEmpty() && !state.isTagsRowVisible) TextPrimary else TextSecondary,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Medium
                 )
             }
+        }
 
-            val visibleTags = if (state.isTagMenuExpanded) state.availableTags else state.availableTags.take(4)
-            visibleTags.forEach { folder ->
-                val isSelected = state.selectedCategories.any { it.id == folder.id }
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // --- WRAPPED IN ANIMATED VISIBILITY ---
+        androidx.compose.animation.AnimatedVisibility(
+            visible = state.isTagsRowVisible
+        ) {
+            @OptIn(ExperimentalLayoutApi::class)
+            FlowRow(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
-                        .background(if (isSelected) folder.color.copy(alpha = 0.2f) else SurfaceDark)
-                        .then(
-                            if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(50))
-                            else Modifier
-                        )
-                        .clickable { viewModel.onAction(TimerAction.ToggleCategory(folder)) }
+                        .background(SurfaceDark)
+                        .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                        .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(folder.color, androidx.compose.foundation.shape.CircleShape)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = "+ New",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                val visibleTags = if (state.isTagMenuExpanded) state.availableTags else state.availableTags.take(4)
+                visibleTags.forEach { folder ->
+                    val isSelected = state.selectedCategories.any { it.id == folder.id }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(if (isSelected) folder.color.copy(alpha = 0.2f) else SurfaceDark)
+                            .then(
+                                if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(50))
+                                else Modifier
+                            )
+                            .clickable { viewModel.onAction(TimerAction.ToggleCategory(folder)) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .background(folder.color, androidx.compose.foundation.shape.CircleShape)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = folder.name,
+                                color = TextPrimary,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+                if (state.availableTags.size > 4) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(SurfaceDark)
+                            .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                            .clickable { viewModel.onAction(TimerAction.ToggleTagMenu) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp)
+                    ) {
                         Text(
-                            text = folder.name,
-                            color = TextPrimary,
+                            text = if (!state.isTagMenuExpanded) "+ ${state.availableTags.size - 4}" else "Show Less",
+                            color = TextSecondary,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Medium
                         )
                     }
                 }
             }
-
-            if (state.availableTags.size > 4) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(SurfaceDark)
-                        .border(1.dp, TextSecondary, RoundedCornerShape(50))
-                        .clickable { viewModel.onAction(TimerAction.ToggleTagMenu) }
-                        .padding(horizontal = 12.dp, vertical = 8.dp)
-                ) {
-                    Text(
-                        text = if (!state.isTagMenuExpanded) "+ ${state.availableTags.size - 4}" else "Show Less",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         Row(
             modifier = Modifier.fillMaxWidth(),

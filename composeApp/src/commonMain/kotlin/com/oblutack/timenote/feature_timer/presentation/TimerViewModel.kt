@@ -36,7 +36,8 @@ data class TimerState(
     val isCreateTagDialogOpen: Boolean = false,
     val newTagName: String = "",
     val newTagColor: Color = Color(0xFF4FA8F9),
-    val isTagMenuExpanded: Boolean = false
+    val isTagMenuExpanded: Boolean = false,
+    val isTagsRowVisible: Boolean = false
 )
 
 class TimerViewModel : ViewModel() {
@@ -125,6 +126,7 @@ class TimerViewModel : ViewModel() {
                 _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "") }
             }
             is TimerAction.ToggleTagMenu -> _state.update { it.copy(isTagMenuExpanded = !it.isTagMenuExpanded) }
+            is TimerAction.ToggleTagsRowVisibility -> _state.update { it.copy(isTagsRowVisible = !it.isTagsRowVisible) }
         }
     }
 
@@ -299,4 +301,6 @@ sealed class TimerAction {
     data object SaveNewTag : TimerAction()
 
     data object ToggleTagMenu : TimerAction()
+
+    data object ToggleTagsRowVisibility : TimerAction()
 }
