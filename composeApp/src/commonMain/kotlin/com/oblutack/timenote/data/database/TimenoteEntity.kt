@@ -13,6 +13,9 @@ data class TimenoteEntity(
     val title: String,
     val description: String,
     val duration: String,
-    val tagsJson: String,           // We store the lists as JSON strings!
+    val activeSeconds: Int,  // <--- NEW
+    val pauseSeconds: Int,   // <--- NEW
+    val createdAt: Long,     // <--- NEW
+    val tagsJson: String,
     val timelineEventsJson: String
 )

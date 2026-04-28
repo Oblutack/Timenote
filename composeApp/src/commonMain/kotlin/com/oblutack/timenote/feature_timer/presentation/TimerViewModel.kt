@@ -195,18 +195,22 @@ class TimerViewModel : ViewModel() {
         val finalDuration = formatTime(activeSeconds + totalPauseSeconds)
         val waypointCount = _state.value.timelineEvents.size
 
+        val timestampId = platformSpecificId() // Get the ID/Timestamp once
+
         val newTimenote = com.oblutack.timenote.feature_history.domain.Timenote(
-            id = platformSpecificId(),
+            id = timestampId,
             title = title,
             description = "$waypointCount waypoints recorded",
             duration = finalDuration,
+            activeSeconds = activeSeconds,          // <--- THE REAL DATA
+            pauseSeconds = totalPauseSeconds,       // <--- THE REAL DATA
+            createdAt = timestampId.toLongOrNull() ?: 0L, // <--- THE REAL TIMESTAMP
             tags = categories,
             timelineEvents = _state.value.timelineEvents
         )
 
         com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(newTimenote)
 
-        // NEW: Save the title for the UI to display, and clear the input field!
         _state.update { it.copy(
             isCategoryPopupOpen = false,
             selectedCategories = categories,

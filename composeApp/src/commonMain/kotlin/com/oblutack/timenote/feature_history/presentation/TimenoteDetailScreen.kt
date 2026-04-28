@@ -39,6 +39,9 @@ import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_timer.domain.EventType
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
+import kotlinx.datetime.Instant
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,6 +54,29 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
         }
         return
     }
+
+    // --- 1. Date & Time Formatting ---
+    // Safely parse the timestamp. If it's 0 (from old mock data), fallback to current time
+    val validTimestamp = if (timenote.createdAt > 0L) timenote.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
+    val instant = Instant.fromEpochMilliseconds(validTimestamp)
+    val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+
+    // Format manually to keep it perfectly KMP-safe across iOS/Android
+    val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+    val hour12 = if (dateTime.hour % 12 == 0) 12 else dateTime.hour % 12
+    val amPm = if (dateTime.hour >= 12) "PM" else "AM"
+    val minuteStr = dateTime.minute.toString().padStart(2, '0')
+    val displayDate = "$month ${dateTime.dayOfMonth}, ${dateTime.year} • $hour12:$minuteStr $amPm"
+
+    // --- 2. Work vs Pause Breakdown Math ---
+    val totalSeconds = timenote.activeSeconds + timenote.pauseSeconds
+
+    // Protect against division by zero just in case
+    val workRatio = if (totalSeconds > 0) timenote.activeSeconds.toFloat() / totalSeconds.toFloat() else 1f
+    val pauseRatio = if (totalSeconds > 0) timenote.pauseSeconds.toFloat() / totalSeconds.toFloat() else 0f
+
+    val workPercent = (workRatio * 100).toInt()
+    val pausePercent = (pauseRatio * 100).toInt()
 
     var isTimelineExpanded by remember { mutableStateOf(false) }
 
@@ -77,6 +103,13 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold
         )
+
+        Text(
+            text = displayDate,
+            color = TextSecondary,
+            fontSize = 14.sp,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
         
         Spacer(modifier = Modifier.height(16.dp))
         
@@ -85,42 +118,48 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // 1. Work vs Pause Breakdown Bar
-        val workColor = timenote.tags.firstOrNull()?.color ?: Color(0xFF4FA8F9)
+        // --- Define the Colors ---
+        val workColor = timenote.tags.firstOrNull()?.color ?: DefaultAccentColor
+        val pauseColor = Color(0xFF333333) // Muted Dark Gray for the Pause segment
+
+        // --- 1. The Progress Bar ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
                 .clip(RoundedCornerShape(50))
         ) {
-            Box(modifier = Modifier.weight(0.8f).fillMaxHeight().background(workColor))
-            Box(modifier = Modifier.weight(0.2f).fillMaxHeight().background(Color(0xFFFF9800)))
+            // Work Segment
+            Box(
+                modifier = Modifier
+                    .weight(workRatio.coerceAtLeast(0.01f))
+                    .fillMaxHeight()
+                    .background(workColor)
+            )
+            // Pause Segment
+            Box(
+                modifier = Modifier
+                    .weight(pauseRatio.coerceAtLeast(0.01f))
+                    .fillMaxHeight()
+                    .background(pauseColor) // <-- Make sure this uses pauseColor!
+            )
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(modifier = Modifier.size(8.dp).background(workColor, RoundedCornerShape(50)))
+
+        // --- 2. The Legend (Text & Dots) ---
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // Work Legend
+            Box(modifier = Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(workColor))
             Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "80% Work",
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(text = "•", color = TextSecondary, fontSize = 12.sp)
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Box(modifier = Modifier.size(8.dp).background(Color(0xFFFF9800), RoundedCornerShape(50)))
+            Text("$workPercent% Work", color = TextSecondary, fontSize = 12.sp)
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            // Pause Legend
+            Box(modifier = Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(pauseColor)) // <-- Make sure this uses pauseColor!
             Spacer(modifier = Modifier.width(6.dp))
-            Text(
-                text = "20% Pause",
-                color = TextSecondary,
-                fontSize = 12.sp
-            )
+            Text("$pausePercent% Pause", color = TextSecondary, fontSize = 12.sp)
         }
 
         Spacer(modifier = Modifier.height(24.dp))

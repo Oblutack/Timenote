@@ -13,18 +13,23 @@ fun Timenote.toEntity(): TimenoteEntity {
         title = this.title,
         description = this.description,
         duration = this.duration,
+        activeSeconds = this.activeSeconds, // <--- NEW
+        pauseSeconds = this.pauseSeconds,   // <--- NEW
+        createdAt = this.createdAt,         // <--- NEW
         tagsJson = Json.encodeToString(this.tags),
         timelineEventsJson = Json.encodeToString(this.timelineEvents)
     )
 }
 
-// 2. Translates a Database Entity back into a Timenote (Turns JSON Strings back into lists)
 fun TimenoteEntity.toDomain(): Timenote {
     return Timenote(
         id = this.id,
         title = this.title,
         description = this.description,
         duration = this.duration,
+        activeSeconds = this.activeSeconds, // <--- NEW
+        pauseSeconds = this.pauseSeconds,   // <--- NEW
+        createdAt = this.createdAt,         // <--- NEW
         tags = Json.decodeFromString<List<TimenoteFolder>>(this.tagsJson),
         timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson)
     )

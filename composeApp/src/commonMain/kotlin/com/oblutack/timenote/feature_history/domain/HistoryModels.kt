@@ -19,6 +19,9 @@ data class Timenote(
     val title: String,
     val description: String,
     val duration: String,
+    val activeSeconds: Int,  // <--- NEW
+    val pauseSeconds: Int,   // <--- NEW
+    val createdAt: Long,     // <--- NEW
     val tags: List<TimenoteFolder>,
     val timelineEvents: List<TimelineEvent>
 )
@@ -32,7 +35,7 @@ val mockFolders = listOf(
 
 // We update the mock data to use the new Timenote class and empty events
 val mockSessions = listOf(
-    Timenote("1", "Deep Work Session", "Product roadmap planning", "2h 45m", listOf(mockFolders[0]), emptyList()),
-    Timenote("2", "React Advanced Patterns", "Compound components study", "3h 15m", listOf(mockFolders[1]), emptyList()),
-    Timenote("3", "Morning Workout", "Full body strength training", "45m", listOf(mockFolders[2]), emptyList())
+    Timenote("1", "Deep Work Session", "Product roadmap planning", "2h 45m", 9900, 0, 1713870000000L, listOf(mockFolders[0]), emptyList()),
+    Timenote("2", "React Advanced Patterns", "Compound components study", "3h 15m", 11700, 1800, 1713780000000L, listOf(mockFolders[1]), emptyList()),
+    Timenote("3", "Morning Workout", "Full body strength training", "45m", 2700, 300, 1713690000000L, listOf(mockFolders[2]), emptyList())
 )
