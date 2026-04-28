@@ -16,6 +16,7 @@ import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 
 data class TimerState(
     val displayTime: String = "00:00:00",
+    val currentPauseTime: String = "00:00:00",
     val isRunning: Boolean = false,
     val isPaused: Boolean = false,
     val sessionTitle: String = "",
@@ -161,7 +162,9 @@ class TimerViewModel : ViewModel() {
     private fun pauseTimer() {
         if (!_state.value.isRunning || _state.value.isPaused) return
         addEventToTimeline("Paused", EventType.PAUSE)
-        _state.update { it.copy(isPaused = true) }
+
+        // NEW: Ensure currentPauseTime shows 00:00:00 immediately
+        _state.update { it.copy(isPaused = true, currentPauseTime = formatTime(currentPauseSeconds)) }
     }
 
     private fun resumeTimer() {
@@ -240,6 +243,8 @@ class TimerViewModel : ViewModel() {
                 if (_state.value.isPaused) {
                     currentPauseSeconds++
                     totalPauseSeconds++
+                    // NEW: Update the Pause Time so the UI ticks!
+                    _state.update { it.copy(currentPauseTime = formatTime(currentPauseSeconds)) }
                 } else {
                     activeSeconds++
                     _state.update { it.copy(displayTime = formatTime(activeSeconds + totalPauseSeconds)) }

@@ -52,13 +52,8 @@ fun TimerScreen(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            text = "Timenote",
-            color = TextPrimary,
-            style = MaterialTheme.typography.titleMedium
-        )
 
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // --- NEW: Smooth Fade-In "Last Session" Label ---
         // 1. Determine if we should show it
@@ -101,7 +96,25 @@ fun TimerScreen(
             color = TextPrimary
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        // --- NEW: Smooth Fade-In Pause Timer ---
+        val pauseAlpha by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (state.isPaused) 1f else 0f,
+            label = "pauseFadeAnimation"
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "PAUSED: ${state.currentPauseTime}",
+            color = TextSecondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.alpha(pauseAlpha)
+        )
+        // ---------------------------------------
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         OutlinedTextField(
             value = state.sessionTitle,
