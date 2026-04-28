@@ -1,8 +1,11 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -11,11 +14,17 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -28,8 +37,8 @@ import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
-import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import com.oblutack.timenote.feature_timer.domain.EventType
+import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +51,8 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
         }
         return
     }
+
+    var isTimelineExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -69,13 +80,64 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
         
         Spacer(modifier = Modifier.height(16.dp))
         
+        Text(text = timenote.duration, color = TextSecondary, fontSize = 16.sp)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 1. Work vs Pause Breakdown Bar
+        val workColor = timenote.tags.firstOrNull()?.color ?: Color(0xFF4FA8F9)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(50))
+        ) {
+            Box(modifier = Modifier.weight(0.8f).fillMaxHeight().background(workColor))
+            Box(modifier = Modifier.weight(0.2f).fillMaxHeight().background(Color(0xFFFF9800)))
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = timenote.duration, color = TextSecondary, fontSize = 16.sp)
-            Text(text = timenote.description, color = TextSecondary, fontSize = 16.sp)
+            Box(modifier = Modifier.size(8.dp).background(workColor, RoundedCornerShape(50)))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "80% Work",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+            
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(text = "•", color = TextSecondary, fontSize = 12.sp)
+            Spacer(modifier = Modifier.width(8.dp))
+            
+            Box(modifier = Modifier.size(8.dp).background(Color(0xFFFF9800), RoundedCornerShape(50)))
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = "20% Pause",
+                color = TextSecondary,
+                fontSize = 12.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 2. Description Section
+        if (timenote.description.isEmpty()) {
+            Text(
+                text = "No description provided.",
+                color = TextSecondary,
+                fontSize = 16.sp
+            )
+        } else {
+            Text(
+                text = timenote.description,
+                color = TextSecondary,
+                fontSize = 16.sp
+            )
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -100,20 +162,42 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
             Spacer(modifier = Modifier.height(32.dp))
         }
 
-        Text(
-            text = "SESSION TIMELINE",
-            color = TextSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // 3. Collapsible Timeline (Accordion)
+        val rotation by animateFloatAsState(targetValue = if (isTimelineExpanded) 180f else 0f)
+        
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { isTimelineExpanded = !isTimelineExpanded }
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "SESSION TIMELINE",
+                color = TextSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowDown,
+                contentDescription = "Toggle Timeline",
+                tint = TextSecondary,
+                modifier = Modifier.rotate(rotation)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
 
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            itemsIndexed(timenote.timelineEvents) { index, event ->
-                TimenoteTimelineItem(
-                    event = event,
-                    isLastItem = index == timenote.timelineEvents.size - 1
-                )
+        AnimatedVisibility(visible = isTimelineExpanded) {
+            LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                itemsIndexed(timenote.timelineEvents) { index, event ->
+                    TimenoteTimelineItem(
+                        event = event,
+                        isLastItem = index == timenote.timelineEvents.size - 1
+                    )
+                }
             }
         }
     }
