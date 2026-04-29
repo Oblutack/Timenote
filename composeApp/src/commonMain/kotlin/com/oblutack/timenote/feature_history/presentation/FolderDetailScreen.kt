@@ -4,8 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -14,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,11 +30,18 @@ import com.oblutack.timenote.data.repository.SessionRepository
 fun FolderDetailScreen(
     folderId: String,
     onBackClick: () -> Unit,
-    onTimenoteClick: (String) -> Unit
+    onTimenoteClick: (String) -> Unit,
+    onStartSessionClick: () -> Unit
 ) {
     val allTimenotes by SessionRepository.timenotes.collectAsState()
     val folderTimenotes = allTimenotes.filter { it.folderId == folderId }
     val folder = SessionRepository.folders.value.find { it.id == folderId }
+
+    val totalActiveSeconds = folderTimenotes.sumOf { it.activeSeconds }
+    val hours = totalActiveSeconds / 3600
+    val minutes = (totalActiveSeconds % 3600) / 60
+    val seconds = totalActiveSeconds % 60
+    val formattedTime = "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
 
     Column(
         modifier = Modifier
@@ -73,10 +85,27 @@ fun FolderDetailScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "${folderTimenotes.size} sessions",
+                    text = "${folderTimenotes.size} sessions • Total time: $formattedTime",
                     color = TextSecondary,
                     fontSize = 16.sp
                 )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(
+                    onClick = onStartSessionClick,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = folder.color,
+                        contentColor = Color.White
+                    ),
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "Start Session",
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Start Session")
+                }
             }
 
             // List or Empty State
@@ -124,4 +153,3 @@ fun FolderDetailScreen(
         }
     }
 }
-

@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
@@ -54,6 +56,10 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
         }
         return
     }
+
+    val folders by SessionRepository.folders.collectAsState()
+    val currentFolder = folders.find { it.id == timenote.folderId }
+    var isFolderDialogOpen by remember { mutableStateOf(false) }
 
     // --- 1. Date & Time Formatting ---
     // Safely parse the timestamp. If it's 0 (from old mock data), fallback to current time
@@ -103,6 +109,26 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold
         )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        // Folder Pill
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(50))
+                .clickable { isFolderDialogOpen = true }
+                .background(currentFolder?.color?.copy(alpha = 0.2f) ?: SurfaceDark)
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            Text(
+                text = if (currentFolder == null) "Unassigned" else currentFolder.name,
+                color = currentFolder?.color ?: TextSecondary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
 
         Text(
             text = displayDate,
@@ -236,6 +262,67 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                         event = event,
                         isLastItem = index == timenote.timelineEvents.size - 1
                     )
+                }
+            }
+        }
+    }
+
+    if (isFolderDialogOpen) {
+        Dialog(onDismissRequest = { isFolderDialogOpen = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(16.dp))
+                    .padding(24.dp)
+            ) {
+                Text("Move to Folder", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    SessionRepository.assignFolderToTimenote(timenote.id, null)
+                                    isFolderDialogOpen = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Remove from Folder", color = Color(0xFFE53935), fontSize = 16.sp)
+                        }
+                    }
+                    items(folders) { folder ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    SessionRepository.assignFolderToTimenote(timenote.id, folder.id)
+                                    isFolderDialogOpen = false
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(folder.color))
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Text(folder.name, color = TextPrimary, fontSize = 16.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { isFolderDialogOpen = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
                 }
             }
         }

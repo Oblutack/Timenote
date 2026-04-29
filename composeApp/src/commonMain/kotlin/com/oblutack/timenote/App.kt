@@ -125,6 +125,9 @@ fun App(database: AppDatabase? = null) {
                                 onTimenoteClick = { noteId ->
                                     selectedTimenoteId = noteId
                                     currentScreen = Screen.Details
+                                },
+                                onStartSessionClick = {
+                                    currentScreen = Screen.Timer
                                 }
                             )
                         }

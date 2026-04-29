@@ -88,4 +88,16 @@ object SessionRepository {
             dao?.insertFolder(folder.toEntity())
         }
     }
+
+    // NEW: Update a Timenote's Folder
+    fun assignFolderToTimenote(timenoteId: String, folderId: String?) {
+        coroutineScope.launch {
+            val note = getTimenoteById(timenoteId)
+            if (note != null) {
+                // Copy the note with the new folder ID and overwrite it in the DB!
+                val updatedNote = note.copy(folderId = folderId)
+                dao?.insertTimenote(updatedNote.toEntity())
+            }
+        }
+    }
 }
