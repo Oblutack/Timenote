@@ -5,8 +5,10 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -58,6 +60,7 @@ fun HistoryScreen(
     val recentSessions by viewModel.sessions.collectAsState()
     val folders by viewModel.folders.collectAsState(initial = emptyList())
 
+    var selectedTab by remember { mutableStateOf(0) }
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
@@ -68,131 +71,135 @@ fun HistoryScreen(
             .background(BackgroundDark)
             .padding(24.dp)
     ) {
-        // Top Section (Mock Calendar)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // Custom Segmented Control (Tabs)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(50))
                 .background(SurfaceDark)
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(4.dp)
         ) {
-            val days = listOf("Mon\n21", "Tue\n22", "Wed\n23", "Thu\n24", "Fri\n25")
-            days.forEach { day ->
-                val isSelected = day.startsWith("Wed")
-                Column(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(if (isSelected) Color(0xFF2C2C2C) else Color.Transparent)
-                        .padding(8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    val parts = day.split("\n")
-                    Text(parts[0], color = TextSecondary, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(parts[1], color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
+                    .clickable { selectedTab = 0 }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Sessions",
+                    color = if (selectedTab == 0) TextPrimary else TextSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(50))
+                    .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
+                    .clickable { selectedTab = 1 }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Folders",
+                    color = if (selectedTab == 1) TextPrimary else TextSecondary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp
+                )
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
-        // "MY TIMENOTES" Section
-        Text(
-            text = "MY TIMENOTES",
-            color = TextSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        if (selectedTab == 0) {
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(recentSessions, key = { it.id }) { session ->
+                    val dismissState = rememberSwipeToDismissBoxState(
+                        confirmValueChange = { value ->
+                            if (value == SwipeToDismissBoxValue.EndToStart) {
+                                viewModel.deleteTimenote(session.id)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                    )
 
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                Box(
-                    modifier = Modifier
-                        .size(110.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .clickable { isCreateFolderDialogOpen = true }
-                        .drawBehind {
-                            drawRoundRect(
-                                color = TextSecondary.copy(alpha = 0.5f),
-                                style = Stroke(
-                                    width = 2.dp.toPx(),
-                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                                ),
-                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
-                            )
+                    SwipeToDismissBox(
+                        state = dismissState,
+                        enableDismissFromStartToEnd = false,
+                        backgroundContent = {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(Color(0xFFE53935))
+                                    .padding(end = 24.dp),
+                                contentAlignment = Alignment.CenterEnd
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Delete",
+                                    tint = Color.White
+                                )
+                            }
                         },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "+ New Folder",
-                        color = TextSecondary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
+                        content = {
+                            SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
+                        }
                     )
                 }
             }
-            items(folders) { folder ->
-                FolderCard(
-                    folder = folder,
-                    onClick = { onFolderClick(folder.id) } // <--- Pass the ID up!
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // "RECENT SESSIONS" Section
-        Text(
-            text = "RECENT SESSIONS",
-            color = TextSecondary,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            items(recentSessions, key = { it.id }) { session ->
-                val dismissState = rememberSwipeToDismissBoxState(
-                    confirmValueChange = { value ->
-                        if (value == SwipeToDismissBoxValue.EndToStart) {
-                            viewModel.deleteTimenote(session.id)
-                            true
-                        } else {
-                            false
-                        }
+        } else {
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(2),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(16.dp))
+                            .clickable { isCreateFolderDialogOpen = true }
+                            .drawBehind {
+                                drawRoundRect(
+                                    color = TextSecondary.copy(alpha = 0.5f),
+                                    style = Stroke(
+                                        width = 2.dp.toPx(),
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                    ),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                                )
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "+ New Folder",
+                            color = TextSecondary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
-                )
-
-                SwipeToDismissBox(
-                    state = dismissState,
-                    enableDismissFromStartToEnd = false,
-                    backgroundContent = {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color(0xFFE53935))
-                                .padding(end = 24.dp),
-                            contentAlignment = Alignment.CenterEnd
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
-                                contentDescription = "Delete",
-                                tint = Color.White
-                            )
-                        }
-                    },
-                    content = {
-                        SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
-                    }
-                )
+                }
+                items(folders) { folder ->
+                    FolderCard(
+                        folder = folder,
+                        onClick = { onFolderClick(folder.id) }
+                    )
+                }
             }
         }
     }
