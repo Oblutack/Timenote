@@ -6,6 +6,14 @@ import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import kotlinx.serialization.Serializable
 
 @Serializable
+data class ProjectFolder(
+    val id: String,
+    val name: String,
+    @Serializable(with = ColorSerializer::class) val color: Color,
+    val createdAt: Long
+)
+
+@Serializable
 data class TimenoteFolder(
     val id: String,
     val name: String,
@@ -16,6 +24,7 @@ data class TimenoteFolder(
 @Serializable
 data class Timenote(
     val id: String,
+    val folderId: String? = null,
     val title: String,
     val description: String,
     val duration: String,
@@ -33,9 +42,3 @@ val mockFolders = listOf(
     TimenoteFolder("4", "Personal", 3, Color(0xFF9C27B0))
 )
 
-// We update the mock data to use the new Timenote class and empty events
-val mockSessions = listOf(
-    Timenote("1", "Deep Work Session", "Product roadmap planning", "2h 45m", 9900, 0, 1713870000000L, listOf(mockFolders[0]), emptyList()),
-    Timenote("2", "React Advanced Patterns", "Compound components study", "3h 15m", 11700, 1800, 1713780000000L, listOf(mockFolders[1]), emptyList()),
-    Timenote("3", "Morning Workout", "Full body strength training", "45m", 2700, 300, 1713690000000L, listOf(mockFolders[2]), emptyList())
-)

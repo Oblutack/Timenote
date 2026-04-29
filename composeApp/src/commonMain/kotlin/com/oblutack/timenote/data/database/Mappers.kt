@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 fun Timenote.toEntity(): TimenoteEntity {
     return TimenoteEntity(
         id = this.id,
+        folderId = this.folderId,
         title = this.title,
         description = this.description,
         duration = this.duration,
@@ -24,6 +25,7 @@ fun Timenote.toEntity(): TimenoteEntity {
 fun TimenoteEntity.toDomain(): Timenote {
     return Timenote(
         id = this.id,
+        folderId = this.folderId,
         title = this.title,
         description = this.description,
         duration = this.duration,
@@ -32,5 +34,24 @@ fun TimenoteEntity.toDomain(): Timenote {
         createdAt = this.createdAt,         // <--- NEW
         tags = Json.decodeFromString<List<TimenoteFolder>>(this.tagsJson),
         timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson)
+    )
+}
+
+// --- NEW: Folder Mappers ---
+fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): FolderEntity {
+    return FolderEntity(
+        id = this.id,
+        name = this.name,
+        colorLong = this.color.value.toLong(),
+        createdAt = this.createdAt
+    )
+}
+
+fun FolderEntity.toDomain(): com.oblutack.timenote.feature_history.domain.ProjectFolder {
+    return com.oblutack.timenote.feature_history.domain.ProjectFolder(
+        id = this.id,
+        name = this.name,
+        color = androidx.compose.ui.graphics.Color(this.colorLong.toULong()),
+        createdAt = this.createdAt
     )
 }

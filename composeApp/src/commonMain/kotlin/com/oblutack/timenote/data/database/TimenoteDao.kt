@@ -26,4 +26,14 @@ interface TimenoteDao {
     // Load all tags to display on the UI
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun getAllTags(): Flow<List<TagEntity>>
+
+    // --- PROJECT FOLDERS ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertFolder(folder: FolderEntity)
+
+    @Query("SELECT * FROM project_folders ORDER BY createdAt DESC")
+    fun getAllFolders(): kotlinx.coroutines.flow.Flow<List<FolderEntity>>
+
+    @Query("DELETE FROM project_folders WHERE id = :id")
+    suspend fun deleteFolder(id: String)
 }

@@ -2,17 +2,22 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "30f83db28952029604f947ea1f353206",
+    "identityHash": "664c06cdfe444cd16b6f52f8b5362ffe",
     "entities": [
       {
         "tableName": "timenotes",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `duration` TEXT NOT NULL, `activeSeconds` INTEGER NOT NULL, `pauseSeconds` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `tagsJson` TEXT NOT NULL, `timelineEventsJson` TEXT NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `folderId` TEXT, `title` TEXT NOT NULL, `description` TEXT NOT NULL, `duration` TEXT NOT NULL, `activeSeconds` INTEGER NOT NULL, `pauseSeconds` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `tagsJson` TEXT NOT NULL, `timelineEventsJson` TEXT NOT NULL, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
             "columnName": "id",
             "affinity": "TEXT",
             "notNull": true
+          },
+          {
+            "fieldPath": "folderId",
+            "columnName": "folderId",
+            "affinity": "TEXT"
           },
           {
             "fieldPath": "title",
@@ -109,7 +114,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '30f83db28952029604f947ea1f353206')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '664c06cdfe444cd16b6f52f8b5362ffe')"
     ]
   }
 }

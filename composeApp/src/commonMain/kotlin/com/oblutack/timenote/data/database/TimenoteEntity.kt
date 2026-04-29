@@ -10,6 +10,7 @@ import kotlinx.serialization.json.Json
 @Entity(tableName = "timenotes")
 data class TimenoteEntity(
     @PrimaryKey val id: String,
+    val folderId: String?,
     val title: String,
     val description: String,
     val duration: String,

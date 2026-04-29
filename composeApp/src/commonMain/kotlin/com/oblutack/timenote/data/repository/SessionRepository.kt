@@ -25,6 +25,9 @@ object SessionRepository {
     private val _tags = MutableStateFlow<List<TimenoteFolder>>(emptyList())
     val tags: StateFlow<List<TimenoteFolder>> = _tags.asStateFlow()
 
+    private val _folders = MutableStateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>>(emptyList())
+    val folders: StateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>> = _folders.asStateFlow()
+
     fun initialize(timenoteDao: TimenoteDao) {
         dao = timenoteDao
 
@@ -32,6 +35,13 @@ object SessionRepository {
         coroutineScope.launch {
             timenoteDao.getAllTimenotes().collect { entityList ->
                 _timenotes.value = entityList.map { it.toDomain() }
+            }
+        }
+
+        // Listen to Folders
+        coroutineScope.launch {
+            timenoteDao.getAllFolders().collect { entityList ->
+                _folders.value = entityList.map { it.toDomain() }
             }
         }
 
@@ -70,6 +80,12 @@ object SessionRepository {
     fun saveTag(tag: TimenoteFolder) {
         coroutineScope.launch {
             dao?.insertTag(tag.toEntity())
+        }
+    }
+
+    fun saveFolder(folder: com.oblutack.timenote.feature_history.domain.ProjectFolder) {
+        coroutineScope.launch {
+            dao?.insertFolder(folder.toEntity())
         }
     }
 }
