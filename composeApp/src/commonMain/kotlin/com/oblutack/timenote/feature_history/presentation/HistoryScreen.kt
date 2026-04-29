@@ -28,13 +28,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.window.Dialog
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
-import com.oblutack.timenote.feature_history.domain.mockFolders
+import com.oblutack.timenote.feature_history.domain.ProjectFolder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,6 +55,11 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
 ) {
     val recentSessions by viewModel.sessions.collectAsState()
+    val folders by viewModel.folders.collectAsState(initial = emptyList())
+
+    var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
+    var newFolderName by remember { mutableStateOf("") }
+    var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
 
     Column(
         modifier = Modifier
@@ -91,7 +108,33 @@ fun HistoryScreen(
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            items(mockFolders) { folder ->
+            item {
+                Box(
+                    modifier = Modifier
+                        .size(110.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable { isCreateFolderDialogOpen = true }
+                        .drawBehind {
+                            drawRoundRect(
+                                color = TextSecondary.copy(alpha = 0.5f),
+                                style = Stroke(
+                                    width = 2.dp.toPx(),
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                ),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+ New Folder",
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+            items(folders) { folder ->
                 FolderCard(folder)
             }
         }
@@ -149,10 +192,88 @@ fun HistoryScreen(
             }
         }
     }
+
+    if (isCreateFolderDialogOpen) {
+        Dialog(onDismissRequest = { isCreateFolderDialogOpen = false }) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(SurfaceDark, RoundedCornerShape(16.dp))
+                    .padding(24.dp)
+            ) {
+                Text("Create New Folder", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = newFolderName,
+                    onValueChange = { newFolderName = it },
+                    placeholder = { Text("Folder name...", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = BackgroundDark,
+                        unfocusedContainerColor = BackgroundDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    listOf(
+                        Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
+                        Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
+                    ).forEach { color ->
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .background(color, CircleShape)
+                                .let {
+                                    if (color == newFolderColor) {
+                                        it.border(2.dp, Color.White, CircleShape)
+                                    } else it
+                                }
+                                .clickable { newFolderColor = color }
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = { isCreateFolderDialogOpen = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (newFolderName.isNotBlank()) {
+                                viewModel.createFolder(newFolderName, newFolderColor)
+                                isCreateFolderDialogOpen = false
+                                newFolderName = ""
+                                newFolderColor = Color(0xFF4FA8F9)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FA8F9), contentColor = Color.White)
+                    ) {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
-fun FolderCard(folder: TimenoteFolder) {
+fun FolderCard(folder: ProjectFolder) {
     Column(
         modifier = Modifier
             .size(110.dp)
@@ -176,7 +297,7 @@ fun FolderCard(folder: TimenoteFolder) {
                 fontWeight = FontWeight.Medium
             )
             Text(
-                text = "${folder.sessionCount} sessions",
+                text = "Folder",
                 color = TextSecondary,
                 fontSize = 12.sp
             )
