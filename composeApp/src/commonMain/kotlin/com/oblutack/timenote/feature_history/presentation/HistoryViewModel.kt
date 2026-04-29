@@ -14,14 +14,29 @@ class HistoryViewModel : ViewModel() {
         SessionRepository.deleteTimenote(id)
     }
 
-    fun createFolder(name: String, color: Color) {
+    fun saveFolder(id: String? = null, name: String, color: Color) {
         val currentTime = com.oblutack.timenote.getCurrentTimeMillis()
-        val newFolder = ProjectFolder(
-            id = currentTime.toString(),
-            name = name,
-            color = color,
-            createdAt = currentTime
-        )
-        SessionRepository.saveFolder(newFolder)
+        val folderToSave = if (id == null) {
+            ProjectFolder(
+                id = currentTime.toString(),
+                name = name,
+                color = color,
+                createdAt = currentTime
+            )
+        } else {
+            val existing = folders.value.find { it.id == id }
+            ProjectFolder(
+                id = id,
+                name = name,
+                color = color,
+                createdAt = existing?.createdAt ?: currentTime
+            )
+        }
+        SessionRepository.saveFolder(folderToSave)
+    }
+
+    fun deleteFolder(id: String) {
+        // We need to implement SessionRepository.deleteFolder first but let's assume it exists or will be added
+        SessionRepository.deleteFolder(id)
     }
 }

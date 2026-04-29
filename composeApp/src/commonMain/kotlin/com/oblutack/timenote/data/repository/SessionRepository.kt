@@ -89,6 +89,12 @@ object SessionRepository {
         }
     }
 
+    fun deleteFolder(id: String) {
+        coroutineScope.launch {
+            dao?.deleteFolder(id)
+        }
+    }
+
     // NEW: Update a Timenote's Folder
     fun assignFolderToTimenote(timenoteId: String, folderId: String?) {
         coroutineScope.launch {

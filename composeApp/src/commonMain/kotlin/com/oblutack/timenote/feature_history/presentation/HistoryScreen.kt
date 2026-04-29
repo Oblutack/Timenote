@@ -12,6 +12,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,6 +30,7 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
@@ -61,6 +64,7 @@ fun HistoryScreen(
     val folders by viewModel.folders.collectAsState(initial = emptyList())
 
     var selectedTab by remember { mutableStateOf(0) }
+    var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
@@ -78,6 +82,7 @@ fun HistoryScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .height(48.dp)
                 .clip(RoundedCornerShape(50))
                 .background(SurfaceDark)
                 .padding(4.dp)
@@ -85,10 +90,11 @@ fun HistoryScreen(
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
                     .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
-                    .clickable { selectedTab = 0 }
-                    .padding(vertical = 12.dp),
+                    .clickable { selectedTab = 0 },
+
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -101,10 +107,11 @@ fun HistoryScreen(
             Box(
                 modifier = Modifier
                     .weight(1f)
+                    .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
                     .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
-                    .clickable { selectedTab = 1 }
-                    .padding(vertical = 12.dp),
+                    .clickable { selectedTab = 1 },
+
                 contentAlignment = Alignment.Center
             ) {
                 Text(
@@ -161,44 +168,61 @@ fun HistoryScreen(
                 }
             }
         } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .aspectRatio(1f)
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable { isCreateFolderDialogOpen = true }
-                            .drawBehind {
-                                drawRoundRect(
-                                    color = TextSecondary.copy(alpha = 0.5f),
-                                    style = Stroke(
-                                        width = 2.dp.toPx(),
-                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
-                                    ),
-                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
-                                )
+            Column(modifier = Modifier.fillMaxSize()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            newFolderName = ""
+                            newFolderColor = Color(0xFF4FA8F9)
+                            folderBeingEditedId = null
+                            isCreateFolderDialogOpen = true
+                        }
+                        .drawBehind {
+                            drawRoundRect(
+                                color = TextSecondary.copy(alpha = 0.5f),
+                                style = Stroke(
+                                    width = 2.dp.toPx(),
+                                    pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
+                                ),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                            )
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "+ New Folder",
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(folders) { folder ->
+                        FolderCard(
+                            folder = folder,
+                            onClick = { onFolderClick(folder.id) },
+                            onEditClick = {
+                                newFolderName = folder.name
+                                newFolderColor = folder.color
+                                folderBeingEditedId = folder.id
+                                isCreateFolderDialogOpen = true
                             },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "+ New Folder",
-                            color = TextSecondary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
+                            onDeleteClick = {
+                                viewModel.deleteFolder(folder.id)
+                            }
                         )
                     }
-                }
-                items(folders) { folder ->
-                    FolderCard(
-                        folder = folder,
-                        onClick = { onFolderClick(folder.id) }
-                    )
                 }
             }
         }
@@ -267,10 +291,11 @@ fun HistoryScreen(
                     Button(
                         onClick = {
                             if (newFolderName.isNotBlank()) {
-                                viewModel.createFolder(newFolderName, newFolderColor)
+                                viewModel.saveFolder(folderBeingEditedId, newFolderName, newFolderColor)
                                 isCreateFolderDialogOpen = false
                                 newFolderName = ""
                                 newFolderColor = Color(0xFF4FA8F9)
+                                folderBeingEditedId = null
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FA8F9), contentColor = Color.White)
@@ -284,35 +309,85 @@ fun HistoryScreen(
 }
 
 @Composable
-fun FolderCard(folder: ProjectFolder, onClick: () -> Unit) {
-    Column(
+fun FolderCard(
+    folder: com.oblutack.timenote.feature_history.domain.ProjectFolder,
+    onClick: () -> Unit,
+    onEditClick: () -> Unit,
+    onDeleteClick: () -> Unit
+) {
+    var isMenuExpanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+
+    Row(
         modifier = Modifier
-            .size(110.dp)
+            .fillMaxWidth()
+            .height(90.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceDark)
-            .clickable { onClick() }
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+            // --- NEW: The thin color-coded border ---
+            .border(1.dp, folder.color, RoundedCornerShape(16.dp))
+            .clickable { onClick() }, // Left side (75%) clicks the folder
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        // Left Side: Text Content (Takes up 75% of the card)
+        Column(
             modifier = Modifier
-                .size(12.dp)
-                .clip(CircleShape)
-                .background(folder.color)
-        )
-
-        Column {
+                .weight(0.75f)
+                .padding(start = 16.dp, top = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
                 text = folder.name,
                 color = TextPrimary,
                 fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
+            Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = "Folder",
                 color = TextSecondary,
                 fontSize = 12.sp
             )
+        }
+
+        // Right Side: Massive 3-dot hit target (Takes up 25% of the card)
+        Box(
+            modifier = Modifier
+                .weight(0.25f)
+                .fillMaxHeight()
+                // Clicks on this exact area open the menu instead of the folder!
+                .clickable { isMenuExpanded = true },
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.MoreVert,
+                contentDescription = "Options",
+                tint = TextSecondary,
+                modifier = Modifier.size(24.dp) // Slightly larger icon to fit the big hit area
+            )
+
+            // The Dropdown Menu
+            DropdownMenu(
+                expanded = isMenuExpanded,
+                onDismissRequest = { isMenuExpanded = false },
+                modifier = Modifier.background(SurfaceDark)
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Edit", color = TextPrimary) },
+                    onClick = {
+                        isMenuExpanded = false
+                        onEditClick()
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete", color = Color(0xFFE53935)) }, // Red for danger
+                    onClick = {
+                        isMenuExpanded = false
+                        onDeleteClick()
+                    }
+                )
+            }
         }
     }
 }
