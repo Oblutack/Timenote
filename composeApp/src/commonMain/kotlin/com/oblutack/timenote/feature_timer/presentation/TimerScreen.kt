@@ -412,10 +412,47 @@ fun TimerScreen(
                     .padding(24.dp)
             ) {
                 Text("Save Timenote", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(4.dp))
-                Text("Select a category:", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
                 Spacer(modifier = Modifier.height(16.dp))
 
+                // --- NEW: FOLDER SELECTION ---
+                if (state.availableFolders.isNotEmpty()) {
+                    Text("Select a folder (Optional):", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        items(state.availableFolders) { folder ->
+                            val isSelected = state.selectedFolder?.id == folder.id
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(if (isSelected) folder.color.copy(alpha = 0.2f) else SurfaceDark)
+                                    .then(
+                                        if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(8.dp))
+                                        else Modifier.border(1.dp, TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                    )
+                                    .clickable { viewModel.onAction(TimerAction.SelectFolder(folder)) }
+                                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(modifier = Modifier.size(8.dp).background(folder.color, androidx.compose.foundation.shape.CircleShape))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(folder.name, color = TextPrimary, fontSize = 14.sp)
+                                }
+                            }
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
+                // -----------------------------
+
+                // Changed the text to clarify Folders vs Tags
+                Text("Select tags (Optional):", color = TextSecondary, style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Existing Tags List
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     state.availableTags.forEach { folder ->
                         val isSelected = state.selectedCategories.any { it.id == folder.id }
@@ -445,6 +482,7 @@ fun TimerScreen(
                             )
                         }
                     }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -457,7 +495,7 @@ fun TimerScreen(
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "+ New",
+                            text = "+ New Tag", // Clarified button text
                             color = TextSecondary,
                             fontSize = 16.sp
                         )
@@ -465,6 +503,8 @@ fun TimerScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                // Save & Skip Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End

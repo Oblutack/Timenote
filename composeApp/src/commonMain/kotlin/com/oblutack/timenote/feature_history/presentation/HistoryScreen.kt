@@ -52,6 +52,7 @@ import com.oblutack.timenote.feature_history.domain.ProjectFolder
 @Composable
 fun HistoryScreen(
     onTimenoteClick: (String) -> Unit,
+    onFolderClick: (String) -> Unit,
     viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
 ) {
     val recentSessions by viewModel.sessions.collectAsState()
@@ -135,7 +136,10 @@ fun HistoryScreen(
                 }
             }
             items(folders) { folder ->
-                FolderCard(folder)
+                FolderCard(
+                    folder = folder,
+                    onClick = { onFolderClick(folder.id) } // <--- Pass the ID up!
+                )
             }
         }
 
@@ -273,12 +277,13 @@ fun HistoryScreen(
 }
 
 @Composable
-fun FolderCard(folder: ProjectFolder) {
+fun FolderCard(folder: ProjectFolder, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .size(110.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceDark)
+            .clickable { onClick() }
             .padding(16.dp),
         verticalArrangement = Arrangement.SpaceBetween
     ) {

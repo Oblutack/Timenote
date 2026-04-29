@@ -38,7 +38,10 @@ data class TimerState(
     val newTagName: String = "",
     val newTagColor: Color = Color(0xFF4FA8F9),
     val isTagMenuExpanded: Boolean = false,
-    val isTagsRowVisible: Boolean = false
+    val isTagsRowVisible: Boolean = false,
+
+    val availableFolders: List<com.oblutack.timenote.feature_history.domain.ProjectFolder> = emptyList(), // NEW
+    val selectedFolder: com.oblutack.timenote.feature_history.domain.ProjectFolder? = null               // NEW
 )
 
 class TimerViewModel : ViewModel() {
@@ -74,6 +77,13 @@ class TimerViewModel : ViewModel() {
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.tags.collect { dbTags ->
                 _state.update { it.copy(availableTags = dbTags) }
+            }
+        }
+
+        // NEW: Listen for Folders!
+        viewModelScope.launch {
+            com.oblutack.timenote.data.repository.SessionRepository.folders.collect { dbFolders ->
+                _state.update { it.copy(availableFolders = dbFolders) }
             }
         }
     }
@@ -128,6 +138,12 @@ class TimerViewModel : ViewModel() {
             }
             is TimerAction.ToggleTagMenu -> _state.update { it.copy(isTagMenuExpanded = !it.isTagMenuExpanded) }
             is TimerAction.ToggleTagsRowVisibility -> _state.update { it.copy(isTagsRowVisible = !it.isTagsRowVisible) }
+
+            is TimerAction.SelectFolder -> {
+                // If they click the same folder again, deselect it (make it null). Otherwise, select it.
+                val newSelection = if (_state.value.selectedFolder?.id == action.folder?.id) null else action.folder
+                _state.update { it.copy(selectedFolder = newSelection) }
+            }
         }
     }
 
@@ -139,13 +155,17 @@ class TimerViewModel : ViewModel() {
             val typedTitle = _state.value.sessionTitle
             val pickedCategories = _state.value.selectedCategories
             val currentTags = _state.value.availableTags
+            val currentFolders = _state.value.availableFolders // NEW
+            val pickedFolder = _state.value.selectedFolder
 
             // Create the fresh state, but keep our tags!
             _state.update {
                 TimerState(
                     sessionTitle = typedTitle,
                     selectedCategories = pickedCategories,
-                    availableTags = currentTags
+                    availableTags = currentTags,
+                    availableFolders = currentFolders, // NEW
+                    selectedFolder = pickedFolder
                 )
             }
 
@@ -202,6 +222,7 @@ class TimerViewModel : ViewModel() {
 
         val newTimenote = com.oblutack.timenote.feature_history.domain.Timenote(
             id = timestampId,
+            folderId = _state.value.selectedFolder?.id,
             title = title,
             description = "$waypointCount waypoints recorded",
             duration = finalDuration,
@@ -312,4 +333,6 @@ sealed class TimerAction {
     data object ToggleTagMenu : TimerAction()
 
     data object ToggleTagsRowVisibility : TimerAction()
+
+    data class SelectFolder(val folder: com.oblutack.timenote.feature_history.domain.ProjectFolder?) : TimerAction()
 }
