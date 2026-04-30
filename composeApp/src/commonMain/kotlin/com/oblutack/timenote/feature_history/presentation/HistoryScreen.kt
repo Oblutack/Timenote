@@ -49,9 +49,27 @@ import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
+import kotlinx.datetime.*
+import kotlinx.coroutines.launch
+
+fun getDaysInMonth(month: Int, year: Int): Int {
+    return when (month) {
+        2 -> if (year % 4 == 0 && (year % 100 != 0 || year % 400 == 0)) 29 else 28
+        4, 6, 9, 11 -> 30
+        else -> 31
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -64,6 +82,29 @@ fun HistoryScreen(
 ) {
     val recentSessions by viewModel.sessions.collectAsState()
     val folders by viewModel.folders.collectAsState(initial = emptyList())
+
+    var isCalendarView by remember { mutableStateOf(false) }
+    val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val today = remember {
+        Instant.fromEpochMilliseconds(com.oblutack.timenote.getCurrentTimeMillis())
+            .toLocalDateTime(TimeZone.currentSystemDefault()).date
+    }
+    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
+    var currentMonth by remember { mutableStateOf(today) }
+
+    val sessionsByDate = remember(recentSessions) {
+        recentSessions.groupBy {
+            Instant.fromEpochMilliseconds(if (it.createdAt > 0L) it.createdAt else com.oblutack.timenote.getCurrentTimeMillis())
+                .toLocalDateTime(TimeZone.currentSystemDefault()).date
+        }
+    }
+    
+    val displaySessions = if (isCalendarView && selectedDate != null) {
+        sessionsByDate[selectedDate] ?: emptyList()
+    } else {
+        recentSessions
+    }
 
     var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
@@ -127,45 +168,187 @@ fun HistoryScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (selectedTab == 0) {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(recentSessions, key = { it.id }) { session ->
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { value ->
-                            if (value == SwipeToDismissBoxValue.EndToStart) {
-                                viewModel.deleteTimenote(session.id)
-                                true
+            Column(modifier = Modifier.fillMaxSize()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(SurfaceDark) // Matches your session cards
+                        .clickable {
+                            isCalendarView = !isCalendarView
+                            if (isCalendarView) {
+                                // Smoothly scroll to the top to reveal the newly opened calendar!
+                                coroutineScope.launch { listState.animateScrollToItem(0) }
                             } else {
-                                false
+                                selectedDate = null
                             }
                         }
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        // --- FIX: Use AutoMirrored.Filled for the ArrowBack ---
+                        imageVector = if (isCalendarView) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.DateRange,
+                        contentDescription = "Toggle Calendar",
+                        tint = TextSecondary,
+                        modifier = Modifier.size(18.dp)
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = if (isCalendarView) "Close Calendar" else "Filter by Date",
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
 
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        enableDismissFromStartToEnd = false,
-                        backgroundContent = {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    modifier = Modifier.fillMaxWidth().weight(1f)
+                ) {
+                    if (isCalendarView) {
+                        item {
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    IconButton(onClick = {
+                                        val prevMonth = if (currentMonth.monthNumber == 1) 12 else currentMonth.monthNumber - 1
+                                        val prevYear = if (currentMonth.monthNumber == 1) currentMonth.year - 1 else currentMonth.year
+                                        currentMonth = LocalDate(prevYear, prevMonth, 1)
+                                    }) {
+                                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Month", tint = TextPrimary)
+                                    }
+                                    Text(
+                                        text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}",
+                                        color = TextPrimary,
+                                        fontSize = 18.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    IconButton(onClick = {
+                                        val nextMonth = if (currentMonth.monthNumber == 12) 1 else currentMonth.monthNumber + 1
+                                        val nextYear = if (currentMonth.monthNumber == 12) currentMonth.year + 1 else currentMonth.year
+                                        currentMonth = LocalDate(nextYear, nextMonth, 1)
+                                    }) {
+                                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Month", tint = TextPrimary)
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
+                                        Text(day, color = TextSecondary, fontSize = 14.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                    }
+                                }
+
+                                val startDayOfWeek = LocalDate(currentMonth.year, currentMonth.monthNumber, 1).dayOfWeek.isoDayNumber
+                                val offset = startDayOfWeek - 1
+                                val totalDays = getDaysInMonth(currentMonth.monthNumber, currentMonth.year)
+
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(7),
+                                    modifier = Modifier.fillMaxWidth().height(280.dp),
+                                    contentPadding = PaddingValues(bottom = 16.dp)
+                                ) {
+                                    items(offset) { Spacer(modifier = Modifier.aspectRatio(1f)) }
+                                    items(totalDays) { dayIndex ->
+                                        val day = dayIndex + 1
+                                        val thisDate = LocalDate(currentMonth.year, currentMonth.monthNumber, day)
+                                        val isSelected = selectedDate == thisDate
+                                        val daySessions = sessionsByDate[thisDate]
+
+                                        Box(
+                                            modifier = Modifier
+                                                .aspectRatio(1f)
+                                                .clip(CircleShape)
+                                                .background(if (isSelected) SurfaceDark else Color.Transparent)
+                                                .clickable { selectedDate = thisDate },
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                                Text(
+                                                    text = day.toString(),
+                                                    color = if (thisDate == today) DefaultAccentColor else TextPrimary,
+                                                    fontSize = 16.sp
+                                                )
+                                                if (daySessions != null && daySessions.isNotEmpty()) {
+                                                    Spacer(modifier = Modifier.height(2.dp))
+                                                    Box(
+                                                        modifier = Modifier
+                                                            .size(4.dp)
+                                                            .clip(CircleShape)
+                                                            .background(daySessions.first().tags.firstOrNull()?.color ?: DefaultAccentColor)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (displaySessions.isEmpty()) {
+                        item {
                             Box(
                                 modifier = Modifier
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(Color(0xFFE53935))
-                                    .padding(end = 24.dp),
-                                contentAlignment = Alignment.CenterEnd
+                                    .fillMaxWidth()
+                                    .padding(vertical = 32.dp),
+                                contentAlignment = Alignment.Center
                             ) {
-                                Icon(
-                                    imageVector = Icons.Default.Delete,
-                                    contentDescription = "Delete",
-                                    tint = Color.White
+                                Text(
+                                    text = "No sessions recorded on this date.",
+                                    color = TextSecondary,
+                                    fontSize = 16.sp
                                 )
                             }
-                        },
-                        content = {
-                            SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
                         }
-                    )
+                    }
+
+                    items(displaySessions, key = { it.id }) { session ->
+                        val dismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    viewModel.deleteTimenote(session.id)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
+                        )
+
+                        SwipeToDismissBox(
+                            state = dismissState,
+                            enableDismissFromStartToEnd = false,
+                            backgroundContent = {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .background(Color(0xFFE53935))
+                                        .padding(end = 24.dp),
+                                    contentAlignment = Alignment.CenterEnd
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Delete",
+                                        tint = Color.White
+                                    )
+                                }
+                            },
+                            content = {
+                                SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
+                            }
+                        )
+                    }
                 }
             }
         } else {
