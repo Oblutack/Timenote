@@ -44,6 +44,8 @@ import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
+import androidx.compose.ui.draw.rotate
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -239,12 +241,47 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "SESSION TIMELINE",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    // 1. Clip the corners FIRST so the click ripple is beautifully rounded
+                    .clip(RoundedCornerShape(8.dp))
+                    // 2. Add the click action (Assuming Copilot named your boolean isTimelineExpanded)
+                    .clickable { isTimelineExpanded = !isTimelineExpanded }
+                    // 3. Add padding INSIDE the click area so it feels spacious
+                    .padding(horizontal = 8.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "SESSION TIMELINE",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+
+                // Right side: Waypoint count + Arrow
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "${timenote.timelineEvents.size} WAYPOINTS",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 1.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+
+                    // The Dropdown Chevron Icon
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Toggle Timeline",
+                        tint = TextSecondary,
+                        // Now this will work perfectly!
+                        modifier = Modifier.rotate(if (isTimelineExpanded) 180f else 0f)
+                    )
+                }
+            }
             Icon(
                 imageVector = Icons.Default.KeyboardArrowDown,
                 contentDescription = "Toggle Timeline",
