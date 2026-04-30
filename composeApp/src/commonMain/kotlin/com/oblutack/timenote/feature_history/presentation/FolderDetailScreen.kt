@@ -109,13 +109,11 @@ fun FolderDetailScreen(
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Button(
+                    OutlinedButton(
                         onClick = onStartSessionClick,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = folder.color,
-                            contentColor = Color.White
-                        ),
-                        shape = RoundedCornerShape(24.dp)
+                        shape = RoundedCornerShape(24.dp),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                     ) {
                         Icon(
                             imageVector = Icons.Default.PlayArrow,

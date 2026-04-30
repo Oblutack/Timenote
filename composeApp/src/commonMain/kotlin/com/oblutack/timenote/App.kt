@@ -65,6 +65,7 @@ fun App(database: AppDatabase? = null) {
         var currentScreen by remember { mutableStateOf(Screen.Timer) }
         var selectedTimenoteId by remember { mutableStateOf<String?>(null) }
         var selectedFolderId by remember { mutableStateOf<String?>(null) }
+        var historyTab by remember { mutableStateOf(0) }
 
         Scaffold(
             bottomBar = {
@@ -108,6 +109,8 @@ fun App(database: AppDatabase? = null) {
                 when (screen) {
                     Screen.Timer -> TimerScreen()
                     Screen.History -> HistoryScreen(
+                        selectedTab = historyTab,
+                        onTabSelected = { historyTab = it },
                         onTimenoteClick = { id ->
                             selectedTimenoteId = id
                             currentScreen = Screen.Details

@@ -56,6 +56,8 @@ import com.oblutack.timenote.feature_history.domain.ProjectFolder
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
     onTimenoteClick: (String) -> Unit,
     onFolderClick: (String) -> Unit,
     viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
@@ -63,7 +65,6 @@ fun HistoryScreen(
     val recentSessions by viewModel.sessions.collectAsState()
     val folders by viewModel.folders.collectAsState(initial = emptyList())
 
-    var selectedTab by remember { mutableStateOf(0) }
     var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
@@ -93,7 +94,7 @@ fun HistoryScreen(
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
                     .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
-                    .clickable { selectedTab = 0 },
+                    .clickable { onTabSelected(0) },
 
                 contentAlignment = Alignment.Center
             ) {
@@ -110,7 +111,7 @@ fun HistoryScreen(
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
                     .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
-                    .clickable { selectedTab = 1 },
+                    .clickable { onTabSelected(1) },
 
                 contentAlignment = Alignment.Center
             ) {

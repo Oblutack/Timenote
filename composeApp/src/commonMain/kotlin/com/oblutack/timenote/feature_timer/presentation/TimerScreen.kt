@@ -611,8 +611,8 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean) {
                 val circleCenterY = 10.dp.toPx()
 
                 val nodeColor = when (event.type) {
-                    EventType.START -> Color(0xFF4CAF50) // Green
-                    EventType.END -> Color(0xFFE53935)   // Red
+                    EventType.START -> TextPrimary    // Crisp White
+                    EventType.END -> TextSecondary    // Muted Gray
                     else -> event.color ?: DefaultAccentColor
                 }
 
