@@ -578,18 +578,32 @@ fun FolderCard(
 
 @Composable
 fun SessionCard(session: Timenote, onClick: () -> Unit) {
-    Column(
+    // 1. Calculate Date and Year strings
+    val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(
+        if (session.createdAt > 0L) session.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
+    )
+    val dateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+    val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+    val dateString = "$month ${dateTime.dayOfMonth}"
+    val yearString = "${dateTime.year}"
+
+    val isLegacyDesc = session.description.contains("waypoints recorded")
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(SurfaceDark)
             .clickable { onClick() }
-            .padding(16.dp)
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top // Align everything to the top
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        // --- LEFT COLUMN (Takes up remaining space, pushes away from Right Column) ---
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 16.dp) // Keeps the description from touching the dates
         ) {
             Text(
                 text = session.title,
@@ -597,44 +611,62 @@ fun SessionCard(session: Timenote, onClick: () -> Unit) {
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
+
+            // Description (Capped at 2 lines, respects the weight bounds)
+            if (session.description.isNotBlank() && !isLegacyDesc) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = session.description,
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    maxLines = 2,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Tags / Folders
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                session.tags.forEach { tag ->
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, tag.color, RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = tag.name,
+                            color = tag.color,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
+        }
+
+        // --- RIGHT COLUMN (Duration, Date, Year) ---
+        Column(
+            horizontalAlignment = Alignment.End // Right-aligns all the text
+        ) {
             Text(
                 text = session.duration,
                 color = TextSecondary,
                 fontSize = 14.sp
             )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        val isLegacyDesc = session.description.contains("waypoints recorded")
-        if (session.description.isNotBlank() && !isLegacyDesc) {
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = session.description,
-                color = TextSecondary,
-                fontSize = 14.sp,
-                maxLines = 2, // <--- FIX: Caps the text at 2 lines
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis // <--- FIX: Adds "..." if it's too long
+                text = dateString,
+                color = TextSecondary.copy(alpha = 0.7f), // Make date slightly dimmer
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
             )
-            Spacer(modifier = Modifier.height(16.dp))
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            session.tags.forEach { tag ->
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .border(1.dp, tag.color, RoundedCornerShape(50))
-                        .padding(horizontal = 12.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = tag.name,
-                        color = tag.color,
-                        fontSize = 12.sp
-                    )
-                }
-            }
+            Spacer(modifier = Modifier.height(2.dp))
+            Text(
+                text = yearString,
+                color = TextSecondary.copy(alpha = 0.5f), // Make year even dimmer for hierarchy
+                fontSize = 12.sp
+            )
         }
     }
 }
