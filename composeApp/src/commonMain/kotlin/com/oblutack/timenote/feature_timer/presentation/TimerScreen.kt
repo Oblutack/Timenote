@@ -35,6 +35,8 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import com.oblutack.timenote.feature_history.domain.mockFolders
 import com.oblutack.timenote.feature_timer.domain.EventType
 
@@ -339,12 +341,14 @@ fun TimerScreen(
     }
 
     if (state.isAddNoteDialogOpen) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { viewModel.onAction(TimerAction.CloseAddNoteDialog) }) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.onAction(TimerAction.CloseAddNoteDialog) },
+            containerColor = SurfaceDark
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(16.dp))
-                    .padding(16.dp)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
                 Text("Add Note", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -387,13 +391,17 @@ fun TimerScreen(
                 Spacer(modifier = Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    TextButton(onClick = { viewModel.onAction(TimerAction.CloseAddNoteDialog) }) {
+                    OutlinedButton(
+                        onClick = { viewModel.onAction(TimerAction.CloseAddNoteDialog) },
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Cancel", color = TextSecondary)
                     }
                     Button(
                         onClick = { viewModel.onAction(TimerAction.SaveNote) },
+                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
                     ) {
                         Text("Save Note")
@@ -404,12 +412,15 @@ fun TimerScreen(
     }
 
     if (state.isCategoryPopupOpen) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) }) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) },
+            containerColor = SurfaceDark
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(16.dp))
-                    .padding(24.dp)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
+                    .verticalScroll(rememberScrollState())
             ) {
                 Text("Save Timenote", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -507,14 +518,20 @@ fun TimerScreen(
                 // Save & Skip Buttons
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    TextButton(onClick = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) }) {
+                    OutlinedButton(
+                        onClick = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) },
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Skip", color = TextSecondary)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = { viewModel.onAction(TimerAction.ConfirmCategoriesAndSave) }) {
-                        Text("Save", color = DefaultAccentColor)
+                    Button(
+                        onClick = { viewModel.onAction(TimerAction.ConfirmCategoriesAndSave) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                    ) {
+                        Text("Save")
                     }
                 }
             }
@@ -522,12 +539,14 @@ fun TimerScreen(
     }
 
     if (state.isCreateTagDialogOpen) {
-        androidx.compose.ui.window.Dialog(onDismissRequest = { viewModel.onAction(TimerAction.CloseCreateTagDialog) }) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.onAction(TimerAction.CloseCreateTagDialog) },
+            containerColor = SurfaceDark
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(16.dp))
-                    .padding(24.dp)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
                 Text("Create New Tag", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -575,14 +594,20 @@ fun TimerScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    TextButton(onClick = { viewModel.onAction(TimerAction.CloseCreateTagDialog) }) {
+                    OutlinedButton(
+                        onClick = { viewModel.onAction(TimerAction.CloseCreateTagDialog) },
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Cancel", color = TextSecondary)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = { viewModel.onAction(TimerAction.SaveNewTag) }) {
-                        Text("Save", color = DefaultAccentColor)
+                    Button(
+                        onClick = { viewModel.onAction(TimerAction.SaveNewTag) },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                    ) {
+                        Text("Save")
                     }
                 }
             }
