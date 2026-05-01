@@ -88,6 +88,10 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
 
     var isTimelineExpanded by remember { mutableStateOf(false) }
 
+    val cleanDescription = if (timenote.description.contains("waypoints recorded")) "" else timenote.description
+    var isEditingDescription by remember { mutableStateOf(false) }
+    var descriptionText by remember(timenote.description) { mutableStateOf(timenote.description) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -193,18 +197,66 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
         Spacer(modifier = Modifier.height(24.dp))
 
         // 2. Description Section
-        if (timenote.description.isEmpty()) {
-            Text(
-                text = "No description provided.",
-                color = TextSecondary,
-                fontSize = 16.sp
-            )
+        if (!isEditingDescription) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp)
+                    .clickable { isEditingDescription = true }
+            ) {
+                val textToShow = if (timenote.description.isEmpty() || timenote.description.contains("waypoints recorded")) {
+                    "Tap to add a description..."
+                } else {
+                    timenote.description
+                }
+                Text(
+                    text = textToShow,
+                    color = if (textToShow == "Tap to add a description...") TextSecondary else TextPrimary,
+                    fontSize = 16.sp
+                )
+            }
         } else {
-            Text(
-                text = timenote.description,
-                color = TextSecondary,
-                fontSize = 16.sp
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp)
+            ) {
+                OutlinedTextField(
+                    value = descriptionText,
+                    onValueChange = { descriptionText = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 100.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = SurfaceDark,
+                        unfocusedContainerColor = SurfaceDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = {
+                        isEditingDescription = false
+                        descriptionText = timenote.description
+                    }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    TextButton(onClick = {
+                        SessionRepository.updateTimenoteDescription(timenote.id, descriptionText)
+                        isEditingDescription = false
+                    }) {
+                        Text("Save", color = DefaultAccentColor)
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))

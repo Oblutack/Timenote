@@ -224,7 +224,7 @@ class TimerViewModel : ViewModel() {
             id = timestampId,
             folderId = _state.value.selectedFolder?.id,
             title = title,
-            description = "$waypointCount waypoints recorded",
+            description = "",
             duration = finalDuration,
             activeSeconds = activeSeconds,          // <--- THE REAL DATA
             pauseSeconds = totalPauseSeconds,       // <--- THE REAL DATA

@@ -606,11 +606,17 @@ fun SessionCard(session: Timenote, onClick: () -> Unit) {
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Text(
-            text = session.description,
-            color = TextSecondary,
-            fontSize = 14.sp
-        )
+        val isLegacyDesc = session.description.contains("waypoints recorded")
+        if (session.description.isNotBlank() && !isLegacyDesc) {
+            Text(
+                text = session.description,
+                color = TextSecondary,
+                fontSize = 14.sp,
+                maxLines = 2, // <--- FIX: Caps the text at 2 lines
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis // <--- FIX: Adds "..." if it's too long
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 

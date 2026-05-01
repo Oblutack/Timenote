@@ -106,4 +106,15 @@ object SessionRepository {
             }
         }
     }
+    // NEW: Update a Timenote's Description inline
+    fun updateTimenoteDescription(timenoteId: String, newDescription: String) {
+        coroutineScope.launch {
+            val note = getTimenoteById(timenoteId)
+            if (note != null) {
+                // Copy the note with the new text and overwrite it in the DB!
+                val updatedNote = note.copy(description = newDescription)
+                dao?.insertTimenote(updatedNote.toEntity())
+            }
+        }
+    }
 }
