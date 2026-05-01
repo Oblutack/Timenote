@@ -46,6 +46,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.foundation.BorderStroke
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -357,34 +358,37 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
     }
 
     if (isFolderDialogOpen) {
-        Dialog(onDismissRequest = { isFolderDialogOpen = false }) {
+        ModalBottomSheet(
+            onDismissRequest = { isFolderDialogOpen = false },
+            containerColor = SurfaceDark
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(16.dp))
-                    .padding(24.dp)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
                 Text("Move to Folder", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
+
+                if (timenote.folderId != null) {
+                    OutlinedButton(
+                        onClick = {
+                            com.oblutack.timenote.data.repository.SessionRepository.assignFolderToTimenote(timenote.id, null)
+                            isFolderDialogOpen = false
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        border = BorderStroke(1.dp, Color(0xFFE53935)),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
+                    ) {
+                        Text("Remove from Folder")
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
                 
                 LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 300.dp),
+                    modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    SessionRepository.assignFolderToTimenote(timenote.id, null)
-                                    isFolderDialogOpen = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Remove from Folder", color = Color(0xFFE53935), fontSize = 16.sp)
-                        }
-                    }
                     items(folders) { folder ->
                         Row(
                             modifier = Modifier
@@ -400,17 +404,6 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(folder.name, color = TextPrimary, fontSize = 16.sp)
                         }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = { isFolderDialogOpen = false }) {
-                        Text("Cancel", color = TextSecondary)
                     }
                 }
             }

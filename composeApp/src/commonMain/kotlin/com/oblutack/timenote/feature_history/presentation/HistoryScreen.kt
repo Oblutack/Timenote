@@ -62,6 +62,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import kotlinx.datetime.*
 import kotlinx.coroutines.launch
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.MaterialTheme
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -110,6 +113,7 @@ fun HistoryScreen(
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
+    var folderOptionsId by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -396,14 +400,8 @@ fun HistoryScreen(
                         FolderCard(
                             folder = folder,
                             onClick = { onFolderClick(folder.id) },
-                            onEditClick = {
-                                newFolderName = folder.name
-                                newFolderColor = folder.color
-                                folderBeingEditedId = folder.id
-                                isCreateFolderDialogOpen = true
-                            },
-                            onDeleteClick = {
-                                viewModel.deleteFolder(folder.id)
+                            onOptionsClick = {
+                                folderOptionsId = folder.id
                             }
                         )
                     }
@@ -413,14 +411,21 @@ fun HistoryScreen(
     }
 
     if (isCreateFolderDialogOpen) {
-        Dialog(onDismissRequest = { isCreateFolderDialogOpen = false }) {
+        ModalBottomSheet(
+            onDismissRequest = { isCreateFolderDialogOpen = false },
+            containerColor = SurfaceDark
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(16.dp))
-                    .padding(24.dp)
+                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
-                Text("Create New Folder", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (folderBeingEditedId == null) "Create New Folder" else "Edit Folder", // <--- DYNAMIC TITLE
+                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -466,12 +471,14 @@ fun HistoryScreen(
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    TextButton(onClick = { isCreateFolderDialogOpen = false }) {
+                    OutlinedButton(
+                        onClick = { isCreateFolderDialogOpen = false },
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Cancel", color = TextSecondary)
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
                             if (newFolderName.isNotBlank()) {
@@ -482,9 +489,67 @@ fun HistoryScreen(
                                 folderBeingEditedId = null
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4FA8F9), contentColor = Color.White)
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
                     ) {
                         Text("Save")
+                    }
+                }
+            }
+        }
+    }
+
+    if (folderOptionsId != null) {
+        val selectedFolder = folders.find { it.id == folderOptionsId }
+        if (selectedFolder != null) {
+            ModalBottomSheet(
+                onDismissRequest = { folderOptionsId = null },
+                containerColor = SurfaceDark
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 48.dp)
+                ) {
+                    Text(
+                        text = selectedFolder.name,
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                newFolderName = selectedFolder.name
+                                newFolderColor = selectedFolder.color
+                                folderBeingEditedId = selectedFolder.id
+                                isCreateFolderDialogOpen = true
+                                folderOptionsId = null
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = TextPrimary)
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(text = "Edit Folder", color = TextPrimary, fontSize = 16.sp)
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                viewModel.deleteFolder(selectedFolder.id)
+                                folderOptionsId = null
+                            }
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(text = "Delete Folder", color = Color(0xFFE53935), fontSize = 16.sp)
                     }
                 }
             }
@@ -496,11 +561,8 @@ fun HistoryScreen(
 fun FolderCard(
     folder: com.oblutack.timenote.feature_history.domain.ProjectFolder,
     onClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onOptionsClick: () -> Unit
 ) {
-    var isMenuExpanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -540,8 +602,8 @@ fun FolderCard(
             modifier = Modifier
                 .weight(0.25f)
                 .fillMaxHeight()
-                // Clicks on this exact area open the menu instead of the folder!
-                .clickable { isMenuExpanded = true },
+                // Clicks on this exact area open the options
+                .clickable { onOptionsClick() },
             contentAlignment = Alignment.Center
         ) {
             Icon(
@@ -550,28 +612,6 @@ fun FolderCard(
                 tint = TextSecondary,
                 modifier = Modifier.size(24.dp) // Slightly larger icon to fit the big hit area
             )
-
-            // The Dropdown Menu
-            DropdownMenu(
-                expanded = isMenuExpanded,
-                onDismissRequest = { isMenuExpanded = false },
-                modifier = Modifier.background(SurfaceDark)
-            ) {
-                DropdownMenuItem(
-                    text = { Text("Edit", color = TextPrimary) },
-                    onClick = {
-                        isMenuExpanded = false
-                        onEditClick()
-                    }
-                )
-                DropdownMenuItem(
-                    text = { Text("Delete", color = Color(0xFFE53935)) }, // Red for danger
-                    onClick = {
-                        isMenuExpanded = false
-                        onDeleteClick()
-                    }
-                )
-            }
         }
     }
 }
