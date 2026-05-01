@@ -15,6 +15,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -47,6 +49,8 @@ import kotlinx.datetime.toLocalDateTime
 import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.draw.drawBehind
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +67,7 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
     val folders by SessionRepository.folders.collectAsState()
     val currentFolder = folders.find { it.id == timenote.folderId }
     var isFolderDialogOpen by remember { mutableStateOf(false) }
+    var isNotesOnlyView by remember { mutableStateOf(false) }
 
     // --- 1. Date & Time Formatting ---
     // Safely parse the timestamp. If it's 0 (from old mock data), fallback to current time
@@ -92,11 +97,13 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
     val cleanDescription = if (timenote.description.contains("waypoints recorded")) "" else timenote.description
     var isEditingDescription by remember { mutableStateOf(false) }
     var descriptionText by remember(timenote.description) { mutableStateOf(timenote.description) }
+    val scrollState = androidx.compose.foundation.rememberScrollState()
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .verticalScroll(scrollState)
             .padding(top = 24.dp, start = 24.dp, end = 24.dp)
     ) {
         Row(
@@ -284,77 +291,138 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
 
         // 3. Collapsible Timeline (Accordion)
         val rotation by animateFloatAsState(targetValue = if (isTimelineExpanded) 180f else 0f)
-        
+        val textNotes = timenote.timelineEvents.filter { it.type == EventType.NOTE }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .clickable { isTimelineExpanded = !isTimelineExpanded }
-                .padding(vertical = 8.dp),
+                .padding(horizontal = 8.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    // 1. Clip the corners FIRST so the click ripple is beautifully rounded
-                    .clip(RoundedCornerShape(8.dp))
-                    // 2. Add the click action (Assuming Copilot named your boolean isTimelineExpanded)
-                    .clickable { isTimelineExpanded = !isTimelineExpanded }
-                    // 3. Add padding INSIDE the click area so it feels spacious
-                    .padding(horizontal = 8.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            Text(
+                text = "SESSION TIMELINE",
+                color = TextSecondary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp
+            )
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "SESSION TIMELINE",
+                    text = "${timenote.timelineEvents.size} WAYPOINTS",
                     color = TextSecondary,
                     fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp
                 )
+                Spacer(modifier = Modifier.width(8.dp))
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
+                    contentDescription = "Toggle Timeline",
+                    tint = TextSecondary,
+                    modifier = Modifier.rotate(if (isTimelineExpanded) 180f else 0f)
+                )
+            }
+        }
 
-                // Right side: Waypoint count + Arrow
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = "${timenote.timelineEvents.size} WAYPOINTS",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        letterSpacing = 1.sp
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+        Spacer(modifier = Modifier.height(8.dp))
 
-                    // The Dropdown Chevron Icon
-                    Icon(
-                        imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Toggle Timeline",
-                        tint = TextSecondary,
-                        // Now this will work perfectly!
-                        modifier = Modifier.rotate(if (isTimelineExpanded) 180f else 0f)
-                    )
+        // 2. THE EXPANDED CONTENT (Tabs + List)
+        AnimatedVisibility(visible = isTimelineExpanded) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+
+                // --- MINI TABS (Timeline vs Notes) ---
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceDark)
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (!isNotesOnlyView) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clickable { isNotesOnlyView = false }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Timeline", color = if (!isNotesOnlyView) TextPrimary else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (isNotesOnlyView) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clickable { isNotesOnlyView = true }
+                            .padding(vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("Notes Only", color = if (isNotesOnlyView) TextPrimary else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                    }
+                }
+                // -------------------------------------
+
+                // --- THE ACTUAL LISTS ---
+                if (!isNotesOnlyView) {
+                    // TIMELINE VIEW
+                    Column(modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp)) {
+                        timenote.timelineEvents.forEachIndexed { index, event ->
+                            TimenoteTimelineItem(
+                                event = event,
+                                isLastItem = index == timenote.timelineEvents.size - 1
+                            )
+                        }
+                    }
+                } else {
+                    // NOTES ONLY VIEW
+                    if (textNotes.isEmpty()) {
+                        Text(
+                            text = "No written notes in this session.",
+                            color = TextSecondary,
+                            modifier = Modifier.padding(24.dp)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            textNotes.forEach { note ->
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(color = SurfaceDark, shape = RoundedCornerShape(8.dp))
+                                        .padding(start = 2.dp) // Space for the solid border
+                                        .background(color = SurfaceDark)
+                                        .drawBehind {
+                                            val strokeWidth = 4.dp.toPx()
+                                            drawLine(
+                                                color = note.color ?: DefaultAccentColor,
+                                                start = androidx.compose.ui.geometry.Offset(x = 0f, y = 0f),
+                                                end = androidx.compose.ui.geometry.Offset(x = 0f, y = size.height),
+                                                strokeWidth = strokeWidth
+                                            )
+                                        }
+                                        .padding(12.dp)
+                                ) {
+                                    Text(text = note.title, color = TextPrimary, fontSize = 16.sp)
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(text = note.timestamp, color = TextSecondary, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
                 }
             }
-            Icon(
-                imageVector = Icons.Default.KeyboardArrowDown,
-                contentDescription = "Toggle Timeline",
-                tint = TextSecondary,
-                modifier = Modifier.rotate(rotation)
-            )
         }
         
         Spacer(modifier = Modifier.height(8.dp))
-
-        AnimatedVisibility(visible = isTimelineExpanded) {
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                itemsIndexed(timenote.timelineEvents) { index, event ->
-                    TimenoteTimelineItem(
-                        event = event,
-                        isLastItem = index == timenote.timelineEvents.size - 1
-                    )
-                }
-            }
-        }
     }
 
     if (isFolderDialogOpen) {
