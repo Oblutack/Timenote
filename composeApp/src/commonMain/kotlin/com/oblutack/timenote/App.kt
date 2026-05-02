@@ -1,6 +1,5 @@
 package com.oblutack.timenote
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -10,6 +9,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.currentBackStackEntryAsState
+import androidx.navigation.compose.rememberNavController
 import com.oblutack.timenote.feature_history.presentation.HistoryScreen
 import com.oblutack.timenote.feature_timer.presentation.TimerScreen
 import com.oblutack.timenote.data.database.AppDatabase
@@ -21,7 +24,7 @@ val BackgroundDark = Color(0xFF121212)
 val SurfaceDark = Color(0xFF1E1E1E)
 val TextPrimary = Color(0xFFFFFFFF)
 val TextSecondary = Color(0xFFAAAAAA)
-val DefaultAccentColor = Color(0xFF4FA8F9) // Dynamic accent color later
+val DefaultAccentColor = Color(0xFF4FA8F9)
 
 private val TimenoteColorScheme = darkColorScheme(
     background = BackgroundDark,
@@ -41,30 +44,24 @@ fun TimenoteTheme(content: @Composable () -> Unit) {
 }
 
 // ==========================================
-// 2. NAVIGATION ENUMS
-// ==========================================
-enum class Screen {
-    Timer, History, Details, FolderDetails, Trash
-}
-
-
-
-// ==========================================
-// 3. MAIN APP ENTRY POINT
+// 2. MAIN APP ENTRY POINT (Using NavHost)
 // ==========================================
 @Composable
 fun App(database: AppDatabase? = null) {
 
-    // --- NEW: Connect the Database to the Repository! ---
     LaunchedEffect(database) {
         if (database != null) {
             com.oblutack.timenote.data.repository.SessionRepository.initialize(database.timenoteDao())
         }
     }
+
     TimenoteTheme {
-        var currentScreen by remember { mutableStateOf(Screen.Timer) }
-        var selectedTimenoteId by remember { mutableStateOf<String?>(null) }
-        var selectedFolderId by remember { mutableStateOf<String?>(null) }
+        // --- NEW: Official Navigation Controller ---
+        val navController = rememberNavController()
+        val navBackStackEntry by navController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
+
+        // We only need to remember the History Tab state now!
         var historyTab by remember { mutableStateOf(0) }
 
         Scaffold(
@@ -76,8 +73,15 @@ fun App(database: AppDatabase? = null) {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Timer") },
                         label = { Text("Timer") },
-                        selected = currentScreen == Screen.Timer,
-                        onClick = { currentScreen = Screen.Timer },
+                        selected = currentRoute == "timer",
+                        onClick = {
+                            navController.navigate("timer") {
+                                // Prevents building up a massive backstack if you click the tab 10 times
+                                popUpTo(navController.graph.startDestinationRoute!!) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = DefaultAccentColor,
                             selectedTextColor = DefaultAccentColor,
@@ -89,8 +93,14 @@ fun App(database: AppDatabase? = null) {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.DateRange, contentDescription = "History") },
                         label = { Text("History") },
-                        selected = currentScreen == Screen.History,
-                        onClick = { currentScreen = Screen.History },
+                        selected = currentRoute?.startsWith("history") == true, // Highlight if on history OR its sub-screens
+                        onClick = {
+                            navController.navigate("history") {
+                                popUpTo(navController.graph.startDestinationRoute!!) { saveState = true }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        },
                         colors = NavigationBarItemDefaults.colors(
                             selectedIconColor = DefaultAccentColor,
                             selectedTextColor = DefaultAccentColor,
@@ -102,55 +112,53 @@ fun App(database: AppDatabase? = null) {
                 }
             }
         ) { innerPadding ->
-            Crossfade(
-                targetState = currentScreen,
+            // --- NEW: NavHost handles all the screen transitions and back gestures! ---
+            NavHost(
+                navController = navController,
+                startDestination = "timer",
                 modifier = Modifier.padding(innerPadding).fillMaxSize().background(BackgroundDark)
-            ) { screen ->
-                when (screen) {
-                    Screen.Timer -> TimerScreen()
-                    Screen.History -> HistoryScreen(
+            ) {
+                composable("timer") {
+                    TimerScreen()
+                }
+                composable("history") {
+                    HistoryScreen(
                         selectedTab = historyTab,
                         onTabSelected = { historyTab = it },
-                        onTimenoteClick = { id ->
-                            selectedTimenoteId = id
-                            currentScreen = Screen.Details
-                        },
-                        onFolderClick = { id ->
-                            selectedFolderId = id
-                            currentScreen = Screen.FolderDetails
-                        },
-                        onTrashClick = { currentScreen = Screen.Trash }
+                        onTimenoteClick = { id -> navController.navigate("details/$id") },
+                        onFolderClick = { id -> navController.navigate("folder_details/$id") },
+                        onTrashClick = { navController.navigate("trash") }
                     )
-                    Screen.FolderDetails -> {
-                        selectedFolderId?.let { id ->
-                            com.oblutack.timenote.feature_history.presentation.FolderDetailScreen(
-                                folderId = id,
-                                onBackClick = { currentScreen = Screen.History },
-                                onTimenoteClick = { noteId ->
-                                    selectedTimenoteId = noteId
-                                    currentScreen = Screen.Details
-                                },
-                                onStartSessionClick = {
-                                    currentScreen = Screen.Timer
-                                }
-                            )
-                        }
-                    }
-                    Screen.Details -> {
-                        selectedTimenoteId?.let { id ->
-                            // Make sure you import TimenoteDetailScreen at the top of App.kt!
-                            com.oblutack.timenote.feature_history.presentation.TimenoteDetailScreen(
-                                timenoteId = id,
-                                onBackClick = { currentScreen = Screen.History } // Goes back to History
-                            )
-                        }
-                    }
-                    Screen.Trash -> {
-                        // Import TrashScreen at the top of App.kt!
-                        com.oblutack.timenote.feature_history.presentation.TrashScreen(
-                            onBackClick = { currentScreen = Screen.History }
+                }
+                composable("details/{id}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("id")
+                    if (id != null) {
+                        com.oblutack.timenote.feature_history.presentation.TimenoteDetailScreen(
+                            timenoteId = id,
+                            onBackClick = { navController.popBackStack() } // Pops the stack natively!
                         )
                     }
+                }
+                composable("folder_details/{id}") { backStackEntry ->
+                    val id = backStackEntry.arguments?.getString("id")
+                    if (id != null) {
+                        com.oblutack.timenote.feature_history.presentation.FolderDetailScreen(
+                            folderId = id,
+                            onBackClick = { navController.popBackStack() },
+                            onTimenoteClick = { noteId -> navController.navigate("details/$noteId") },
+                            onStartSessionClick = {
+                                navController.navigate("timer") {
+                                    popUpTo("timer") { inclusive = false }
+                                }
+                            }
+                        )
+                    }
+                }
+                composable("trash") {
+                    // Assuming you have TrashScreen imported or using full package path:
+                    com.oblutack.timenote.feature_history.presentation.TrashScreen(
+                        onBackClick = { navController.popBackStack() }
+                    )
                 }
             }
         }

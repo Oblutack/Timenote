@@ -18,6 +18,7 @@ ksp = "2.3.6"
 sqlite = "2.5.0"
 kotlinx-serialization = "1.6.3"
 kotlinx-datetime = "0.6.0"
+navigationCompose = "2.8.0-alpha10"
 
 [libraries]
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
@@ -42,6 +43,7 @@ room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 sqlite-bundled = { module = "androidx.sqlite:sqlite-bundled", version.ref = "sqlite" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-datetime = { module = "org.jetbrains.kotlinx:kotlinx-datetime", version.ref = "kotlinx-datetime" }
+navigation-compose = { module = "org.jetbrains.androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 
 [plugins]
 androidApplication = { id = "com.android.application", version.ref = "agp" }
