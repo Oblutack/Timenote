@@ -446,6 +446,12 @@ fun HistoryScreen(
                             }
                         )
 
+                        androidx.compose.runtime.LaunchedEffect(sortOption, selectedFilterTags) {
+                            if (finalDisplaySessions.isNotEmpty()) {
+                                listState.animateScrollToItem(0)
+                            }
+                        }
+
                         SwipeToDismissBox(
                             state = dismissState,
                             enableDismissFromStartToEnd = false,
