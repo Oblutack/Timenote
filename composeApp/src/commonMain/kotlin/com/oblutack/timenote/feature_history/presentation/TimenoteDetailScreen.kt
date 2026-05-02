@@ -150,9 +150,9 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
             fontSize = 14.sp,
             modifier = Modifier.padding(bottom = 8.dp)
         )
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Text(text = timenote.duration, color = TextSecondary, fontSize = 16.sp)
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -421,7 +421,7 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
     }
 
@@ -452,7 +452,7 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
-                
+
                 LazyColumn(
                     modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)

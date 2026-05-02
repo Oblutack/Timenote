@@ -41,6 +41,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import com.oblutack.timenote.feature_history.domain.mockFolders
 import com.oblutack.timenote.feature_timer.domain.EventType
+import androidx.compose.animation.core.Animatable
+import androidx.compose.ui.draw.drawBehind
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -335,7 +337,8 @@ fun TimerScreen(
 
 
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            // --- FIX 1: Add weight(1f) so it perfectly fills the remaining screen and scrolls smoothly! ---
+            modifier = Modifier.fillMaxWidth().weight(1f),
             horizontalAlignment = Alignment.Start
         ) {
             Text(
@@ -346,8 +349,25 @@ fun TimerScreen(
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                itemsIndexed(state.timelineEvents) { index, event ->
+            // --- FIX 2: Auto-scroll state ---
+            val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+            val eventCount = state.timelineEvents.size
+
+            // Whenever the number of events changes, smoothly snap back to the top!
+            androidx.compose.runtime.LaunchedEffect(eventCount) {
+                if (eventCount > 0) {
+                    listState.animateScrollToItem(0)
+                }
+            }
+
+            LazyColumn(
+                state = listState, // <--- Attach the scroll state
+                modifier = Modifier.fillMaxSize() // <--- Let it fill the weight bounds
+            ) {
+                itemsIndexed(
+                    items = state.timelineEvents,
+                    key = { _, event -> event.id } // CRUCIAL: Tells Compose this is a unique item!
+                ) { index, event ->
                     TimelineItem(
                         event = event,
                         isLastItem = index == state.timelineEvents.size - 1
@@ -719,60 +739,66 @@ fun TimerScreen(
 }
 
 @Composable
-fun TimelineItem(event: TimelineEvent, isLastItem: Boolean) {
+fun TimelineItem(event: com.oblutack.timenote.feature_timer.domain.TimelineEvent, isLastItem: Boolean) {
+
+    // 1. Sleek Fade-In Animation (Doesn't break list height!)
+    val alpha = remember { Animatable(0f) }
+    androidx.compose.runtime.LaunchedEffect(event.id) {
+        alpha.animateTo(1f, animationSpec = androidx.compose.animation.core.tween(500))
+    }
+
+    val isStartOrEnd = event.type == com.oblutack.timenote.feature_timer.domain.EventType.START || event.type == com.oblutack.timenote.feature_timer.domain.EventType.END
+    val circleRadius = if (isStartOrEnd) 7.dp else 5.dp
+    val nodeColor = when (event.type) {
+        com.oblutack.timenote.feature_timer.domain.EventType.START -> TextPrimary
+        com.oblutack.timenote.feature_timer.domain.EventType.END -> TextSecondary
+        else -> event.color ?: DefaultAccentColor
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .padding(bottom = 8.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(
-            modifier = Modifier
-                .width(24.dp)
-                .fillMaxHeight(),
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                // 1. Determine size and color based on EventType
-                val isStartOrEnd = event.type == EventType.START || event.type == EventType.END
-                val circleRadius = if (isStartOrEnd) 7.dp.toPx() else 5.dp.toPx()
-                val circleCenterY = 10.dp.toPx()
-
-                val nodeColor = when (event.type) {
-                    EventType.START -> TextPrimary    // Crisp White
-                    EventType.END -> TextSecondary    // Muted Gray
-                    else -> event.color ?: DefaultAccentColor
-                }
-
-                // Outer circle (stroke)
-                drawCircle(
-                    color = nodeColor,
-                    radius = circleRadius,
-                    center = Offset(size.width / 2, circleCenterY),
-                    style = Stroke(width = if (isStartOrEnd) 2.dp.toPx() else 1.5.dp.toPx())
-                )
-
-                // Inner filled circle
-                drawCircle(
-                    color = nodeColor,
-                    radius = circleRadius * 0.5f,
-                    center = Offset(size.width / 2, circleCenterY)
-                )
-
-                // Vertical line connecting nodes
+            .alpha(alpha.value) // Applies the fade-in
+            .padding(bottom = 8.dp)
+            // 2. Draw the vertical line in the background (Removes the need for IntrinsicSize.Min!)
+            .drawBehind {
                 if (!isLastItem) {
-                    val lineStartY = circleCenterY + circleRadius + 4.dp.toPx()
+                    val circleCenterY = 10.dp.toPx()
+                    val lineStartY = circleCenterY + circleRadius.toPx() + 4.dp.toPx()
+                    // Draw line straight down based on the actual height of the text column
                     drawLine(
                         color = SurfaceDark,
-                        start = Offset(size.width / 2, lineStartY),
-                        end = Offset(size.width / 2, size.height + 8.dp.toPx()),
+                        start = androidx.compose.ui.geometry.Offset(12.dp.toPx(), lineStartY),
+                        end = androidx.compose.ui.geometry.Offset(12.dp.toPx(), size.height + 8.dp.toPx()),
                         strokeWidth = 2.dp.toPx()
                     )
                 }
+            },
+        verticalAlignment = Alignment.Top
+    ) {
+        // 3. Just draw the circle here, no fillMaxHeight needed
+        Box(
+            modifier = Modifier.width(24.dp).padding(top = 10.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            androidx.compose.foundation.Canvas(modifier = Modifier.size(14.dp)) {
+                drawCircle(
+                    color = nodeColor,
+                    radius = circleRadius.toPx(),
+                    center = androidx.compose.ui.geometry.Offset(size.width / 2, 0f),
+                    style = Stroke(width = if (isStartOrEnd) 2.dp.toPx() else 1.5.dp.toPx())
+                )
+                drawCircle(
+                    color = nodeColor,
+                    radius = circleRadius.toPx() * 0.5f,
+                    center = androidx.compose.ui.geometry.Offset(size.width / 2, 0f)
+                )
             }
         }
+
         Spacer(modifier = Modifier.width(16.dp))
 
+        // 4. The Text Column dictates the natural height of the Row
         Column(
             modifier = Modifier
                 .fillMaxWidth()
