@@ -81,6 +81,7 @@ fun HistoryScreen(
     onTabSelected: (Int) -> Unit,
     onTimenoteClick: (String) -> Unit,
     onFolderClick: (String) -> Unit,
+    onTrashClick: () -> Unit,
     viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
 ) {
     val recentSessions by viewModel.sessions.collectAsState()
@@ -124,47 +125,69 @@ fun HistoryScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Custom Segmented Control (Tabs)
+        // Custom Segmented Control (Tabs) and Trash Button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .clip(RoundedCornerShape(50))
-                .background(SurfaceDark)
-                .padding(4.dp)
+                .height(48.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
+            Row(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
                     .clip(RoundedCornerShape(50))
-                    .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
-                    .clickable { onTabSelected(0) },
-
-                contentAlignment = Alignment.Center
+                    .background(SurfaceDark)
+                    .padding(4.dp)
             ) {
-                Text(
-                    text = "Sessions",
-                    color = if (selectedTab == 0) TextPrimary else TextSecondary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
-                )
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(50))
+                        .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
+                        .clickable { onTabSelected(0) },
+
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Sessions",
+                        color = if (selectedTab == 0) TextPrimary else TextSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(50))
+                        .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
+                        .clickable { onTabSelected(1) },
+
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Folders",
+                        color = if (selectedTab == 1) TextPrimary else TextSecondary,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
             }
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(50))
-                    .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
-                    .clickable { onTabSelected(1) },
 
-                contentAlignment = Alignment.Center
+            Spacer(modifier = Modifier.width(16.dp))
+
+            IconButton(
+                onClick = onTrashClick,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(SurfaceDark)
             ) {
-                Text(
-                    text = "Folders",
-                    color = if (selectedTab == 1) TextPrimary else TextSecondary,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Recently Deleted",
+                    tint = TextSecondary
                 )
             }
         }

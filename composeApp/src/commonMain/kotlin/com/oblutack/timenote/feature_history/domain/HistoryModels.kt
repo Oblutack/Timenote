@@ -10,7 +10,8 @@ data class ProjectFolder(
     val id: String,
     val name: String,
     @Serializable(with = ColorSerializer::class) val color: Color,
-    val createdAt: Long
+    val createdAt: Long,
+    val isDeleted: Boolean = false
 )
 
 @Serializable
@@ -18,7 +19,7 @@ data class TimenoteFolder(
     val id: String,
     val name: String,
     val sessionCount: Int,
-    @Serializable(with = ColorSerializer::class) val color: Color
+    @Serializable(with = ColorSerializer::class) val color: Color,
 )
 
 @Serializable
@@ -32,7 +33,8 @@ data class Timenote(
     val pauseSeconds: Int,   // <--- NEW
     val createdAt: Long,     // <--- NEW
     val tags: List<TimenoteFolder>,
-    val timelineEvents: List<TimelineEvent>
+    val timelineEvents: List<TimelineEvent>,
+    val isDeleted: Boolean = false
 )
 
 val mockFolders = listOf(

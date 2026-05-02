@@ -28,19 +28,25 @@ object SessionRepository {
     private val _folders = MutableStateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>>(emptyList())
     val folders: StateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>> = _folders.asStateFlow()
 
+    private val _deletedTimenotes = MutableStateFlow<List<Timenote>>(emptyList())
+    val deletedTimenotes: StateFlow<List<Timenote>> = _deletedTimenotes.asStateFlow()
+
+    private val _deletedFolders = MutableStateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>>(emptyList())
+    val deletedFolders: StateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>> = _deletedFolders.asStateFlow()
+
     fun initialize(timenoteDao: TimenoteDao) {
         dao = timenoteDao
 
         // Listen to Timenotes
         coroutineScope.launch {
-            timenoteDao.getAllTimenotes().collect { entityList ->
+            timenoteDao.getAllActiveTimenotes().collect { entityList ->
                 _timenotes.value = entityList.map { it.toDomain() }
             }
         }
 
         // Listen to Folders
         coroutineScope.launch {
-            timenoteDao.getAllFolders().collect { entityList ->
+            timenoteDao.getAllActiveFolders().collect { entityList ->
                 _folders.value = entityList.map { it.toDomain() }
             }
         }
@@ -58,6 +64,17 @@ object SessionRepository {
                 }
             }
         }
+
+        coroutineScope.launch {
+            timenoteDao.getDeletedTimenotes().collect { entityList ->
+                _deletedTimenotes.value = entityList.map { it.toDomain() }
+            }
+        }
+        coroutineScope.launch {
+            timenoteDao.getDeletedFolders().collect { entityList ->
+                _deletedFolders.value = entityList.map { it.toDomain() }
+            }
+        }
     }
 
     fun saveTimenote(timenote: Timenote) {
@@ -67,9 +84,7 @@ object SessionRepository {
     }
 
     fun deleteTimenote(id: String) {
-        coroutineScope.launch {
-            dao?.deleteTimenote(id)
-        }
+        coroutineScope.launch { dao?.softDeleteTimenote(id) }
     }
 
     fun getTimenoteById(id: String): Timenote? {
@@ -98,7 +113,8 @@ object SessionRepository {
 
     fun deleteFolder(id: String) {
         coroutineScope.launch {
-            dao?.deleteFolder(id)
+            dao?.softDeleteFolder(id)
+            // Optional: If you delete a folder, you might want to un-assign all notes in it!
         }
     }
 
@@ -122,6 +138,20 @@ object SessionRepository {
                 val updatedNote = note.copy(description = newDescription)
                 dao?.insertTimenote(updatedNote.toEntity())
             }
+        }
+    }
+
+    // --- TRASH BIN ACTIONS ---
+    fun restoreTimenote(id: String) { coroutineScope.launch { dao?.restoreTimenote(id) } }
+    fun hardDeleteTimenote(id: String) { coroutineScope.launch { dao?.hardDeleteTimenote(id) } }
+
+    fun restoreFolder(id: String) { coroutineScope.launch { dao?.restoreFolder(id) } }
+    fun hardDeleteFolder(id: String) { coroutineScope.launch { dao?.hardDeleteFolder(id) } }
+
+    fun emptyTrash() {
+        coroutineScope.launch {
+            _deletedTimenotes.value.forEach { dao?.hardDeleteTimenote(it.id) }
+            _deletedFolders.value.forEach { dao?.hardDeleteFolder(it.id) }
         }
     }
 }

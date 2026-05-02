@@ -44,7 +44,7 @@ fun TimenoteTheme(content: @Composable () -> Unit) {
 // 2. NAVIGATION ENUMS
 // ==========================================
 enum class Screen {
-    Timer, History, Details, FolderDetails
+    Timer, History, Details, FolderDetails, Trash
 }
 
 
@@ -118,7 +118,8 @@ fun App(database: AppDatabase? = null) {
                         onFolderClick = { id ->
                             selectedFolderId = id
                             currentScreen = Screen.FolderDetails
-                        }
+                        },
+                        onTrashClick = { currentScreen = Screen.Trash }
                     )
                     Screen.FolderDetails -> {
                         selectedFolderId?.let { id ->
@@ -143,6 +144,12 @@ fun App(database: AppDatabase? = null) {
                                 onBackClick = { currentScreen = Screen.History } // Goes back to History
                             )
                         }
+                    }
+                    Screen.Trash -> {
+                        // Import TrashScreen at the top of App.kt!
+                        com.oblutack.timenote.feature_history.presentation.TrashScreen(
+                            onBackClick = { currentScreen = Screen.History }
+                        )
                     }
                 }
             }

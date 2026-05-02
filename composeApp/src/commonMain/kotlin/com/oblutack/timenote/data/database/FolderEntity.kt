@@ -8,5 +8,6 @@ data class FolderEntity(
     @PrimaryKey val id: String,
     val name: String,
     val colorLong: Long,
-    val createdAt: Long
+    val createdAt: Long,
+    val isDeleted: Boolean
 )

@@ -18,5 +18,6 @@ data class TimenoteEntity(
     val pauseSeconds: Int,   // <--- NEW
     val createdAt: Long,     // <--- NEW
     val tagsJson: String,
-    val timelineEventsJson: String
+    val timelineEventsJson: String,
+    val isDeleted: Boolean
 )

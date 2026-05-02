@@ -18,7 +18,8 @@ fun Timenote.toEntity(): TimenoteEntity {
         pauseSeconds = this.pauseSeconds,   // <--- NEW
         createdAt = this.createdAt,         // <--- NEW
         tagsJson = Json.encodeToString(this.tags),
-        timelineEventsJson = Json.encodeToString(this.timelineEvents)
+        timelineEventsJson = Json.encodeToString(this.timelineEvents),
+        isDeleted = this.isDeleted
     )
 }
 
@@ -43,7 +44,8 @@ fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): Folde
         id = this.id,
         name = this.name,
         colorLong = this.color.value.toLong(),
-        createdAt = this.createdAt
+        createdAt = this.createdAt,
+        isDeleted = this.isDeleted
     )
 }
 
