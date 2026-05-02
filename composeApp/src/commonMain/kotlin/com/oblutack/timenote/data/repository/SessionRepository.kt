@@ -83,6 +83,13 @@ object SessionRepository {
         }
     }
 
+    // NEW: Delete a Custom Tag
+    fun deleteTag(id: String) {
+        coroutineScope.launch {
+            dao?.deleteTag(id)
+        }
+    }
+
     fun saveFolder(folder: com.oblutack.timenote.feature_history.domain.ProjectFolder) {
         coroutineScope.launch {
             dao?.insertFolder(folder.toEntity())

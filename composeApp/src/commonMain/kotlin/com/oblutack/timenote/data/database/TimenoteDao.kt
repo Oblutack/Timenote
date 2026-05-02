@@ -23,6 +23,9 @@ interface TimenoteDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTag(tag: TagEntity)
 
+    @Query("DELETE FROM tags WHERE id = :id")
+    suspend fun deleteTag(id: String)
+
     // Load all tags to display on the UI
     @Query("SELECT * FROM tags ORDER BY name ASC")
     fun getAllTags(): Flow<List<TagEntity>>

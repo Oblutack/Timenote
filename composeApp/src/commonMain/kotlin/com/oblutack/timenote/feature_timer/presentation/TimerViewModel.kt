@@ -41,7 +41,10 @@ data class TimerState(
     val isTagsRowVisible: Boolean = false,
 
     val availableFolders: List<com.oblutack.timenote.feature_history.domain.ProjectFolder> = emptyList(), // NEW
-    val selectedFolder: com.oblutack.timenote.feature_history.domain.ProjectFolder? = null               // NEW
+    val selectedFolder: com.oblutack.timenote.feature_history.domain.ProjectFolder? = null,
+
+    val isManageTagsSheetOpen: Boolean = false,
+    val tagBeingEditedId: String? = null,
 )
 
 class TimerViewModel : ViewModel() {
@@ -126,15 +129,16 @@ class TimerViewModel : ViewModel() {
             is TimerAction.SaveNewTag -> {
                 val name = _state.value.newTagName
                 if (name.isNotBlank()) {
+                    val tagIdToSave = _state.value.tagBeingEditedId ?: platformSpecificId() // Use existing ID if editing!
                     val newTag = TimenoteFolder(
-                        id = platformSpecificId(),
+                        id = tagIdToSave,
                         name = name,
                         sessionCount = 0,
                         color = _state.value.newTagColor
                     )
                     com.oblutack.timenote.data.repository.SessionRepository.saveTag(newTag)
                 }
-                _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "") }
+                _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "", tagBeingEditedId = null) }
             }
             is TimerAction.ToggleTagMenu -> _state.update { it.copy(isTagMenuExpanded = !it.isTagMenuExpanded) }
             is TimerAction.ToggleTagsRowVisibility -> _state.update { it.copy(isTagsRowVisible = !it.isTagsRowVisible) }
@@ -143,6 +147,20 @@ class TimerViewModel : ViewModel() {
                 // If they click the same folder again, deselect it (make it null). Otherwise, select it.
                 val newSelection = if (_state.value.selectedFolder?.id == action.folder?.id) null else action.folder
                 _state.update { it.copy(selectedFolder = newSelection) }
+            }
+
+            is TimerAction.OpenManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = true) }
+            is TimerAction.CloseManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = false) }
+            is TimerAction.DeleteTag -> com.oblutack.timenote.data.repository.SessionRepository.deleteTag(action.tagId)
+            is TimerAction.EditTag -> {
+                // Open the Create dialog, but pre-fill it with the tag's info
+                _state.update { it.copy(
+                    isManageTagsSheetOpen = false,
+                    isCreateTagDialogOpen = true,
+                    tagBeingEditedId = action.tag.id,
+                    newTagName = action.tag.name,
+                    newTagColor = action.tag.color
+                ) }
             }
         }
     }
@@ -335,4 +353,9 @@ sealed class TimerAction {
     data object ToggleTagsRowVisibility : TimerAction()
 
     data class SelectFolder(val folder: com.oblutack.timenote.feature_history.domain.ProjectFolder?) : TimerAction()
+
+    data object OpenManageTagsSheet : TimerAction()
+    data object CloseManageTagsSheet : TimerAction()
+    data class DeleteTag(val tagId: String) : TimerAction()
+    data class EditTag(val tag: TimenoteFolder) : TimerAction()
 }

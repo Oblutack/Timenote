@@ -11,6 +11,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -183,6 +185,21 @@ fun TimerScreen(
                 ) {
                     Text(
                         text = "+ New",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(SurfaceDark)
+                        .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                        .clickable { viewModel.onAction(TimerAction.OpenManageTagsSheet) }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "Manage",
                         color = TextSecondary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
@@ -495,21 +512,43 @@ fun TimerScreen(
                     }
 
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceDark)
-                            .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-                            .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text(
-                            text = "+ New Tag", // Clarified button text
-                            color = TextSecondary,
-                            fontSize = 16.sp
-                        )
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceDark)
+                                .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "+ New Tag",
+                                color = TextSecondary,
+                                fontSize = 16.sp
+                            )
+                        }
+                        Row(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(SurfaceDark)
+                                .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                .clickable { viewModel.onAction(TimerAction.OpenManageTagsSheet) }
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = "Manage Tags",
+                                color = TextSecondary,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
 
@@ -548,7 +587,7 @@ fun TimerScreen(
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
-                Text("Create New Tag", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Text(if (state.tagBeingEditedId == null) "Create New Tag" else "Edit Tag", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -608,6 +647,70 @@ fun TimerScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
                     ) {
                         Text("Save")
+                    }
+                }
+            }
+        }
+    }
+
+    if (state.isManageTagsSheetOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { viewModel.onAction(TimerAction.CloseManageTagsSheet) },
+            containerColor = SurfaceDark
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
+            ) {
+                Text(
+                    text = "Manage Tags",
+                    color = TextPrimary,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.CenterHorizontally)
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (state.availableTags.isEmpty()) {
+                    Text(
+                        text = "No custom tags created yet.",
+                        color = TextSecondary,
+                        modifier = Modifier.align(Alignment.CenterHorizontally)
+                    )
+                } else {
+                    LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                        items(state.availableTags) { tag ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(12.dp)
+                                            .background(tag.color, androidx.compose.foundation.shape.CircleShape)
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = tag.name,
+                                        color = TextPrimary,
+                                        fontSize = 16.sp
+                                    )
+                                }
+                                Row {
+                                    IconButton(onClick = { viewModel.onAction(TimerAction.EditTag(tag)) }) {
+                                        Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextSecondary)
+                                    }
+                                    IconButton(onClick = { viewModel.onAction(TimerAction.DeleteTag(tag.id)) }) {
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
