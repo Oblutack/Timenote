@@ -127,7 +127,8 @@ fun App(database: AppDatabase? = null) {
                         onTabSelected = { historyTab = it },
                         onTimenoteClick = { id -> navController.navigate("details/$id") },
                         onFolderClick = { id -> navController.navigate("folder_details/$id") },
-                        onTrashClick = { navController.navigate("trash") }
+                        onTrashClick = { navController.navigate("trash") },
+                        onSettingsClick = { navController.navigate("settings") }
                     )
                 }
                 composable("details/{id}") { backStackEntry ->
@@ -157,6 +158,11 @@ fun App(database: AppDatabase? = null) {
                 composable("trash") {
                     // Assuming you have TrashScreen imported or using full package path:
                     com.oblutack.timenote.feature_history.presentation.TrashScreen(
+                        onBackClick = { navController.popBackStack() }
+                    )
+                }
+                composable("settings") {
+                    com.oblutack.timenote.feature_settings.presentation.SettingsScreen(
                         onBackClick = { navController.popBackStack() }
                     )
                 }
