@@ -65,6 +65,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.SwapVert
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -108,6 +111,28 @@ fun HistoryScreen(
         sessionsByDate[selectedDate] ?: emptyList()
     } else {
         recentSessions
+    }
+
+    val selectedFilterTags by viewModel.selectedFilterTags.collectAsState()
+    val sortOption by viewModel.sortOption.collectAsState()
+    val allTags by viewModel.tags.collectAsState(initial = emptyList())
+
+    var isSortSheetOpen by remember { mutableStateOf(false) }
+    var isTagFilterSheetOpen by remember { mutableStateOf(false) }
+
+    // --- Apply Filters and Sort ---
+    val tagFiltered = remember(displaySessions, selectedFilterTags) {
+        if (selectedFilterTags.isEmpty()) displaySessions else displaySessions.filter { session ->
+            session.tags.any { tag -> selectedFilterTags.contains(tag.id) }
+        }
+    }
+    val finalDisplaySessions = remember(tagFiltered, sortOption) {
+        when (sortOption) {
+            SortOption.NEWEST -> tagFiltered.sortedByDescending { it.createdAt }
+            SortOption.OLDEST -> tagFiltered.sortedBy { it.createdAt }
+            SortOption.LONGEST -> tagFiltered.sortedByDescending { it.activeSeconds }
+            SortOption.SHORTEST -> tagFiltered.sortedBy { it.activeSeconds }
+        }
     }
 
     var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
@@ -199,35 +224,104 @@ fun HistoryScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(bottom = 16.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(SurfaceDark) // Matches your session cards
-                        .clickable {
-                            isCalendarView = !isCalendarView
-                            if (isCalendarView) {
-                                // Smoothly scroll to the top to reveal the newly opened calendar!
-                                coroutineScope.launch { listState.animateScrollToItem(0) }
-                            } else {
-                                selectedDate = null
-                            }
-                        }
-                        .padding(vertical = 12.dp),
-                    horizontalArrangement = Arrangement.Center,
+                        .background(SurfaceDark)
+                        .height(IntrinsicSize.Min), // Forces the dividers to match the row height!
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        // --- FIX: Use AutoMirrored.Filled for the ArrowBack ---
-                        imageVector = if (isCalendarView) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.DateRange,
-                        contentDescription = "Toggle Calendar",
-                        tint = TextSecondary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = if (isCalendarView) "Close Calendar" else "Filter by Date",
-                        color = TextSecondary,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
+                    // Button 1: Calendar
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(if (isCalendarView) DefaultAccentColor.copy(alpha = 0.15f) else Color.Transparent)
+                            .clickable {
+                                isCalendarView = !isCalendarView
+                                if (isCalendarView) coroutineScope.launch { listState.animateScrollToItem(0) } else selectedDate = null
+                            }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "Calendar",
+                            tint = if (isCalendarView) DefaultAccentColor else TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Calendar",
+                            color = if (isCalendarView) DefaultAccentColor else TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Divider 1
+                    Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.6f).background(TextSecondary.copy(alpha = 0.2f)))
+
+                    // Button 2: Tags
+                    val hasTags = selectedFilterTags.isNotEmpty()
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .background(if (hasTags) DefaultAccentColor.copy(alpha = 0.15f) else Color.Transparent)
+                            .clickable { isTagFilterSheetOpen = true }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Label,
+                            contentDescription = "Tags",
+                            tint = if (hasTags) DefaultAccentColor else TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (hasTags) "${selectedFilterTags.size} Tags" else "Tags",
+                            color = if (hasTags) DefaultAccentColor else TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
+
+                    // Divider 2
+                    Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.6f).background(TextSecondary.copy(alpha = 0.2f)))
+
+                    // Button 3: Sort
+                    Row(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clickable { isSortSheetOpen = true }
+                            .padding(vertical = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.SwapVert,
+                            contentDescription = "Sort",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = sortOption.displayName.split(" ").first(), // e.g., turns "Newest First" into "Newest" to fit perfectly!
+                            color = TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -323,7 +417,7 @@ fun HistoryScreen(
                         }
                     }
 
-                    if (displaySessions.isEmpty()) {
+                    if (finalDisplaySessions.isEmpty()) {
                         item {
                             Box(
                                 modifier = Modifier
@@ -340,7 +434,7 @@ fun HistoryScreen(
                         }
                     }
 
-                    items(displaySessions, key = { it.id }) { session ->
+                    items(finalDisplaySessions, key = { it.id }) { session ->
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -573,6 +667,64 @@ fun HistoryScreen(
                         Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(text = "Delete Folder", color = Color(0xFFE53935), fontSize = 16.sp)
+                    }
+                }
+            }
+        }
+    }
+    if (isSortSheetOpen) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { isSortSheetOpen = false },
+            containerColor = SurfaceDark
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 48.dp)) {
+                Text("Sort By", color = TextPrimary, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                SortOption.entries.forEach { option ->
+                    val isSelected = option == sortOption
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { viewModel.setSortOption(option); isSortSheetOpen = false }.padding(horizontal = 24.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(option.displayName, color = if (isSelected) DefaultAccentColor else TextPrimary, fontSize = 16.sp)
+                        if (isSelected) Icon(Icons.Default.Check, contentDescription = "Selected", tint = DefaultAccentColor)
+                    }
+                }
+            }
+        }
+    }
+
+    if (isTagFilterSheetOpen) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { isTagFilterSheetOpen = false },
+            containerColor = SurfaceDark
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(bottom = 48.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Filter by Tags", color = TextPrimary, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    androidx.compose.material3.TextButton(onClick = { viewModel.clearTagFilters() }) { Text("Clear All", color = TextSecondary) }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
+                    items(allTags, key = { it.id }) { tag ->
+                        val isSelected = selectedFilterTags.contains(tag.id)
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleFilterTag(tag.id) }.padding(horizontal = 24.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(tag.color))
+                            Spacer(modifier = Modifier.width(16.dp))
+                            Text(tag.name, color = TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                            androidx.compose.material3.Checkbox(
+                                checked = isSelected, onCheckedChange = { viewModel.toggleFilterTag(tag.id) },
+                                colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = DefaultAccentColor, uncheckedColor = TextSecondary)
+                            )
+                        }
                     }
                 }
             }
