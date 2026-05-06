@@ -51,6 +51,10 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -95,8 +99,24 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
     var isTimelineExpanded by remember { mutableStateOf(false) }
 
     val cleanDescription = if (timenote.description.contains("waypoints recorded")) "" else timenote.description
+    var optimisticDescription by remember(timenote.id) { mutableStateOf<String?>(null) }
+    val displayDescription = optimisticDescription ?: cleanDescription
     var isEditingDescription by remember { mutableStateOf(false) }
-    var descriptionText by remember(timenote.description) { mutableStateOf(timenote.description) }
+    var descriptionText by remember(cleanDescription) {
+        mutableStateOf(
+            TextFieldValue(
+                text = cleanDescription,
+                selection = TextRange(cleanDescription.length) // <--- Places cursor at the very end!
+            )
+        )
+    }
+
+    val focusRequester = remember { FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(isEditingDescription) {
+        if (isEditingDescription) {
+            focusRequester.requestFocus()
+        }
+    }
     val scrollState = androidx.compose.foundation.rememberScrollState()
 
     val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
@@ -214,16 +234,11 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                     .padding(vertical = 16.dp)
                     .clickable { isEditingDescription = true }
             ) {
-                val textToShow = if (timenote.description.isEmpty() || timenote.description.contains("waypoints recorded")) {
-                    "Tap to add a description..."
+                if (displayDescription.isBlank()) {
+                    Text("Tap to add a description...", color = TextSecondary)
                 } else {
-                    timenote.description
+                    Text(text = displayDescription, color = TextPrimary, fontSize = 16.sp)
                 }
-                Text(
-                    text = textToShow,
-                    color = if (textToShow == "Tap to add a description...") TextSecondary else TextPrimary,
-                    fontSize = 16.sp
-                )
             }
         } else {
             Column(
@@ -236,7 +251,8 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                     onValueChange = { descriptionText = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(min = 100.dp),
+                        .heightIn(min = 100.dp)
+                        .focusRequester(focusRequester),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = SurfaceDark,
@@ -254,13 +270,22 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                 ) {
                     TextButton(onClick = {
                         isEditingDescription = false
-                        descriptionText = timenote.description
+                        // FIX: Wrap the reset string back into a TextFieldValue!
+                        descriptionText = TextFieldValue(
+                            text = cleanDescription,
+                            selection = TextRange(cleanDescription.length)
+                        )
                     }) {
                         Text("Cancel", color = TextSecondary)
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     TextButton(onClick = {
-                        SessionRepository.updateTimenoteDescription(timenote.id, descriptionText)
+                        val newText = descriptionText.text
+                        com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(
+                            timenote.id,
+                            newText
+                        )
+                        optimisticDescription = newText
                         isEditingDescription = false
                     }) {
                         Text("Save", color = DefaultAccentColor)
