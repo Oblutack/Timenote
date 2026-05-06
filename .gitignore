@@ -1,8 +1,8 @@
+# IDEs and Build Tools
 *.iml
 .kotlin
 .gradle
 **/build/
-xcuserdata
 !src/**/build/
 local.properties
 .idea
@@ -10,10 +10,33 @@ local.properties
 captures
 .externalNativeBuild
 .cxx
+
+# iOS / Xcode
+xcuserdata
 *.xcodeproj/*
 !*.xcodeproj/project.pbxproj
 !*.xcodeproj/xcshareddata/
 !*.xcodeproj/project.xcworkspace/
 !*.xcworkspace/contents.xcworkspacedata
 **/xcshareddata/WorkspaceSettings.xcsettings
+
+# Web / JS
 node_modules/
+
+# --- CRITICAL SECURITY ADDITIONS FOR PUBLIC REPOS --- #
+# Keystore files (NEVER commit these)
+*.jks
+*.keystore
+key.properties
+keystore.properties
+
+# Google Services / Firebase (If you add them later)
+google-services.json
+GoogleService-Info.plist
+
+# Environment variables and secrets
+.env
+.env.*
+
+# macOS hidden files
+._*
