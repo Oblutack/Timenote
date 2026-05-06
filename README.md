@@ -35,7 +35,7 @@
 
 ---
 
-## ⚙Tech Stack Overview
+## Tech Stack Overview
 
 - **Framework:** Kotlin Multiplatform (KMP)
 - **UI Toolkit:** Compose Multiplatform (100% shared UI in `commonMain`)
@@ -47,7 +47,7 @@
 
 ---
 
-## 🏛Architecture & UI/UX Philosophy
+## Architecture & UI/UX Philosophy
 
 ### Architecture
 Timenote champions a clean architecture standard through strict MVVM methodologies. UI state relies inherently on `StateFlow` subscriptions hoisted properly up the ViewModels, avoiding lifecycle degradation across platform back-stack architectures. All SQL routines are mapped logically via DAOs, feeding asynchronous flows directly to the application layer.
