@@ -51,6 +51,9 @@ fun TimerScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
+    val customColors by com.oblutack.timenote.data.repository.SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -370,7 +373,8 @@ fun TimerScreen(
                 ) { index, event ->
                     TimelineItem(
                         event = event,
-                        isLastItem = index == state.timelineEvents.size - 1
+                        isLastItem = index == state.timelineEvents.size - 1,
+                        useMonochrome = useMonochromeNodes
                     )
                 }
             }
@@ -628,13 +632,18 @@ fun TimerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    listOf(
+                    val defaultColors = listOf(
                         Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
                         Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
-                    ).forEach { color ->
+                    )
+                    val allColors = defaultColors + customColors.map { Color(it.toULong()) }
+
+                    allColors.forEach { color ->
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
@@ -739,7 +748,7 @@ fun TimerScreen(
 }
 
 @Composable
-fun TimelineItem(event: com.oblutack.timenote.feature_timer.domain.TimelineEvent, isLastItem: Boolean) {
+fun TimelineItem(event: com.oblutack.timenote.feature_timer.domain.TimelineEvent, isLastItem: Boolean, useMonochrome: Boolean) { // <--- ADD useMonochrome: Boolean
 
     // 1. Sleek Fade-In Animation (Doesn't break list height!)
     val alpha = remember { Animatable(0f) }
@@ -750,8 +759,8 @@ fun TimelineItem(event: com.oblutack.timenote.feature_timer.domain.TimelineEvent
     val isStartOrEnd = event.type == com.oblutack.timenote.feature_timer.domain.EventType.START || event.type == com.oblutack.timenote.feature_timer.domain.EventType.END
     val circleRadius = if (isStartOrEnd) 7.dp else 5.dp
     val nodeColor = when (event.type) {
-        com.oblutack.timenote.feature_timer.domain.EventType.START -> TextPrimary
-        com.oblutack.timenote.feature_timer.domain.EventType.END -> TextSecondary
+        com.oblutack.timenote.feature_timer.domain.EventType.START -> if (useMonochrome) TextPrimary else Color(0xFF4CAF50)
+        com.oblutack.timenote.feature_timer.domain.EventType.END -> if (useMonochrome) TextSecondary else Color(0xFFE53935)
         else -> event.color ?: DefaultAccentColor
     }
 

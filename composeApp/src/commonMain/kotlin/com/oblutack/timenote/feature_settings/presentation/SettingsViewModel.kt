@@ -6,6 +6,7 @@ import com.oblutack.timenote.data.repository.SettingsRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.Color
 
 class SettingsViewModel : ViewModel() {
 
@@ -26,10 +27,21 @@ class SettingsViewModel : ViewModel() {
             val cleanHex = hexString.removePrefix("#").uppercase()
             // Ensure it's a valid 6-character hex code
             if (cleanHex.length == 6) {
-                // Add "FF" for 100% alpha (opacity)
-                val colorLong = "FF$cleanHex".toLongOrNull(16)
-                if (colorLong != null) {
-                    SettingsRepository.addCustomColor(colorLong)
+                try {
+                    // 1. Add FF for 100% opacity
+                    val fullHex = "FF$cleanHex"
+                    // 2. Parse the raw ARGB value safely
+                    val rawArgb = fullHex.toLongOrNull(16)
+
+                    if (rawArgb != null) {
+                        // 3. Create a native Compose Color, then extract its encoded internal ULong value!
+                        val composeEncodedLong = Color(rawArgb).value.toLong()
+
+                        // 4. Save the safe, encoded Compose value to DataStore
+                        SettingsRepository.addCustomColor(composeEncodedLong)
+                    }
+                } catch (e: Exception) {
+                    // Ignore invalid inputs
                 }
             }
         }

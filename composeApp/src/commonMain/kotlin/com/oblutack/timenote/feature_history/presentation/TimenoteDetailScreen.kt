@@ -99,6 +99,8 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
     var descriptionText by remember(timenote.description) { mutableStateOf(timenote.description) }
     val scrollState = androidx.compose.foundation.rememberScrollState()
 
+    val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -376,7 +378,8 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                         timenote.timelineEvents.forEachIndexed { index, event ->
                             TimenoteTimelineItem(
                                 event = event,
-                                isLastItem = index == timenote.timelineEvents.size - 1
+                                isLastItem = index == timenote.timelineEvents.size - 1,
+                                useMonochrome = useMonochromeNodes
                             )
                         }
                     }
@@ -480,7 +483,7 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
 }
 
 @Composable
-fun TimenoteTimelineItem(event: TimelineEvent, isLastItem: Boolean) {
+fun TimenoteTimelineItem(event: com.oblutack.timenote.feature_timer.domain.TimelineEvent, isLastItem: Boolean, useMonochrome: Boolean) { // <--- ADD useMonochrome: Boolean
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -500,8 +503,8 @@ fun TimenoteTimelineItem(event: TimelineEvent, isLastItem: Boolean) {
                 val circleCenterY = 10.dp.toPx()
 
                 val nodeColor = when (event.type) {
-                    EventType.START -> TextPrimary    // Crisp White
-                    EventType.END -> TextSecondary    // Muted Gray
+                    com.oblutack.timenote.feature_timer.domain.EventType.START -> if (useMonochrome) TextPrimary else Color(0xFF4CAF50)
+                    com.oblutack.timenote.feature_timer.domain.EventType.END -> if (useMonochrome) TextSecondary else Color(0xFFE53935)
                     else -> event.color ?: DefaultAccentColor
                 }
 
