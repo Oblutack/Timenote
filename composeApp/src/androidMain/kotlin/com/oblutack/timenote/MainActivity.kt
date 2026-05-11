@@ -50,6 +50,7 @@ class MainActivity : ComponentActivity() {
 
         // 3. NEW: Inject the Audio Recorder
         com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder = AndroidAudioRecorder(applicationContext)
+        com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer = AndroidAudioPlayer()
 
         setContent {
             App(database = database)

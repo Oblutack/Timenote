@@ -17,6 +17,8 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -58,8 +60,13 @@ import androidx.compose.ui.text.TextRange
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
+fun TimenoteDetailScreen(
+    timenoteId: String,
+    onBackClick: () -> Unit,
+    viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() }
+) {
     val timenote = SessionRepository.getTimenoteById(timenoteId)
+    val playingAudioPath by viewModel.playingAudioPath.collectAsState()
 
     if (timenote == null) {
         Box(modifier = Modifier.fillMaxSize().background(BackgroundDark), contentAlignment = Alignment.Center) {
@@ -404,7 +411,9 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
                             TimenoteTimelineItem(
                                 event = event,
                                 isLastItem = index == timenote.timelineEvents.size - 1,
-                                useMonochrome = useMonochromeNodes
+                                useMonochrome = useMonochromeNodes,
+                                playingAudioPath = playingAudioPath,
+                                onPlayAudioClick = { viewModel.playAudio(it) }
                             )
                         }
                     }
@@ -508,7 +517,13 @@ fun TimenoteDetailScreen(timenoteId: String, onBackClick: () -> Unit) {
 }
 
 @Composable
-fun TimenoteTimelineItem(event: com.oblutack.timenote.feature_timer.domain.TimelineEvent, isLastItem: Boolean, useMonochrome: Boolean) { // <--- ADD useMonochrome: Boolean
+fun TimenoteTimelineItem(
+    event: com.oblutack.timenote.feature_timer.domain.TimelineEvent,
+    isLastItem: Boolean,
+    useMonochrome: Boolean,
+    playingAudioPath: String?,
+    onPlayAudioClick: (String) -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -575,6 +590,34 @@ fun TimenoteTimelineItem(event: com.oblutack.timenote.feature_timer.domain.Timel
                 color = TextSecondary,
                 fontSize = 14.sp
             )
+
+            if (event.audioPath != null) {
+                Spacer(modifier = Modifier.height(8.dp))
+                val isPlaying = playingAudioPath == event.audioPath
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(SurfaceDark)
+                        .border(1.dp, DefaultAccentColor, RoundedCornerShape(50))
+                        .clickable { onPlayAudioClick(event.audioPath!!) }
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (isPlaying) "Pause" else "Play Voice Memo",
+                        tint = DefaultAccentColor,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isPlaying) "Pause" else "Play Voice Memo",
+                        color = DefaultAccentColor,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
         }
     }
 }

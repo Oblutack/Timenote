@@ -71,4 +71,27 @@ class HistoryViewModel : ViewModel() {
         // We need to implement SessionRepository.deleteFolder first but let's assume it exists or will be added
         SessionRepository.deleteFolder(id)
     }
+
+    // --- AUDIO PLAYER STATE ---
+    private val _playingAudioPath = MutableStateFlow<String?>(null)
+    val playingAudioPath = _playingAudioPath.asStateFlow()
+
+    fun playAudio(filePath: String) {
+        val player = com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer
+
+        if (_playingAudioPath.value == filePath && player?.isPlaying() == true) {
+            // It is currently playing this file, so pause it
+            player.pause()
+            _playingAudioPath.value = null
+        } else {
+            // Play the new file
+            player?.play(filePath)
+            _playingAudioPath.value = filePath
+        }
+    }
+
+    fun stopAudio() {
+        com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer?.stop()
+        _playingAudioPath.value = null
+    }
 }
