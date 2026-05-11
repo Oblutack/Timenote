@@ -6,6 +6,8 @@ import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -75,7 +77,8 @@ class HistoryViewModel : ViewModel() {
     // --- AUDIO PLAYER STATE ---
     private val _playingAudioPath = MutableStateFlow<String?>(null)
     val playingAudioPath = _playingAudioPath.asStateFlow()
-
+    private val _recordingTimenoteId = MutableStateFlow<String?>(null)
+    val recordingTimenoteId = _recordingTimenoteId.asStateFlow()
     fun playAudio(filePath: String) {
         val player = com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer
 
@@ -93,5 +96,25 @@ class HistoryViewModel : ViewModel() {
     fun stopAudio() {
         com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer?.stop()
         _playingAudioPath.value = null
+    }
+
+    fun startRecordingForTimenote(timenoteId: String) {
+        _recordingTimenoteId.value = timenoteId
+        val fileName = "SessionMemo_$timenoteId"
+        com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.startRecording(fileName)
+    }
+
+    fun stopRecordingForTimenote() {
+        val timenoteId = _recordingTimenoteId.value ?: return
+        val savedPath = com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.stopRecording()
+
+        _recordingTimenoteId.value = null
+
+        if (savedPath != null) {
+            // THE FIX: Cleaned up the scope call!
+            viewModelScope.launch {
+                com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteAudioPath(timenoteId, savedPath)
+            }
+        }
     }
 }

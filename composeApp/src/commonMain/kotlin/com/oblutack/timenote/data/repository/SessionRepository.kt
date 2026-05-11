@@ -141,6 +141,10 @@ object SessionRepository {
         }
     }
 
+    suspend fun updateTimenoteAudioPath(id: String, audioPath: String?) {
+        dao?.updateTimenoteAudioPath(id, audioPath)
+    }
+
     // --- TRASH BIN ACTIONS ---
     fun restoreTimenote(id: String) { coroutineScope.launch { dao?.restoreTimenote(id) } }
     fun hardDeleteTimenote(id: String) { coroutineScope.launch { dao?.hardDeleteTimenote(id) } }
@@ -154,4 +158,5 @@ object SessionRepository {
             _deletedFolders.value.forEach { dao?.hardDeleteFolder(it.id) }
         }
     }
+
 }
