@@ -146,7 +146,7 @@ class TimerViewModel : ViewModel() {
                 when (command) {
                     "PAUSE" -> onAction(TimerAction.Pause)
                     "RESUME" -> onAction(TimerAction.Resume)
-                    "END" -> onAction(TimerAction.End)
+                    "END_FROM_NOTIFICATION" -> onAction(TimerAction.EndFromNotification) // <-- CHANGED
                 }
             }
         }
@@ -157,7 +157,8 @@ class TimerViewModel : ViewModel() {
             is TimerAction.Start -> startTimer()
             is TimerAction.Pause -> pauseTimer()
             is TimerAction.Resume -> resumeTimer()
-            is TimerAction.End -> endTimer()
+            is TimerAction.End -> endTimer(forceSave = false)
+            is TimerAction.EndFromNotification -> endTimer(forceSave = true) // <-- ADDED
             is TimerAction.UpdateSessionTitle -> {
                 _state.update { it.copy(sessionTitle = action.text) }
                 if (_state.value.isRunning) backupCurrentState()
@@ -228,6 +229,7 @@ class TimerViewModel : ViewModel() {
                     newTagColor = action.tag.color
                 ) }
             }
+
         }
     }
 
@@ -283,13 +285,12 @@ class TimerViewModel : ViewModel() {
         backupCurrentState()
     }
 
-    private fun endTimer() {
+    private fun endTimer(forceSave: Boolean = false) {
         if (!_state.value.isRunning && !_state.value.isPaused) return
 
         timerJob?.cancel()
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.stopService()
 
-        // Nuke the backup, the session is over!
         viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null) }
 
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
@@ -297,7 +298,8 @@ class TimerViewModel : ViewModel() {
 
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
-        if (_state.value.selectedCategories.isNotEmpty()) {
+        // THE FIX: If forceSave is true, skip the popup!
+        if (forceSave || _state.value.selectedCategories.isNotEmpty()) {
             executeSave(_state.value.selectedCategories)
         } else {
             _state.update { it.copy(isCategoryPopupOpen = true) }
@@ -361,29 +363,36 @@ class TimerViewModel : ViewModel() {
                 val now = com.oblutack.timenote.getCurrentTimeMillis()
 
                 if (_state.value.isPaused) {
+                    // 1. The Pause Timer (Ticking)
                     val currentPauseMillis = now - currentPauseStartMillis
                     val formattedPause = formatTime((currentPauseMillis / 1000).toInt())
 
-                    _state.update { it.copy(currentPauseTime = formattedPause) }
+                    // 2. The Main Timer (FROZEN)
+                    // We freeze it at the exact moment you hit the Pause button
+                    val frozenTotalMillis = currentPauseStartMillis - startTimeMillis
+                    val formattedFrozenTotal = formatTime((frozenTotalMillis / 1000).toInt())
+
+                    _state.update { it.copy(
+                        currentPauseTime = formattedPause,
+                        displayTime = formattedFrozenTotal // <-- Now it stops moving!
+                    ) }
 
                     com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
-                        title = "Paused",
-                        timeText = formattedPause,
-                        baseMillis = 0L, // Not used when paused
-                        isPaused = true
+                        title = "Paused", timeText = formattedPause, baseMillis = 0L, isPaused = true
                     )
                 } else {
-                    val activeMillis = now - startTimeMillis - totalPauseMillis
-                    val formattedActive = formatTime((activeMillis / 1000).toInt())
+                    // 1. The Main Timer (Ticking Total Time)
+                    val totalElapsedMillis = now - startTimeMillis
+                    val formattedTotal = formatTime((totalElapsedMillis / 1000).toInt())
 
-                    _state.update { it.copy(displayTime = formattedActive) }
+                    _state.update { it.copy(displayTime = formattedTotal) }
 
-                    // NATIVE MATH: We tell Android exactly when the timer "theoretically" started
-                    val baseTimeForOS = com.oblutack.timenote.getCurrentTimeMillis() - activeMillis
+                    // NATIVE MATH: Tell Android OS to count the Total Time too!
+                    val baseTimeForOS = com.oblutack.timenote.getCurrentTimeMillis() - totalElapsedMillis
 
                     com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
                         title = _state.value.sessionTitle.ifBlank { "Timenote Active" },
-                        timeText = formattedActive,
+                        timeText = formattedTotal,
                         baseMillis = baseTimeForOS,
                         isPaused = false
                     )
@@ -446,6 +455,7 @@ sealed class TimerAction {
     data object Pause : TimerAction()
     data object Resume : TimerAction()
     data object End : TimerAction()
+    data object EndFromNotification : TimerAction()
     data class UpdateSessionTitle(val text: String) : TimerAction()
     data object OpenAddNoteDialog : TimerAction()
     data object CloseAddNoteDialog : TimerAction()

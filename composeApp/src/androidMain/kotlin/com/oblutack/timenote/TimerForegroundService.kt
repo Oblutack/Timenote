@@ -25,7 +25,7 @@ class TimerForegroundService : Service() {
         when (intent?.action) {
             "ACTION_PAUSE" -> ServiceLocator.serviceCommands.tryEmit("PAUSE")
             "ACTION_RESUME" -> ServiceLocator.serviceCommands.tryEmit("RESUME")
-            "ACTION_END" -> ServiceLocator.serviceCommands.tryEmit("END")
+            "ACTION_END" -> ServiceLocator.serviceCommands.tryEmit("END_FROM_NOTIFICATION") // <-- CHANGED
         }
 
         val title = intent?.getStringExtra("TITLE") ?: "Timenote Active"
