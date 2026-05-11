@@ -174,20 +174,18 @@ class TimerViewModel : ViewModel() {
         if (_state.value.isRunning) return
 
         if (_state.value.timelineEvents.isNotEmpty()) {
-            // Grab the current inputs AND the tags loaded from the database
             val typedTitle = _state.value.sessionTitle
             val pickedCategories = _state.value.selectedCategories
             val currentTags = _state.value.availableTags
-            val currentFolders = _state.value.availableFolders // NEW
+            val currentFolders = _state.value.availableFolders
             val pickedFolder = _state.value.selectedFolder
 
-            // Create the fresh state, but keep our tags!
             _state.update {
                 TimerState(
                     sessionTitle = typedTitle,
                     selectedCategories = pickedCategories,
                     availableTags = currentTags,
-                    availableFolders = currentFolders, // NEW
+                    availableFolders = currentFolders,
                     selectedFolder = pickedFolder
                 )
             }
@@ -199,6 +197,10 @@ class TimerViewModel : ViewModel() {
 
         addEventToTimeline("Session Started", EventType.START)
         _state.update { it.copy(isRunning = true, isPaused = false) }
+
+        // Tells Android to fire up the persistent notification!
+        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
+
         startTicking()
     }
 
@@ -221,17 +223,20 @@ class TimerViewModel : ViewModel() {
     private fun endTimer() {
         if (!_state.value.isRunning && !_state.value.isPaused) return
 
+        // 1. KILL THE LOOP IMMEDITELY
         timerJob?.cancel()
+        // 2. KILL THE ANDROID SERVICE NOTIFICATION
+        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.stopService()
+
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
         addEventToTimeline("Session Ended: $title", EventType.END)
+
+        // 3. FORCE THE UI BACK TO THE "START" BUTTON
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
-        // --- MULTI-SELECT DISCLOSURE MAGIC ---
         if (_state.value.selectedCategories.isNotEmpty()) {
-            // They picked at least one category. Save instantly.
             executeSave(_state.value.selectedCategories)
         } else {
-            // They picked none. Pop open the bottom sheet to ask them!
             _state.update { it.copy(isCategoryPopupOpen = true) }
         }
     }
@@ -287,11 +292,26 @@ class TimerViewModel : ViewModel() {
                 if (_state.value.isPaused) {
                     currentPauseSeconds++
                     totalPauseSeconds++
-                    // NEW: Update the Pause Time so the UI ticks!
-                    _state.update { it.copy(currentPauseTime = formatTime(currentPauseSeconds)) }
+                    val formattedPause = formatTime(currentPauseSeconds)
+
+                    _state.update { it.copy(currentPauseTime = formattedPause) }
+
+                    // Update Notification for Paused State
+                    com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
+                        title = "Paused",
+                        time = formattedPause
+                    )
                 } else {
                     activeSeconds++
-                    _state.update { it.copy(displayTime = formatTime(activeSeconds + totalPauseSeconds)) }
+                    val formattedActive = formatTime(activeSeconds + totalPauseSeconds)
+
+                    _state.update { it.copy(displayTime = formattedActive) }
+
+                    // Update Notification for Active State
+                    com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
+                        title = _state.value.sessionTitle.ifBlank { "Timenote Active" },
+                        time = formattedActive
+                    )
                 }
             }
         }

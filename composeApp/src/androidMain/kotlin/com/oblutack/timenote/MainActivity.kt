@@ -31,6 +31,8 @@ class MainActivity : ComponentActivity() {
         // 2. Initialize our SettingsRepository immediately!
         com.oblutack.timenote.data.repository.SettingsRepository.initialize(dataStore)
 
+        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager = AndroidTimerServiceManager(applicationContext)
+
         setContent {
             // 3. Pass the database down into our common App UI!
             App(database = database)
