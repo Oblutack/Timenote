@@ -18,3 +18,15 @@ data class TimelineEvent(
     // We tell it to use our custom translator for the Color!
     @Serializable(with = ColorSerializer::class) val color: Color? = null
 )
+
+@Serializable
+data class ActiveSessionBackup(
+    val sessionTitle: String,
+    val startTimeMillis: Long,
+    val totalPauseMillis: Long,
+    val lastPauseStartTimeMillis: Long?, // If not null, it means the app was swiped away WHILE paused!
+    val isPaused: Boolean,
+    val timelineEvents: List<TimelineEvent>,
+    val selectedFolderId: String?,
+    val selectedCategoryIds: List<String>
+)

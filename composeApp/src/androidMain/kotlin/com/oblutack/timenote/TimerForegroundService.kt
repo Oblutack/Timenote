@@ -17,74 +17,69 @@ class TimerForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // 1. HANDLE INCOMING BUTTON CLICKS FROM THE NOTIFICATION
+        if (intent?.action == "STOP") {
+            stopForeground(true)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
-            "STOP" -> {
-                stopForeground(true)
-                stopSelf()
-                return START_NOT_STICKY
-            }
             "ACTION_PAUSE" -> ServiceLocator.serviceCommands.tryEmit("PAUSE")
             "ACTION_RESUME" -> ServiceLocator.serviceCommands.tryEmit("RESUME")
             "ACTION_END" -> ServiceLocator.serviceCommands.tryEmit("END")
         }
 
-        // 2. BUILD THE UI
         val title = intent?.getStringExtra("TITLE") ?: "Timenote Active"
-        val time = intent?.getStringExtra("TIME") ?: "00:00:00"
+        val timeText = intent?.getStringExtra("TIME") ?: "00:00:00"
+        val baseMillis = intent?.getLongExtra("BASE_MILLIS", System.currentTimeMillis()) ?: System.currentTimeMillis()
         val isPaused = intent?.getBooleanExtra("IS_PAUSED", false) ?: false
 
         createNotificationChannel()
 
+        // 1. FIX APP RESUME INTENT
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            this.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            this.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK // <-- FIXED FLAGS
         }
         val pendingIntent = PendingIntent.getActivity(
             this, 0, openAppIntent,
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
 
-        // 3. CREATE THE ACTION BUTTONS
         val pauseResumeIntent = Intent(this, TimerForegroundService::class.java).apply {
             action = if (isPaused) "ACTION_RESUME" else "ACTION_PAUSE"
         }
-        val pauseResumePending = PendingIntent.getService(
-            this, 1, pauseResumeIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
+        val pauseResumePending = PendingIntent.getService(this, 1, pauseResumeIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val pauseResumeAction = NotificationCompat.Action(
             if (isPaused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
-            if (isPaused) "Resume" else "Pause",
-            pauseResumePending
+            if (isPaused) "Resume" else "Pause", pauseResumePending
         )
 
         val endIntent = Intent(this, TimerForegroundService::class.java).apply { action = "ACTION_END" }
-        val endPending = PendingIntent.getService(
-            this, 2, endIntent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
-        val endAction = NotificationCompat.Action(
-            android.R.drawable.ic_menu_close_clear_cancel,
-            "End",
-            endPending
-        )
+        val endPending = PendingIntent.getService(this, 2, endIntent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val endAction = NotificationCompat.Action(android.R.drawable.ic_menu_close_clear_cancel, "End", endPending)
 
-        // 4. ASSEMBLE NOTIFICATION
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        // 2. THE CHRONOMETER MAGIC
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle(title)
-            .setContentText(time)
             .setSmallIcon(android.R.drawable.ic_menu_recent_history)
             .setContentIntent(pendingIntent)
-            .setOngoing(!isPaused) // Allow user to swipe away IF paused
+            .setOngoing(!isPaused)
             .setOnlyAlertOnce(true)
-            .addAction(pauseResumeAction) // Inject buttons
+            .addAction(pauseResumeAction)
             .addAction(endAction)
-            .build()
+
+        // If running, OS handles ticking. If paused, we show the static text.
+        if (!isPaused) {
+            builder.setUsesChronometer(true)
+            builder.setWhen(baseMillis) // Starts counting natively from this exact time
+        } else {
+            builder.setUsesChronometer(false)
+            builder.setContentText(timeText)
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(1, builder.build(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-            startForeground(1, notification)
+            startForeground(1, builder.build())
         }
 
         return START_NOT_STICKY

@@ -8,43 +8,43 @@ import kotlinx.coroutines.flow.catch
 
 object SettingsRepository {
 
-    // The DataStore Instance (We will inject this from MainActivity later)
     private lateinit var dataStore: DataStore<Preferences>
 
     // --- KEYS ---
     private val USE_MONOCHROME_NODES = booleanPreferencesKey("use_monochrome_nodes")
-    private val CUSTOM_COLORS_JSON = stringPreferencesKey("custom_colors_json") // We'll save a comma-separated list of hex strings
+    private val CUSTOM_COLORS_JSON = stringPreferencesKey("custom_colors_json")
+
+    // NEW: The key for our emergency timer backup
+    private val ACTIVE_SESSION_BACKUP = stringPreferencesKey("active_session_backup")
 
     // --- INITIALIZATION ---
     fun initialize(ds: DataStore<Preferences>) {
         dataStore = ds
     }
 
-    // --- READ PREFERENCES (Flows) ---
+    // --- READ PREFERENCES ---
     val useMonochromeNodesFlow: Flow<Boolean>
         get() = dataStore.data
-            .catch { exception ->
-                emit(emptyPreferences())
-            }
-            .map { preferences ->
-                preferences[USE_MONOCHROME_NODES] ?: true // Default to true
-            }
+            .catch { emit(emptyPreferences()) }
+            .map { it[USE_MONOCHROME_NODES] ?: true }
 
     val customColorsFlow: Flow<List<Long>>
         get() = dataStore.data
-            .catch { exception ->
-                emit(emptyPreferences())
-            }
+            .catch { emit(emptyPreferences()) }
             .map { preferences ->
                 val json = preferences[CUSTOM_COLORS_JSON] ?: ""
                 if (json.isEmpty()) emptyList() else json.split(",").mapNotNull { it.toLongOrNull() }
             }
 
+    // NEW: Flow to read the backup
+    val activeSessionBackupFlow: Flow<String?>
+        get() = dataStore.data
+            .catch { emit(emptyPreferences()) }
+            .map { it[ACTIVE_SESSION_BACKUP] }
+
     // --- WRITE PREFERENCES ---
     suspend fun setMonochromeNodes(enabled: Boolean) {
-        dataStore.edit { preferences ->
-            preferences[USE_MONOCHROME_NODES] = enabled
-        }
+        dataStore.edit { it[USE_MONOCHROME_NODES] = enabled }
     }
 
     suspend fun addCustomColor(colorLong: Long) {
@@ -65,6 +65,17 @@ object SettingsRepository {
             val currentList = currentListStr.split(",").toMutableList()
             currentList.remove(colorLong.toString())
             preferences[CUSTOM_COLORS_JSON] = currentList.joinToString(",")
+        }
+    }
+
+    // NEW: Save or Clear the Backup
+    suspend fun saveActiveSession(json: String?) {
+        dataStore.edit { preferences ->
+            if (json == null) {
+                preferences.remove(ACTIVE_SESSION_BACKUP) // Clear it when timer ends
+            } else {
+                preferences[ACTIVE_SESSION_BACKUP] = json // Save it when ticking
+            }
         }
     }
 }

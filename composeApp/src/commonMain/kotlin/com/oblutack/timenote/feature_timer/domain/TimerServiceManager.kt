@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 interface TimerServiceManager {
     fun startService()
     fun stopService()
-    fun updateNotification(title: String, time: String, isPaused: Boolean)
+    // NEW: Added baseMillis so the OS can tick the timer natively
+    fun updateNotification(title: String, timeText: String, baseMillis: Long, isPaused: Boolean)
 }
 
 object ServiceLocator {

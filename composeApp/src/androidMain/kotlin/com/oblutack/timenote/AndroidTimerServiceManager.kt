@@ -26,16 +26,21 @@ import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
         }
     }
 
-    override fun updateNotification(title: String, time: String, isPaused: Boolean) {
-        val intent = Intent(context, TimerForegroundService::class.java).apply {
-            putExtra("TITLE", title)
-            putExtra("TIME", time)
-            putExtra("IS_PAUSED", isPaused) // <-- NEW
+        override fun updateNotification(title: String, timeText: String, baseMillis: Long, isPaused: Boolean) {
+            try {
+                val intent = Intent(context, TimerForegroundService::class.java).apply {
+                    putExtra("TITLE", title)
+                    putExtra("TIME", timeText)
+                    putExtra("BASE_MILLIS", baseMillis) // <-- NEW
+                    putExtra("IS_PAUSED", isPaused)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace() // Prevents the crash!
+            }
         }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            context.startForegroundService(intent)
-        } else {
-            context.startService(intent)
-        }
-    }
 }

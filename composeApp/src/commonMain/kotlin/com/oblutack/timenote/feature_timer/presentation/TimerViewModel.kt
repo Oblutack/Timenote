@@ -3,8 +3,10 @@ package com.oblutack.timenote.feature_timer.presentation
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_timer.domain.EventType
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
+import com.oblutack.timenote.feature_timer.domain.ActiveSessionBackup
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -12,7 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import com.oblutack.timenote.feature_history.domain.TimenoteFolder
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 data class TimerState(
     val displayTime: String = "00:00:00",
@@ -23,31 +26,26 @@ data class TimerState(
     val lastSessionTitle: String = "",
     val timelineEvents: List<TimelineEvent> = emptyList(),
 
-    // Dialog State
     val isAddNoteDialogOpen: Boolean = false,
     val dialogNoteText: String = "",
     val dialogNoteColor: Color = Color(0xFF4FA8F9),
 
-    // Multi-select Category State
     val selectedCategories: List<TimenoteFolder> = emptyList(),
     val isCategoryPopupOpen: Boolean = false,
-
     val availableTags: List<TimenoteFolder> = emptyList(),
 
     val isCreateTagDialogOpen: Boolean = false,
     val newTagName: String = "",
-    val newTagColor: Color = Color(0xFF4FA8F9),
     val newTagDescription: String = "",
-
+    val newTagColor: Color = Color(0xFF4FA8F9),
     val isTagMenuExpanded: Boolean = false,
     val isTagsRowVisible: Boolean = false,
 
-    val availableFolders: List<com.oblutack.timenote.feature_history.domain.ProjectFolder> = emptyList(), // NEW
+    val availableFolders: List<com.oblutack.timenote.feature_history.domain.ProjectFolder> = emptyList(),
     val selectedFolder: com.oblutack.timenote.feature_history.domain.ProjectFolder? = null,
 
     val isManageTagsSheetOpen: Boolean = false,
     val tagBeingEditedId: String? = null,
-
 )
 
 class TimerViewModel : ViewModel() {
@@ -57,13 +55,16 @@ class TimerViewModel : ViewModel() {
 
     private var timerJob: Job? = null
 
-    // Internal counters
-    private var activeSeconds = 0
-    private var currentPauseSeconds = 0
-    private var totalPauseSeconds = 0
+    // --- ABSOLUTE TIME TRACKING ---
+    private var startTimeMillis = 0L
+    private var totalPauseMillis = 0L
+    private var currentPauseStartMillis = 0L
+
+    // Prevents restoring the backup multiple times in a row
+    private var hasRestoredBackup = false
 
     init {
-        // 1. Listen for past Timenotes
+        // 1. Listen for past Timenotes (To show "Last Session")
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.timenotes.collect { notes ->
                 if (!_state.value.isRunning && !_state.value.isPaused && _state.value.timelineEvents.isEmpty()) {
@@ -79,20 +80,60 @@ class TimerViewModel : ViewModel() {
             }
         }
 
-        // --- THE MISSING LINK: Listen for the Tags! ---
+        // 2. Load Tags
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.tags.collect { dbTags ->
-                _state.update { it.copy(availableTags = dbTags) }
+                _state.update { currentState ->
+                    // Re-link selected categories to the fresh DB data
+                    val updatedSelected = currentState.selectedCategories.mapNotNull { selected ->
+                        dbTags.find { it.id == selected.id }
+                    }
+                    currentState.copy(availableTags = dbTags, selectedCategories = updatedSelected)
+                }
             }
         }
 
-        // NEW: Listen for Folders!
+        // 3. Load Folders
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.folders.collect { dbFolders ->
-                _state.update { it.copy(availableFolders = dbFolders) }
+                _state.update { currentState ->
+                    val updatedSelectedFolder = dbFolders.find { it.id == currentState.selectedFolder?.id }
+                    currentState.copy(availableFolders = dbFolders, selectedFolder = updatedSelectedFolder)
+                }
             }
         }
 
+        // 4. RESTORE BACKUP (The Swipe-To-Kill Savior)
+        viewModelScope.launch {
+            com.oblutack.timenote.data.repository.SettingsRepository.activeSessionBackupFlow.collect { jsonString ->
+                if (jsonString != null && !hasRestoredBackup) {
+                    hasRestoredBackup = true
+                    try {
+                        val backup = Json.decodeFromString<ActiveSessionBackup>(jsonString)
+
+                        startTimeMillis = backup.startTimeMillis
+                        totalPauseMillis = backup.totalPauseMillis
+                        currentPauseStartMillis = backup.lastPauseStartTimeMillis ?: 0L
+
+                        _state.update { it.copy(
+                            isRunning = true,
+                            isPaused = backup.isPaused,
+                            sessionTitle = backup.sessionTitle,
+                            timelineEvents = backup.timelineEvents
+                        )}
+
+                        // Reattach Android Service
+                        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
+                        startTicking()
+                    } catch (e: Exception) {
+                        // If JSON is corrupted, clear it
+                        com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null)
+                    }
+                }
+            }
+        }
+
+        // 5. Listen for Android Notification Buttons
         viewModelScope.launch {
             com.oblutack.timenote.feature_timer.domain.ServiceLocator.serviceCommands.collect { command ->
                 when (command) {
@@ -110,7 +151,10 @@ class TimerViewModel : ViewModel() {
             is TimerAction.Pause -> pauseTimer()
             is TimerAction.Resume -> resumeTimer()
             is TimerAction.End -> endTimer()
-            is TimerAction.UpdateSessionTitle -> _state.update { it.copy(sessionTitle = action.text) }
+            is TimerAction.UpdateSessionTitle -> {
+                _state.update { it.copy(sessionTitle = action.text) }
+                if (_state.value.isRunning) backupCurrentState()
+            }
 
             is TimerAction.OpenAddNoteDialog -> {
                 if (_state.value.isRunning) _state.update { it.copy(isAddNoteDialogOpen = true) }
@@ -120,11 +164,9 @@ class TimerViewModel : ViewModel() {
             is TimerAction.UpdateDialogNoteColor -> _state.update { it.copy(dialogNoteColor = action.color) }
             is TimerAction.SaveNote -> saveNote()
 
-            // NEW: Multi-Select Category Logic
             is TimerAction.ToggleCategory -> {
                 _state.update { currentState ->
                     val currentList = currentState.selectedCategories
-                    // If the category is already in the list, remove it. If it's not, add it!
                     val newList = if (currentList.any { it.id == action.category.id }) {
                         currentList.filter { it.id != action.category.id }
                     } else {
@@ -132,18 +174,20 @@ class TimerViewModel : ViewModel() {
                     }
                     currentState.copy(selectedCategories = newList)
                 }
+                if (_state.value.isRunning) backupCurrentState()
             }
             is TimerAction.SkipCategoriesAndSave -> executeSave(emptyList())
             is TimerAction.ConfirmCategoriesAndSave -> executeSave(_state.value.selectedCategories)
+
             is TimerAction.OpenCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = true) }
-            is TimerAction.CloseCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = false, newTagDescription = "") }
+            is TimerAction.CloseCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "", newTagDescription = "") }
             is TimerAction.UpdateNewTagName -> _state.update { it.copy(newTagName = action.name) }
+            is TimerAction.UpdateNewTagDescription -> _state.update { it.copy(newTagDescription = action.description) }
             is TimerAction.UpdateNewTagColor -> _state.update { it.copy(newTagColor = action.color) }
-            is TimerAction.UpdateNewTagDescription -> _state.update { it.copy(newTagDescription = action.description) } // <-- Handles desc update
             is TimerAction.SaveNewTag -> {
                 val name = _state.value.newTagName
                 if (name.isNotBlank()) {
-                    val tagIdToSave = _state.value.tagBeingEditedId ?: platformSpecificId() // Use existing ID if editing!
+                    val tagIdToSave = _state.value.tagBeingEditedId ?: platformSpecificId()
                     val newTag = TimenoteFolder(
                         id = tagIdToSave,
                         name = name,
@@ -159,9 +203,9 @@ class TimerViewModel : ViewModel() {
             is TimerAction.ToggleTagsRowVisibility -> _state.update { it.copy(isTagsRowVisible = !it.isTagsRowVisible) }
 
             is TimerAction.SelectFolder -> {
-                // If they click the same folder again, deselect it (make it null). Otherwise, select it.
                 val newSelection = if (_state.value.selectedFolder?.id == action.folder?.id) null else action.folder
                 _state.update { it.copy(selectedFolder = newSelection) }
+                if (_state.value.isRunning) backupCurrentState()
             }
 
             is TimerAction.OpenManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = true) }
@@ -173,7 +217,7 @@ class TimerViewModel : ViewModel() {
                     isCreateTagDialogOpen = true,
                     tagBeingEditedId = action.tag.id,
                     newTagName = action.tag.name,
-                    newTagDescription = action.tag.description ?: "", // <-- PRE-FILLS IT
+                    newTagDescription = action.tag.description ?: "",
                     newTagColor = action.tag.color
                 ) }
             }
@@ -184,64 +228,66 @@ class TimerViewModel : ViewModel() {
         if (_state.value.isRunning) return
 
         if (_state.value.timelineEvents.isNotEmpty()) {
-            val typedTitle = _state.value.sessionTitle
-            val pickedCategories = _state.value.selectedCategories
-            val currentTags = _state.value.availableTags
-            val currentFolders = _state.value.availableFolders
-            val pickedFolder = _state.value.selectedFolder
-
             _state.update {
                 TimerState(
-                    sessionTitle = typedTitle,
-                    selectedCategories = pickedCategories,
-                    availableTags = currentTags,
-                    availableFolders = currentFolders,
-                    selectedFolder = pickedFolder
+                    sessionTitle = it.sessionTitle,
+                    selectedCategories = it.selectedCategories,
+                    availableTags = it.availableTags,
+                    availableFolders = it.availableFolders,
+                    selectedFolder = it.selectedFolder
                 )
             }
-
-            activeSeconds = 0
-            currentPauseSeconds = 0
-            totalPauseSeconds = 0
         }
+
+        startTimeMillis = com.oblutack.timenote.getCurrentTimeMillis()
+        totalPauseMillis = 0L
+        currentPauseStartMillis = 0L
+        hasRestoredBackup = true
 
         addEventToTimeline("Session Started", EventType.START)
         _state.update { it.copy(isRunning = true, isPaused = false) }
 
-        // Tells Android to fire up the persistent notification!
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
-
+        backupCurrentState()
         startTicking()
     }
 
     private fun pauseTimer() {
         if (!_state.value.isRunning || _state.value.isPaused) return
+
+        currentPauseStartMillis = com.oblutack.timenote.getCurrentTimeMillis()
         addEventToTimeline("Paused", EventType.PAUSE)
 
-        // NEW: Ensure currentPauseTime shows 00:00:00 immediately
-        _state.update { it.copy(isPaused = true, currentPauseTime = formatTime(currentPauseSeconds)) }
+        _state.update { it.copy(isPaused = true) }
+        backupCurrentState()
     }
 
     private fun resumeTimer() {
         if (!_state.value.isPaused) return
-        val pauseDurationStr = formatTime(currentPauseSeconds)
+
+        val pauseDurationMillis = com.oblutack.timenote.getCurrentTimeMillis() - currentPauseStartMillis
+        totalPauseMillis += pauseDurationMillis
+        currentPauseStartMillis = 0L
+
+        val pauseDurationStr = formatTime((pauseDurationMillis / 1000).toInt())
         addEventToTimeline("Resumed (Break was $pauseDurationStr)", EventType.RESUME)
-        currentPauseSeconds = 0
+
         _state.update { it.copy(isPaused = false) }
+        backupCurrentState()
     }
 
     private fun endTimer() {
         if (!_state.value.isRunning && !_state.value.isPaused) return
 
-        // 1. KILL THE LOOP IMMEDITELY
         timerJob?.cancel()
-        // 2. KILL THE ANDROID SERVICE NOTIFICATION
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.stopService()
+
+        // Nuke the backup, the session is over!
+        viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null) }
 
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
         addEventToTimeline("Session Ended: $title", EventType.END)
 
-        // 3. FORCE THE UI BACK TO THE "START" BUTTON
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
         if (_state.value.selectedCategories.isNotEmpty()) {
@@ -253,20 +299,24 @@ class TimerViewModel : ViewModel() {
 
     private fun executeSave(categories: List<TimenoteFolder>) {
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
-        val finalDuration = formatTime(activeSeconds + totalPauseSeconds)
-        val waypointCount = _state.value.timelineEvents.size
 
-        val timestampId = platformSpecificId() // Get the ID/Timestamp once
+        // Final Math Calculation
+        val now = com.oblutack.timenote.getCurrentTimeMillis()
+        val finalActiveMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
+        val finalActiveSeconds = (finalActiveMillis / 1000).toInt()
+        val finalPauseSeconds = (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
+
+        val timestampId = platformSpecificId()
 
         val newTimenote = com.oblutack.timenote.feature_history.domain.Timenote(
             id = timestampId,
             folderId = _state.value.selectedFolder?.id,
             title = title,
             description = "",
-            duration = finalDuration,
-            activeSeconds = activeSeconds,          // <--- THE REAL DATA
-            pauseSeconds = totalPauseSeconds,       // <--- THE REAL DATA
-            createdAt = timestampId.toLongOrNull() ?: 0L, // <--- THE REAL TIMESTAMP
+            duration = formatTime(finalActiveSeconds + finalPauseSeconds),
+            activeSeconds = finalActiveSeconds,
+            pauseSeconds = finalPauseSeconds,
+            createdAt = timestampId.toLongOrNull() ?: 0L,
             tags = categories,
             timelineEvents = _state.value.timelineEvents
         )
@@ -292,37 +342,43 @@ class TimerViewModel : ViewModel() {
             dialogNoteText = "",
             dialogNoteColor = Color(0xFF4FA8F9)
         ) }
+        backupCurrentState()
     }
 
     private fun startTicking() {
         timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (true) {
-                delay(1000L)
+                delay(250L)
+
+                val now = com.oblutack.timenote.getCurrentTimeMillis()
+
                 if (_state.value.isPaused) {
-                    currentPauseSeconds++
-                    totalPauseSeconds++
-                    val formattedPause = formatTime(currentPauseSeconds)
+                    val currentPauseMillis = now - currentPauseStartMillis
+                    val formattedPause = formatTime((currentPauseMillis / 1000).toInt())
 
                     _state.update { it.copy(currentPauseTime = formattedPause) }
 
-                    // Update Notification for Paused State
                     com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
                         title = "Paused",
-                        time = formattedPause,
-                        isPaused = true // <--- ADDED THIS FOR YOU!
+                        timeText = formattedPause,
+                        baseMillis = 0L, // Not used when paused
+                        isPaused = true
                     )
                 } else {
-                    activeSeconds++
-                    val formattedActive = formatTime(activeSeconds + totalPauseSeconds)
+                    val activeMillis = now - startTimeMillis - totalPauseMillis
+                    val formattedActive = formatTime((activeMillis / 1000).toInt())
 
                     _state.update { it.copy(displayTime = formattedActive) }
 
-                    // Update Notification for Active State
+                    // NATIVE MATH: We tell Android exactly when the timer "theoretically" started
+                    val baseTimeForOS = com.oblutack.timenote.getCurrentTimeMillis() - activeMillis
+
                     com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
                         title = _state.value.sessionTitle.ifBlank { "Timenote Active" },
-                        time = formattedActive,
-                        isPaused = false // <--- ADDED THIS FOR YOU!
+                        timeText = formattedActive,
+                        baseMillis = baseTimeForOS,
+                        isPaused = false
                     )
                 }
             }
@@ -330,7 +386,10 @@ class TimerViewModel : ViewModel() {
     }
 
     private fun addEventToTimeline(title: String, type: EventType, color: Color? = null) {
-        val totalElapsedSeconds = activeSeconds + totalPauseSeconds
+        val now = com.oblutack.timenote.getCurrentTimeMillis()
+        // Calculate exact active time for the timestamp
+        val activeMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
+        val totalElapsedSeconds = (activeMillis / 1000).toInt() + (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
 
         val newEvent = TimelineEvent(
             id = platformSpecificId(),
@@ -350,6 +409,21 @@ class TimerViewModel : ViewModel() {
         }
     }
 
+    private fun backupCurrentState() {
+        val backup = ActiveSessionBackup(
+            sessionTitle = _state.value.sessionTitle,
+            startTimeMillis = startTimeMillis,
+            totalPauseMillis = totalPauseMillis,
+            lastPauseStartTimeMillis = if (_state.value.isPaused) currentPauseStartMillis else null,
+            isPaused = _state.value.isPaused,
+            timelineEvents = _state.value.timelineEvents,
+            selectedFolderId = _state.value.selectedFolder?.id,
+            selectedCategoryIds = _state.value.selectedCategories.map { it.id }
+        )
+        val json = Json.encodeToString(backup)
+        viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(json) }
+    }
+
     private fun formatTime(totalSeconds: Int): String {
         val hours = totalSeconds / 3600
         val minutes = (totalSeconds % 3600) / 60
@@ -366,33 +440,23 @@ sealed class TimerAction {
     data object Resume : TimerAction()
     data object End : TimerAction()
     data class UpdateSessionTitle(val text: String) : TimerAction()
-
-    // Dialog Actions
     data object OpenAddNoteDialog : TimerAction()
     data object CloseAddNoteDialog : TimerAction()
     data class UpdateDialogNoteText(val text: String) : TimerAction()
     data class UpdateDialogNoteColor(val color: Color) : TimerAction()
     data object SaveNote : TimerAction()
-
-    // Multi-select Category Actions
     data class ToggleCategory(val category: TimenoteFolder) : TimerAction()
     data object SkipCategoriesAndSave : TimerAction()
     data object ConfirmCategoriesAndSave : TimerAction()
-
     data object OpenCreateTagDialog : TimerAction()
     data object CloseCreateTagDialog : TimerAction()
     data class UpdateNewTagName(val name: String) : TimerAction()
+    data class UpdateNewTagDescription(val description: String) : TimerAction()
     data class UpdateNewTagColor(val color: Color) : TimerAction()
     data object SaveNewTag : TimerAction()
-
-    data class UpdateNewTagDescription(val description: String) : TimerAction()
-
     data object ToggleTagMenu : TimerAction()
-
     data object ToggleTagsRowVisibility : TimerAction()
-
     data class SelectFolder(val folder: com.oblutack.timenote.feature_history.domain.ProjectFolder?) : TimerAction()
-
     data object OpenManageTagsSheet : TimerAction()
     data object CloseManageTagsSheet : TimerAction()
     data class DeleteTag(val tagId: String) : TimerAction()
