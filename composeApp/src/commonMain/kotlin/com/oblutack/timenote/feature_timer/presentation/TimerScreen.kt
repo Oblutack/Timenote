@@ -13,6 +13,8 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +44,7 @@ import androidx.compose.foundation.verticalScroll
 import com.oblutack.timenote.feature_history.domain.mockFolders
 import com.oblutack.timenote.feature_timer.domain.EventType
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.drawBehind
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -326,14 +329,75 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        OutlinedButton(
-            onClick = { viewModel.onAction(TimerAction.OpenAddNoteDialog) },
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = TextSecondary
-            ),
-            border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("+ Add Note")
+            OutlinedButton(
+                onClick = { viewModel.onAction(TimerAction.OpenAddNoteDialog) },
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = TextSecondary
+                ),
+                border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+            ) {
+                Text("+ Add Note")
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            if (!state.isRecordingVoiceMemo) {
+                OutlinedButton(
+                    onClick = { viewModel.onAction(TimerAction.StartVoiceMemo) },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = TextSecondary
+                    ),
+                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Mic,
+                        contentDescription = "Voice Memo",
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("+ Voice Memo")
+                }
+            } else {
+                val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition()
+                val pulseAlpha by infiniteTransition.animateFloat(
+                    initialValue = 0.3f,
+                    targetValue = 1f,
+                    animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+                        animation = androidx.compose.animation.core.tween(800),
+                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                    ),
+                    label = "PulseAlpha"
+                )
+
+                Button(
+                    onClick = { viewModel.onAction(TimerAction.StopVoiceMemo) },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE53935).copy(alpha = 0.2f),
+                        contentColor = Color(0xFFE53935)
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFE53935))
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .alpha(pulseAlpha)
+                            .background(Color(0xFFE53935), androidx.compose.foundation.shape.CircleShape)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Recording...", fontWeight = FontWeight.Medium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Default.Stop,
+                        contentDescription = "Stop",
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

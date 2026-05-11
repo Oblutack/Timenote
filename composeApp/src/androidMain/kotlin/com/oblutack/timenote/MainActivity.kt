@@ -18,29 +18,38 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 
 class MainActivity : ComponentActivity() {
 
-    private val requestPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean -> }
+    // 1. UPDATE: Ask for BOTH Notifications AND Microphone
+    private val requestPermissionsLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        // Handle denied states here if needed in the future
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // 2. UPDATE: Launch the permission request array
+        val permissionsToRequest = mutableListOf(android.Manifest.permission.RECORD_AUDIO)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            permissionsToRequest.add(android.Manifest.permission.POST_NOTIFICATIONS)
         }
+        requestPermissionsLauncher.launch(permissionsToRequest.toTypedArray())
 
         val dbBuilder = Room.databaseBuilder(
             context = applicationContext,
             klass = AppDatabase::class.java,
             name = "timenotes.db"
-        ).addMigrations(com.oblutack.timenote.data.database.MIGRATION_1_2)
+        )
+            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_1_2)
             .addMigrations(com.oblutack.timenote.data.database.MIGRATION_2_3)
 
         val database = instantiateDatabase(dbBuilder)
 
-        // 2. Initialize with the Singleton!
         com.oblutack.timenote.data.repository.SettingsRepository.initialize(applicationContext.dataStore)
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager = AndroidTimerServiceManager(applicationContext)
+
+        // 3. NEW: Inject the Audio Recorder
+        com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder = AndroidAudioRecorder(applicationContext)
 
         setContent {
             App(database = database)

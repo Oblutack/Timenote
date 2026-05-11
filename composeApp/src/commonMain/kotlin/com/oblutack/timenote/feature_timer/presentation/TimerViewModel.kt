@@ -46,7 +46,11 @@ data class TimerState(
 
     val isManageTagsSheetOpen: Boolean = false,
     val tagBeingEditedId: String? = null,
-)
+
+    val isRecordingVoiceMemo: Boolean = false,
+    val voiceMemoDuration: String = "00:00",
+
+    )
 
 class TimerViewModel : ViewModel() {
 
@@ -229,7 +233,21 @@ class TimerViewModel : ViewModel() {
                     newTagColor = action.tag.color
                 ) }
             }
+            is TimerAction.StartVoiceMemo -> {
+                if (_state.value.isRunning && !_state.value.isPaused) { // <-- ADDED SAFETY CHECK
+                    _state.update { it.copy(isRecordingVoiceMemo = true, voiceMemoDuration = "00:00") }
+                    val fileName = "VoiceMemo_${platformSpecificId()}"
+                    com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.startRecording(fileName)
+                }
+            }
+            is TimerAction.StopVoiceMemo -> {
+                val savedPath = com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.stopRecording()
+                _state.update { it.copy(isRecordingVoiceMemo = false) }
 
+                if (savedPath != null && _state.value.isRunning) {
+                    addEventToTimeline("Voice Memo attached", EventType.NOTE, null, savedPath)
+                }
+            }
         }
     }
 
@@ -401,9 +419,8 @@ class TimerViewModel : ViewModel() {
         }
     }
 
-    private fun addEventToTimeline(title: String, type: EventType, color: Color? = null) {
+    private fun addEventToTimeline(title: String, type: EventType, color: Color? = null, audioPath: String? = null) {
         val now = com.oblutack.timenote.getCurrentTimeMillis()
-        // Calculate exact active time for the timestamp
         val activeMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
         val totalElapsedSeconds = (activeMillis / 1000).toInt() + (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
 
@@ -413,7 +430,8 @@ class TimerViewModel : ViewModel() {
             timestamp = formatTime(totalElapsedSeconds),
             type = type,
             isLastItem = false,
-            color = color
+            color = color,
+            audioPath = audioPath // <-- PASS THE PATH HERE
         )
 
         _state.update { currentState ->
@@ -423,6 +441,8 @@ class TimerViewModel : ViewModel() {
             }
             currentState.copy(timelineEvents = finalizedList)
         }
+
+        backupCurrentState()
     }
 
     private fun backupCurrentState() {
@@ -478,4 +498,6 @@ sealed class TimerAction {
     data object CloseManageTagsSheet : TimerAction()
     data class DeleteTag(val tagId: String) : TimerAction()
     data class EditTag(val tag: TimenoteFolder) : TimerAction()
+    data object StartVoiceMemo : TimerAction()
+    data object StopVoiceMemo : TimerAction()
 }
