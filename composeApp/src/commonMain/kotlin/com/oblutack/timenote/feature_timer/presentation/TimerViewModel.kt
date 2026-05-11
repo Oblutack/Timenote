@@ -37,6 +37,8 @@ data class TimerState(
     val isCreateTagDialogOpen: Boolean = false,
     val newTagName: String = "",
     val newTagColor: Color = Color(0xFF4FA8F9),
+    val newTagDescription: String = "",
+
     val isTagMenuExpanded: Boolean = false,
     val isTagsRowVisible: Boolean = false,
 
@@ -45,6 +47,7 @@ data class TimerState(
 
     val isManageTagsSheetOpen: Boolean = false,
     val tagBeingEditedId: String? = null,
+
 )
 
 class TimerViewModel : ViewModel() {
@@ -123,9 +126,10 @@ class TimerViewModel : ViewModel() {
             is TimerAction.SkipCategoriesAndSave -> executeSave(emptyList())
             is TimerAction.ConfirmCategoriesAndSave -> executeSave(_state.value.selectedCategories)
             is TimerAction.OpenCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = true) }
-            is TimerAction.CloseCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "") }
+            is TimerAction.CloseCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = false, newTagDescription = "") }
             is TimerAction.UpdateNewTagName -> _state.update { it.copy(newTagName = action.name) }
             is TimerAction.UpdateNewTagColor -> _state.update { it.copy(newTagColor = action.color) }
+            is TimerAction.UpdateNewTagDescription -> _state.update { it.copy(newTagDescription = action.description) } // <-- Handles desc update
             is TimerAction.SaveNewTag -> {
                 val name = _state.value.newTagName
                 if (name.isNotBlank()) {
@@ -133,12 +137,13 @@ class TimerViewModel : ViewModel() {
                     val newTag = TimenoteFolder(
                         id = tagIdToSave,
                         name = name,
+                        description = _state.value.newTagDescription,
                         sessionCount = 0,
                         color = _state.value.newTagColor
                     )
                     com.oblutack.timenote.data.repository.SessionRepository.saveTag(newTag)
                 }
-                _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "", tagBeingEditedId = null) }
+                _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "", newTagDescription = "", tagBeingEditedId = null) }
             }
             is TimerAction.ToggleTagMenu -> _state.update { it.copy(isTagMenuExpanded = !it.isTagMenuExpanded) }
             is TimerAction.ToggleTagsRowVisibility -> _state.update { it.copy(isTagsRowVisible = !it.isTagsRowVisible) }
@@ -153,12 +158,12 @@ class TimerViewModel : ViewModel() {
             is TimerAction.CloseManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = false) }
             is TimerAction.DeleteTag -> com.oblutack.timenote.data.repository.SessionRepository.deleteTag(action.tagId)
             is TimerAction.EditTag -> {
-                // Open the Create dialog, but pre-fill it with the tag's info
                 _state.update { it.copy(
                     isManageTagsSheetOpen = false,
                     isCreateTagDialogOpen = true,
                     tagBeingEditedId = action.tag.id,
                     newTagName = action.tag.name,
+                    newTagDescription = action.tag.description ?: "", // <-- PRE-FILLS IT
                     newTagColor = action.tag.color
                 ) }
             }
@@ -347,6 +352,8 @@ sealed class TimerAction {
     data class UpdateNewTagName(val name: String) : TimerAction()
     data class UpdateNewTagColor(val color: Color) : TimerAction()
     data object SaveNewTag : TimerAction()
+
+    data class UpdateNewTagDescription(val description: String) : TimerAction()
 
     data object ToggleTagMenu : TimerAction()
 

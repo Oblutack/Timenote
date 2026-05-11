@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 data class ProjectFolder(
     val id: String,
     val name: String,
+    val description: String? = null,
     @Serializable(with = ColorSerializer::class) val color: Color,
     val createdAt: Long,
     val isDeleted: Boolean = false
@@ -18,6 +19,7 @@ data class ProjectFolder(
 data class TimenoteFolder(
     val id: String,
     val name: String,
+    val description: String? = null,
     val sessionCount: Int,
     @Serializable(with = ColorSerializer::class) val color: Color,
 )
@@ -38,9 +40,9 @@ data class Timenote(
 )
 
 val mockFolders = listOf(
-    TimenoteFolder("1", "Work", 12, Color(0xFF4FA8F9)),
-    TimenoteFolder("2", "Study", 8, Color(0xFF4CAF50)),
-    TimenoteFolder("3", "Fitness", 5, Color(0xFFFF9800)),
-    TimenoteFolder("4", "Personal", 3, Color(0xFF9C27B0))
+    TimenoteFolder("1", "Work", null, 12, Color(0xFF4FA8F9)),    // <-- Added 'null,'
+    TimenoteFolder("2", "Study", null, 8, Color(0xFF4CAF50)),    // <-- Added 'null,'
+    TimenoteFolder("3", "Fitness", null, 5, Color(0xFFFF9800)),  // <-- Added 'null,'
+    TimenoteFolder("4", "Personal", null, 3, Color(0xFF9C27B0))  // <-- Added 'null,'
 )
 

@@ -44,12 +44,13 @@ class HistoryViewModel : ViewModel() {
         SessionRepository.deleteTimenote(id)
     }
 
-    fun saveFolder(id: String? = null, name: String, color: Color) {
+    fun saveFolder(id: String? = null, name: String, description: String? = null, color: Color) { // <-- NEW PARAM
         val currentTime = com.oblutack.timenote.getCurrentTimeMillis()
         val folderToSave = if (id == null) {
             ProjectFolder(
                 id = currentTime.toString(),
                 name = name,
+                description = description, // <-- PASSED IN
                 color = color,
                 createdAt = currentTime
             )
@@ -58,6 +59,7 @@ class HistoryViewModel : ViewModel() {
             ProjectFolder(
                 id = id,
                 name = name,
+                description = description, // <-- PASSED IN
                 color = color,
                 createdAt = existing?.createdAt ?: currentTime
             )

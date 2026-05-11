@@ -98,6 +98,15 @@ fun FolderDetailScreen(
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold
                 )
+                if (!folder.description.isNullOrBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = folder.description!!,
+                        color = TextSecondary,
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "${folderTimenotes.size} sessions • Total time: $formattedTime",

@@ -18,7 +18,7 @@ class MainActivity : ComponentActivity() {
             context = applicationContext,
             klass = AppDatabase::class.java,
             name = "timenotes.db"
-        )
+        ).addMigrations(com.oblutack.timenote.data.database.MIGRATION_1_2)
 
         // 2. Attach the universal SQLite driver using our common function
         val database = instantiateDatabase(dbBuilder)

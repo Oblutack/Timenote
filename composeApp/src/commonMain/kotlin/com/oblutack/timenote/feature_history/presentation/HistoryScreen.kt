@@ -140,6 +140,7 @@ fun HistoryScreen(
     var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
+    var newFolderDescription by remember { mutableStateOf("") }
     var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
     var folderOptionsId by remember { mutableStateOf<String?>(null) }
 
@@ -507,6 +508,7 @@ fun HistoryScreen(
                         .clip(RoundedCornerShape(16.dp))
                         .clickable {
                             newFolderName = ""
+                            newFolderDescription = ""
                             newFolderColor = Color(0xFF4FA8F9)
                             folderBeingEditedId = null
                             isCreateFolderDialogOpen = true
@@ -589,6 +591,24 @@ fun HistoryScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                OutlinedTextField(
+                    value = newFolderDescription,
+                    onValueChange = { newFolderDescription = it },
+                    placeholder = { Text("Description (Optional)", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = BackgroundDark,
+                        unfocusedContainerColor = BackgroundDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 @OptIn(ExperimentalLayoutApi::class)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -630,9 +650,10 @@ fun HistoryScreen(
                     Button(
                         onClick = {
                             if (newFolderName.isNotBlank()) {
-                                viewModel.saveFolder(folderBeingEditedId, newFolderName, newFolderColor)
+                                viewModel.saveFolder(id = folderBeingEditedId, name = newFolderName, description = newFolderDescription, color = newFolderColor)
                                 isCreateFolderDialogOpen = false
                                 newFolderName = ""
+                                newFolderDescription = ""
                                 newFolderColor = Color(0xFF4FA8F9)
                                 folderBeingEditedId = null
                             }
@@ -672,6 +693,7 @@ fun HistoryScreen(
                             .fillMaxWidth()
                             .clickable {
                                 newFolderName = selectedFolder.name
+                                newFolderDescription = selectedFolder.description ?: ""
                                 newFolderColor = selectedFolder.color
                                 folderBeingEditedId = selectedFolder.id
                                 isCreateFolderDialogOpen = true
@@ -797,9 +819,11 @@ fun FolderCard(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Folder",
+                text = folder.description?.takeIf { it.isNotBlank() } ?: "Folder",
                 color = TextSecondary,
-                fontSize = 12.sp
+                fontSize = 12.sp,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
         }
 

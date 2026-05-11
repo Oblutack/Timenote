@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 data class TagEntity(
     @PrimaryKey val id: String,
     val name: String,
+    val description: String?,
     val sessionCount: Int,
     val colorLong: Long // SQLite can't store Colors, so we store the raw Long value!
 )
@@ -19,7 +20,8 @@ fun TimenoteFolder.toEntity(): TagEntity {
         id = this.id,
         name = this.name,
         sessionCount = this.sessionCount,
-        colorLong = this.color.value.toLong()
+        colorLong = this.color.value.toLong(),
+        description = this.description
     )
 }
 
@@ -27,6 +29,7 @@ fun TagEntity.toDomain(): TimenoteFolder {
     return TimenoteFolder(
         id = this.id,
         name = this.name,
+        description = this.description, // <--- ADD THIS LINE!
         sessionCount = this.sessionCount,
         color = Color(this.colorLong.toULong())
     )

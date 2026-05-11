@@ -45,7 +45,8 @@ fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): Folde
         name = this.name,
         colorLong = this.color.value.toLong(),
         createdAt = this.createdAt,
-        isDeleted = this.isDeleted
+        isDeleted = this.isDeleted,
+        description = this.description,
     )
 }
 
@@ -53,6 +54,7 @@ fun FolderEntity.toDomain(): com.oblutack.timenote.feature_history.domain.Projec
     return com.oblutack.timenote.feature_history.domain.ProjectFolder(
         id = this.id,
         name = this.name,
+        description = this.description,
         color = androidx.compose.ui.graphics.Color(this.colorLong.toULong()),
         createdAt = this.createdAt
     )

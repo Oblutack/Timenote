@@ -632,6 +632,24 @@ fun TimerScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                OutlinedTextField(
+                    value = state.newTagDescription,
+                    onValueChange = { viewModel.onAction(TimerAction.UpdateNewTagDescription(it)) },
+                    placeholder = { Text("Description (Optional)", color = TextSecondary) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = BackgroundDark,
+                        unfocusedContainerColor = BackgroundDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
                 @OptIn(ExperimentalLayoutApi::class)
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -724,11 +742,22 @@ fun TimerScreen(
                                             .background(tag.color, androidx.compose.foundation.shape.CircleShape)
                                     )
                                     Spacer(modifier = Modifier.width(12.dp))
-                                    Text(
-                                        text = tag.name,
-                                        color = TextPrimary,
-                                        fontSize = 16.sp
-                                    )
+                                    Column {
+                                        Text(
+                                            text = tag.name,
+                                            color = TextPrimary,
+                                            fontSize = 16.sp
+                                        )
+                                        if (!tag.description.isNullOrBlank()) {
+                                            Text(
+                                                text = tag.description!!,
+                                                color = TextSecondary.copy(alpha = 0.7f),
+                                                fontSize = 12.sp,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
                                 }
                                 Row {
                                     IconButton(onClick = { viewModel.onAction(TimerAction.EditTag(tag)) }) {
