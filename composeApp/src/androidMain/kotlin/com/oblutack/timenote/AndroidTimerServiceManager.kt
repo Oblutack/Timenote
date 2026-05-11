@@ -5,7 +5,7 @@ import android.content.Intent
 import android.os.Build
 import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
 
-class AndroidTimerServiceManager(private val context: Context) : TimerServiceManager {
+    class AndroidTimerServiceManager(private val context: Context) : TimerServiceManager {
     override fun startService() {
         val intent = Intent(context, TimerForegroundService::class.java)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -26,10 +26,11 @@ class AndroidTimerServiceManager(private val context: Context) : TimerServiceMan
         }
     }
 
-    override fun updateNotification(title: String, time: String) {
+    override fun updateNotification(title: String, time: String, isPaused: Boolean) {
         val intent = Intent(context, TimerForegroundService::class.java).apply {
             putExtra("TITLE", title)
             putExtra("TIME", time)
+            putExtra("IS_PAUSED", isPaused) // <-- NEW
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(intent)

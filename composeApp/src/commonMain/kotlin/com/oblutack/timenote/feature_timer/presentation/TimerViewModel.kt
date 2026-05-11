@@ -92,6 +92,16 @@ class TimerViewModel : ViewModel() {
                 _state.update { it.copy(availableFolders = dbFolders) }
             }
         }
+
+        viewModelScope.launch {
+            com.oblutack.timenote.feature_timer.domain.ServiceLocator.serviceCommands.collect { command ->
+                when (command) {
+                    "PAUSE" -> onAction(TimerAction.Pause)
+                    "RESUME" -> onAction(TimerAction.Resume)
+                    "END" -> onAction(TimerAction.End)
+                }
+            }
+        }
     }
 
     fun onAction(action: TimerAction) {
@@ -299,7 +309,8 @@ class TimerViewModel : ViewModel() {
                     // Update Notification for Paused State
                     com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
                         title = "Paused",
-                        time = formattedPause
+                        time = formattedPause,
+                        isPaused = true // <--- ADDED THIS FOR YOU!
                     )
                 } else {
                     activeSeconds++
@@ -310,7 +321,8 @@ class TimerViewModel : ViewModel() {
                     // Update Notification for Active State
                     com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
                         title = _state.value.sessionTitle.ifBlank { "Timenote Active" },
-                        time = formattedActive
+                        time = formattedActive,
+                        isPaused = false // <--- ADDED THIS FOR YOU!
                     )
                 }
             }

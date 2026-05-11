@@ -1,13 +1,14 @@
 package com.oblutack.timenote.feature_timer.domain
 
-// 1. The Interface our ViewModel will use
+import kotlinx.coroutines.flow.MutableSharedFlow
+
 interface TimerServiceManager {
     fun startService()
     fun stopService()
-    fun updateNotification(title: String, time: String)
+    fun updateNotification(title: String, time: String, isPaused: Boolean)
 }
 
-// 2. A simple global locator so we don't have to rewrite your Navigation/ViewModel setup
 object ServiceLocator {
     var timerServiceManager: TimerServiceManager? = null
+    val serviceCommands = MutableSharedFlow<String>(extraBufferCapacity = 1)
 }
