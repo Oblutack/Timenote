@@ -13,6 +13,7 @@ fun Timenote.toEntity(): TimenoteEntity {
         folderId = this.folderId,
         title = this.title,
         description = this.description,
+        audioPath = this.audioPath,
         duration = this.duration,
         activeSeconds = this.activeSeconds, // <--- NEW
         pauseSeconds = this.pauseSeconds,   // <--- NEW
@@ -29,6 +30,7 @@ fun TimenoteEntity.toDomain(): Timenote {
         folderId = this.folderId,
         title = this.title,
         description = this.description,
+        audioPath = this.audioPath,
         duration = this.duration,
         activeSeconds = this.activeSeconds, // <--- NEW
         pauseSeconds = this.pauseSeconds,   // <--- NEW

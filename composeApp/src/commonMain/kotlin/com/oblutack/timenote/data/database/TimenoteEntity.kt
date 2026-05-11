@@ -13,6 +13,7 @@ data class TimenoteEntity(
     val folderId: String?,
     val title: String,
     val description: String,
+    val audioPath: String?,
     val duration: String,
     val activeSeconds: Int,  // <--- NEW
     val pauseSeconds: Int,   // <--- NEW

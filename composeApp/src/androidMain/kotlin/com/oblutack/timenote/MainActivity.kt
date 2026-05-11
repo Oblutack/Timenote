@@ -34,6 +34,7 @@ class MainActivity : ComponentActivity() {
             klass = AppDatabase::class.java,
             name = "timenotes.db"
         ).addMigrations(com.oblutack.timenote.data.database.MIGRATION_1_2)
+            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_2_3)
 
         val database = instantiateDatabase(dbBuilder)
 

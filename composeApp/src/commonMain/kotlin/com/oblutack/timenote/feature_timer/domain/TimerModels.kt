@@ -16,7 +16,8 @@ data class TimelineEvent(
     val isLastItem: Boolean = false,
 
     // We tell it to use our custom translator for the Color!
-    @Serializable(with = ColorSerializer::class) val color: Color? = null
+    @Serializable(with = ColorSerializer::class) val color: Color? = null,
+    val audioPath: String? = null
 )
 
 @Serializable
@@ -30,3 +31,4 @@ data class ActiveSessionBackup(
     val selectedFolderId: String?,
     val selectedCategoryIds: List<String>
 )
+

@@ -30,6 +30,7 @@ data class Timenote(
     val folderId: String? = null,
     val title: String,
     val description: String,
+    val audioPath: String? = null,
     val duration: String,
     val activeSeconds: Int,  // <--- NEW
     val pauseSeconds: Int,   // <--- NEW
