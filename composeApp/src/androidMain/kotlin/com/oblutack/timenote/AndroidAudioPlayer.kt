@@ -7,44 +7,82 @@ class AndroidAudioPlayer : AudioPlayer {
 
     private var player: MediaPlayer? = null
 
-    override fun play(filePath: String) {
-        // If it's the same file and just paused, resume it
-        if (player != null && !player!!.isPlaying) {
-            player?.start()
-            return
+    override fun play(filePath: String, onComplete: () -> Unit) {
+        // 1. If we are paused, try to safely resume
+        if (player != null) {
+            try {
+                if (!player!!.isPlaying) {
+                    player?.start()
+                    return
+                }
+            } catch (e: Exception) {
+                // If it fails, ignore and recreate the player below
+            }
         }
 
-        // Otherwise, load the new file
-        stop()
-        player = MediaPlayer().apply {
-            try {
+        // 2. Safely destroy any existing hardware locks
+        safeRelease()
+
+        // 3. Create a fresh, crash-proof player
+        try {
+            player = MediaPlayer().apply {
                 setDataSource(filePath)
                 prepare()
                 start()
 
-                // Automatically release when finished
                 setOnCompletionListener {
-                    stop()
+                    safeRelease() // Destroys the player cleanly
+                    onComplete()  // Resets the UI
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+
+                // If the hardware glitches, this prevents a phone reboot!
+                setOnErrorListener { _, _, _ ->
+                    safeRelease()
+                    onComplete()
+                    true
+                }
             }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            safeRelease()
+            onComplete()
         }
     }
 
     override fun pause() {
-        if (player?.isPlaying == true) {
-            player?.pause()
+        try {
+            if (player?.isPlaying == true) {
+                player?.pause()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
     override fun stop() {
-        player?.stop()
-        player?.release()
+        safeRelease()
+    }
+
+    // THE MAGIC FIX: Safely navigates the Android C++ State Machine
+    private fun safeRelease() {
+        try {
+            player?.stop()
+        } catch (e: Exception) {
+            // Ignore: It was already stopped or completed
+        }
+        try {
+            player?.release()
+        } catch (e: Exception) {
+            // Ignore
+        }
         player = null
     }
 
     override fun isPlaying(): Boolean {
-        return player?.isPlaying ?: false
+        return try {
+            player?.isPlaying ?: false
+        } catch (e: Exception) {
+            false
+        }
     }
 }

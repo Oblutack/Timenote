@@ -80,12 +80,12 @@ class HistoryViewModel : ViewModel() {
         val player = com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer
 
         if (_playingAudioPath.value == filePath && player?.isPlaying() == true) {
-            // It is currently playing this file, so pause it
             player.pause()
             _playingAudioPath.value = null
         } else {
-            // Play the new file
-            player?.play(filePath)
+            player?.play(filePath) {
+                _playingAudioPath.value = null // Resets the UI back to "Play" when finished!
+            }
             _playingAudioPath.value = filePath
         }
     }

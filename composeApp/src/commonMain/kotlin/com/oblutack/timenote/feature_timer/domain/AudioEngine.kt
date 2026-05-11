@@ -6,7 +6,7 @@ interface AudioRecorder {
 }
 
 interface AudioPlayer {
-    fun play(filePath: String)
+    fun play(filePath: String, onComplete: () -> Unit)
     fun pause()
     fun stop()
     fun isPlaying(): Boolean

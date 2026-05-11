@@ -27,6 +27,12 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+
+            // --- NEW: PREMIUM AUDIO SETTINGS ---
+            setAudioEncodingBitRate(128000) // 128 kbps (Standard high quality)
+            setAudioSamplingRate(44100)     // 44.1 kHz (CD quality)
+            // -----------------------------------
+
             setOutputFile(FileOutputStream(file).fd)
 
             try {
