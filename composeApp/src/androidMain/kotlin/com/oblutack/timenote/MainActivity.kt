@@ -1,29 +1,30 @@
 package com.oblutack.timenote
 
+import android.content.Context
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.oblutack.timenote.data.database.AppDatabase
 import com.oblutack.timenote.data.database.instantiateDatabase
-import androidx.datastore.preferences.core.PreferenceDataStoreFactory
-import androidx.datastore.preferences.preferencesDataStoreFile
+
+// 1. THIS IS THE MAGIC FIX: A true Singleton DataStore
+private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
 
 class MainActivity : ComponentActivity() {
 
-    // 1. NEW: The Permission Requester for Android 13+ Notifications
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
-    ) { isGranted: Boolean ->
-        // We can handle denied states later if needed
-    }
+    ) { isGranted: Boolean -> }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 2. NEW: Ask for Notification Permission as soon as the app opens
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -36,12 +37,8 @@ class MainActivity : ComponentActivity() {
 
         val database = instantiateDatabase(dbBuilder)
 
-        val dataStore = PreferenceDataStoreFactory.create(
-            produceFile = { applicationContext.preferencesDataStoreFile("settings.preferences_pb") }
-        )
-
-        com.oblutack.timenote.data.repository.SettingsRepository.initialize(dataStore)
-
+        // 2. Initialize with the Singleton!
+        com.oblutack.timenote.data.repository.SettingsRepository.initialize(applicationContext.dataStore)
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager = AndroidTimerServiceManager(applicationContext)
 
         setContent {

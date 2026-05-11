@@ -63,6 +63,13 @@ class TimerViewModel : ViewModel() {
     // Prevents restoring the backup multiple times in a row
     private var hasRestoredBackup = false
 
+    // NATIVE JSON PARSER: Ignores unknown data and prevents crashes!
+    private val jsonParser = Json {
+        ignoreUnknownKeys = true
+        isLenient = true
+        encodeDefaults = true
+    }
+
     init {
         // 1. Listen for past Timenotes (To show "Last Session")
         viewModelScope.launch {
@@ -109,7 +116,7 @@ class TimerViewModel : ViewModel() {
                 if (jsonString != null && !hasRestoredBackup) {
                     hasRestoredBackup = true
                     try {
-                        val backup = Json.decodeFromString<ActiveSessionBackup>(jsonString)
+                        val backup = jsonParser.decodeFromString<ActiveSessionBackup>(jsonString) // <-- USES NEW PARSER
 
                         startTimeMillis = backup.startTimeMillis
                         totalPauseMillis = backup.totalPauseMillis
@@ -122,11 +129,11 @@ class TimerViewModel : ViewModel() {
                             timelineEvents = backup.timelineEvents
                         )}
 
-                        // Reattach Android Service
                         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
                         startTicking()
                     } catch (e: Exception) {
-                        // If JSON is corrupted, clear it
+                        // If anything goes wrong, safely clear the corrupted data without crashing!
+                        e.printStackTrace()
                         com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null)
                     }
                 }
@@ -420,7 +427,7 @@ class TimerViewModel : ViewModel() {
             selectedFolderId = _state.value.selectedFolder?.id,
             selectedCategoryIds = _state.value.selectedCategories.map { it.id }
         )
-        val json = Json.encodeToString(backup)
+        val json = jsonParser.encodeToString(backup) // <-- USES NEW PARSER
         viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(json) }
     }
 
