@@ -31,6 +31,7 @@ data class Timenote(
     val title: String,
     val description: String,
     val audioPath: String? = null,
+    val voiceNotes: List<String> = emptyList(),
     val duration: String,
     val activeSeconds: Int,  // <--- NEW
     val pauseSeconds: Int,   // <--- NEW

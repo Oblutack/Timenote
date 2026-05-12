@@ -14,6 +14,7 @@ fun Timenote.toEntity(): TimenoteEntity {
         title = this.title,
         description = this.description,
         audioPath = this.audioPath,
+        voiceNotesJson = Json.encodeToString(this.voiceNotes),
         duration = this.duration,
         activeSeconds = this.activeSeconds, // <--- NEW
         pauseSeconds = this.pauseSeconds,   // <--- NEW
@@ -31,6 +32,7 @@ fun TimenoteEntity.toDomain(): Timenote {
         title = this.title,
         description = this.description,
         audioPath = this.audioPath,
+        voiceNotes = Json.decodeFromString<List<String>>(this.voiceNotesJson),
         duration = this.duration,
         activeSeconds = this.activeSeconds, // <--- NEW
         pauseSeconds = this.pauseSeconds,   // <--- NEW

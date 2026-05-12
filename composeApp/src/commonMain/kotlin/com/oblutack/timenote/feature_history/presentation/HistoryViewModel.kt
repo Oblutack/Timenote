@@ -111,9 +111,28 @@ class HistoryViewModel : ViewModel() {
         _recordingTimenoteId.value = null
 
         if (savedPath != null) {
-            // THE FIX: Cleaned up the scope call!
             viewModelScope.launch {
-                com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteAudioPath(timenoteId, savedPath)
+                // Fetch the existing note
+                val existingNote = com.oblutack.timenote.data.repository.SessionRepository.getTimenoteById(timenoteId)
+                if (existingNote != null) {
+                    // Append the new voice note to the list
+                    val updatedList = existingNote.voiceNotes + savedPath
+                    val updatedNote = existingNote.copy(voiceNotes = updatedList)
+                    // Overwrite the DB with the updated note
+                    com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(updatedNote)
+                }
+            }
+        }
+    }
+
+    fun deleteVoiceNote(timenoteId: String, pathToDelete: String) {
+        viewModelScope.launch {
+            val existingNote = com.oblutack.timenote.data.repository.SessionRepository.getTimenoteById(timenoteId)
+            if (existingNote != null) {
+                // Remove the target path from the list
+                val updatedList = existingNote.voiceNotes - pathToDelete
+                val updatedNote = existingNote.copy(voiceNotes = updatedList)
+                com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(updatedNote)
             }
         }
     }

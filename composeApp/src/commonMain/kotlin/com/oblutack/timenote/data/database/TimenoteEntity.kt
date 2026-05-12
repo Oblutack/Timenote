@@ -14,6 +14,7 @@ data class TimenoteEntity(
     val title: String,
     val description: String,
     val audioPath: String?,
+    val voiceNotesJson: String,
     val duration: String,
     val activeSeconds: Int,  // <--- NEW
     val pauseSeconds: Int,   // <--- NEW

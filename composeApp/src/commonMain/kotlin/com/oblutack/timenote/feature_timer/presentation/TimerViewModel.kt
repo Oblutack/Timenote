@@ -309,14 +309,16 @@ class TimerViewModel : ViewModel() {
         timerJob?.cancel()
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.stopService()
 
-        viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null) }
+        // 1. SET TO FALSE IMMEDIATELY so backups are blocked!
+        _state.update { it.copy(isRunning = false, isPaused = false) }
 
+        // 2. Add the timeline event (Now it won't back up)
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
         addEventToTimeline("Session Ended: $title", EventType.END)
 
-        _state.update { it.copy(isRunning = false, isPaused = false) }
+        // 3. Nuke the backup permanently
+        viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null) }
 
-        // THE FIX: If forceSave is true, skip the popup!
         if (forceSave || _state.value.selectedCategories.isNotEmpty()) {
             executeSave(_state.value.selectedCategories)
         } else {
@@ -446,6 +448,9 @@ class TimerViewModel : ViewModel() {
     }
 
     private fun backupCurrentState() {
+
+        if (!_state.value.isRunning && !_state.value.isPaused) return
+
         val backup = ActiveSessionBackup(
             sessionTitle = _state.value.sessionTitle,
             startTimeMillis = startTimeMillis,

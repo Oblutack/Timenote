@@ -517,8 +517,12 @@ fun TimerScreen(
     }
 
     if (state.isCategoryPopupOpen) {
+
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
         ModalBottomSheet(
             onDismissRequest = { viewModel.onAction(TimerAction.SkipCategoriesAndSave) },
+            sheetState = sheetState,
             containerColor = SurfaceDark
         ) {
             Column(

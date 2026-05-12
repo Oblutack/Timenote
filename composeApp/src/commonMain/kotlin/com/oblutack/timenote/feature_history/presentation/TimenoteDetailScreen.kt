@@ -70,7 +70,8 @@ fun TimenoteDetailScreen(
     onBackClick: () -> Unit,
     viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() }
 ) {
-    val timenote = SessionRepository.getTimenoteById(timenoteId)
+    val allTimenotes by SessionRepository.timenotes.collectAsState()
+    val timenote = allTimenotes.find { it.id == timenoteId }
     val playingAudioPath by viewModel.playingAudioPath.collectAsState()
     val recordingTimenoteId by viewModel.recordingTimenoteId.collectAsState()
     val scope = rememberCoroutineScope()
@@ -310,77 +311,67 @@ fun TimenoteDetailScreen(
 
         // --- VOICE NOTE SECTION ---
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth()
         ) {
-            if (timenote.audioPath != null) {
-                val isPlaying = playingAudioPath == timenote.audioPath
+            timenote.voiceNotes.forEachIndexed { index, path ->
                 Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(SurfaceDark)
-                        .border(1.dp, DefaultAccentColor, RoundedCornerShape(50))
-                        .clickable { viewModel.playAudio(timenote.audioPath!!) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play Voice Note",
-                        tint = DefaultAccentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isPlaying) "Pause" else "Play Voice Note",
-                        color = DefaultAccentColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                IconButton(
-                    onClick = { 
-                        scope.launch {
-                            SessionRepository.updateTimenoteAudioPath(timenote.id, null) 
-                        }
-                    },
-                    modifier = Modifier.size(32.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete Voice Note",
-                        tint = Color(0xFFE53935)
-                    )
-                }
-            } else if (recordingTimenoteId == timenote.id) {
-                OutlinedButton(
-                    onClick = { viewModel.stopRecordingForTimenote() },
-                    modifier = Modifier.height(36.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935)),
-                    border = BorderStroke(1.dp, Color(0xFFE53935))
-                ) {
+                    val isPlaying = playingAudioPath == path
                     Row(
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.background(Color(0xFFE53935).copy(alpha = 0.2f), shape = RoundedCornerShape(50)).padding(horizontal = 8.dp, vertical = 4.dp)
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(SurfaceDark)
+                            .border(1.dp, DefaultAccentColor, RoundedCornerShape(50))
+                            .clickable { viewModel.playAudio(path) }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Stop,
-                            contentDescription = "Stop Recording",
-                            modifier = Modifier.size(16.dp),
-                            tint = Color(0xFFE53935)
+                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                            contentDescription = if (isPlaying) "Pause" else "Play Voice Note",
+                            tint = DefaultAccentColor,
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Recording...",
-                            color = Color(0xFFE53935),
-                            fontSize = 14.sp
+                            text = if (isPlaying) "Pause" else "Voice Note ${index + 1}",
+                            color = DefaultAccentColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
                         )
                     }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    IconButton(
+                        onClick = { viewModel.deleteVoiceNote(timenote.id, path) },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete Voice Note",
+                            tint = Color(0xFFE53935)
+                        )
+                    }
+                }
+            }
+
+            if (recordingTimenoteId == timenote.id) {
+                Button(
+                    onClick = { viewModel.stopRecordingForTimenote() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFE53935).copy(alpha = 0.2f),
+                        contentColor = Color(0xFFE53935)
+                    ),
+                    border = BorderStroke(1.dp, Color(0xFFE53935)),
+                    shape = RoundedCornerShape(50)
+                ) {
+                    Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Recording...")
                 }
             } else {
                 OutlinedButton(

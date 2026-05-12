@@ -66,7 +66,4 @@ interface TimenoteDao {
     // 4. Hard Delete
     @Query("DELETE FROM project_folders WHERE id = :id")
     suspend fun hardDeleteFolder(id: String)
-
-    @Query("UPDATE timenotes SET audioPath = :audioPath WHERE id = :id")
-    suspend fun updateTimenoteAudioPath(id: String, audioPath: String?)
 }
