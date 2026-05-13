@@ -70,6 +70,8 @@ import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Search
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -104,6 +106,9 @@ fun HistoryScreen(
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var currentMonth by remember { mutableStateOf(today) }
 
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    var isSearchActive by remember { mutableStateOf(false) }
+
     val sessionsByDate = remember(recentSessions) {
         recentSessions.groupBy {
             Instant.fromEpochMilliseconds(if (it.createdAt > 0L) it.createdAt else com.oblutack.timenote.getCurrentTimeMillis())
@@ -130,13 +135,23 @@ fun HistoryScreen(
             session.tags.any { tag -> selectedFilterTags.contains(tag.id) }
         }
     }
-    val finalDisplaySessions = remember(tagFiltered, sortOption) {
+
+    val searchFiltered = remember(tagFiltered, searchQuery) {
+        if (searchQuery.isBlank()) tagFiltered else tagFiltered.filter { session ->
+            session.title.contains(searchQuery, ignoreCase = true) ||
+            session.description.contains(searchQuery, ignoreCase = true) ||
+            session.tags.any { it.name.contains(searchQuery, ignoreCase = true) } ||
+            session.timelineEvents.any { it.title.contains(searchQuery, ignoreCase = true) }
+        }
+    }
+
+    val finalDisplaySessions = remember(searchFiltered, sortOption) {
         when (sortOption) {
             // THE FIX: Explicitly cast to Long to ensure perfect mathematical sorting
-            SortOption.NEWEST -> tagFiltered.sortedByDescending { it.createdAt.toLong() }
-            SortOption.OLDEST -> tagFiltered.sortedBy { it.createdAt.toLong() }
-            SortOption.LONGEST -> tagFiltered.sortedByDescending { it.activeSeconds }
-            SortOption.SHORTEST -> tagFiltered.sortedBy { it.activeSeconds }
+            SortOption.NEWEST -> searchFiltered.sortedByDescending { it.createdAt.toLong() }
+            SortOption.OLDEST -> searchFiltered.sortedBy { it.createdAt.toLong() }
+            SortOption.LONGEST -> searchFiltered.sortedByDescending { it.activeSeconds }
+            SortOption.SHORTEST -> searchFiltered.sortedBy { it.activeSeconds }
         }
     }
 
@@ -158,97 +173,139 @@ fun HistoryScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Custom Segmented Control (Tabs) and Trash Button
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        androidx.compose.animation.AnimatedContent(
+            targetState = isSearchActive,
+            label = "SearchBarAnimation"
+        ) { targetIsSearchActive ->
+
+        if (targetIsSearchActive) {
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { viewModel.updateSearchQuery(it) },
+                placeholder = { Text("Search sessions, notes, tags...", color = TextSecondary) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(50),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = SurfaceDark,
+                    unfocusedContainerColor = SurfaceDark,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                ),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        isSearchActive = false
+                        viewModel.updateSearchQuery("")
+                    }) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Close, contentDescription = "Close Search", tint = TextSecondary)
+                    }
+                },
+                singleLine = true
+            )
+        } else {
+            // Custom Segmented Control (Tabs) and Trash Button
             Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(50))
-                    .background(SurfaceDark)
-                    .padding(4.dp)
-            ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(50))
-                        .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
-                        .clickable { onTabSelected(0) },
-
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Sessions",
-                        color = if (selectedTab == 0) TextPrimary else TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(50))
-                        .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
-                        .clickable { onTabSelected(1) },
-
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Folders",
-                        color = if (selectedTab == 1) TextPrimary else TextSecondary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            // Unified Action Pill
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(50))
-                    .background(SurfaceDark)
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                    .fillMaxWidth()
+                    .height(48.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Graph
-                IconButton(
-                    onClick = onGraphClick,
-                    modifier = Modifier.size(36.dp)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(RoundedCornerShape(50))
+                        .background(SurfaceDark)
+                        .padding(4.dp)
                 ) {
-                    Icon(Icons.Default.Share, contentDescription = "Graph View", tint = DefaultAccentColor, modifier = Modifier.size(18.dp))
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(50))
+                            .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clickable { onTabSelected(0) },
+
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Sessions",
+                            color = if (selectedTab == 0) TextPrimary else TextSecondary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(50))
+                            .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clickable { onTabSelected(1) },
+
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Folders",
+                            color = if (selectedTab == 1) TextPrimary else TextSecondary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 14.sp
+                        )
+                    }
                 }
 
-                Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
+                Spacer(modifier = Modifier.width(16.dp))
 
-                // Settings
-                IconButton(
-                    onClick = onSettingsClick,
-                    modifier = Modifier.size(36.dp)
+                // Unified Action Pill
+                Row(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .background(SurfaceDark)
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                }
+                    // Search
+                    IconButton(
+                        onClick = { isSearchActive = true },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "Search", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
 
-                Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
+                    Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
 
-                // Trash
-                IconButton(
-                    onClick = onTrashClick,
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Default.Delete, contentDescription = "Recently Deleted", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    // Graph
+                    IconButton(
+                        onClick = onGraphClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.Share, contentDescription = "Graph View", tint = DefaultAccentColor, modifier = Modifier.size(18.dp))
+                    }
+
+                    Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
+
+                    // Settings
+                    IconButton(
+                        onClick = onSettingsClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
+
+                    Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
+
+                    // Trash
+                    IconButton(
+                        onClick = onTrashClick,
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Icon(Icons.Default.Delete, contentDescription = "Recently Deleted", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
         }
-
+        }
         Spacer(modifier = Modifier.height(24.dp))
 
         if (selectedTab == 0) {

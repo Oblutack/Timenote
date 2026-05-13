@@ -41,6 +41,13 @@ class HistoryViewModel : ViewModel() {
     fun setSortOption(option: SortOption) {
         _sortOption.value = option
     }
+
+    private val _searchQuery = MutableStateFlow("")
+    val searchQuery = _searchQuery.asStateFlow()
+
+    fun updateSearchQuery(query: String) {
+        _searchQuery.value = query
+    }
     // NEW: Trigger the deletion!
     fun deleteTimenote(id: String) {
         SessionRepository.deleteTimenote(id)
