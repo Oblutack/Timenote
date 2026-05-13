@@ -454,7 +454,7 @@ fun TimerScreen(
             ) {
                 itemsIndexed(
                     items = state.timelineEvents,
-                    key = { _, event -> event.id } // CRUCIAL: Tells Compose this is a unique item!
+                    key = { _, event -> "${event.id}_${event.hashCode()}" } // CRUCIAL: Tells Compose this is a unique item!
                 ) { index, event ->
                     TimelineItem(
                         event = event,

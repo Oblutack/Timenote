@@ -166,7 +166,7 @@ fun FolderDetailScreen(
                     contentPadding = PaddingValues(bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(folderTimenotes, key = { it.id }) { session ->
+                    items(folderTimenotes, key = { "${it.id}_${it.hashCode()}" }) { session ->
                         SessionCard(
                             session = session,
                             onClick = { onTimenoteClick(session.id) }
@@ -216,7 +216,7 @@ fun FolderDetailScreen(
                         modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp) // <--- Spacing between items
                     ) {
-                        items(unassignedTimenotes, key = { it.id }) { session ->
+                        items(unassignedTimenotes, key = { "${it.id}_${it.hashCode()}" }) { session ->
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()

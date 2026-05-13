@@ -288,7 +288,13 @@ class TimerViewModel : ViewModel() {
                     selectedCategories = it.selectedCategories,
                     availableTags = it.availableTags,
                     availableFolders = it.availableFolders,
-                    selectedFolder = it.selectedFolder
+                    selectedFolder = it.selectedFolder,
+                    // --- THE FIX: DON'T FORGET THE PARENT! ---
+                    parentTimenoteId = it.parentTimenoteId,
+                    parentWaypointId = it.parentWaypointId,
+                    parentSessionTitle = it.parentSessionTitle,
+                    parentWaypointTitle = it.parentWaypointTitle
+                    // -----------------------------------------
                 )
             }
         }
@@ -511,7 +517,14 @@ class TimerViewModel : ViewModel() {
         return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
     }
 
-    private fun platformSpecificId(): String = com.oblutack.timenote.getCurrentTimeMillis().toString()
+    companion object {
+        private var idCounter = 0
+    }
+
+    private fun platformSpecificId(): String {
+        idCounter++
+        return "${com.oblutack.timenote.getCurrentTimeMillis()}_$idCounter"
+    }
 }
 
 sealed class TimerAction {

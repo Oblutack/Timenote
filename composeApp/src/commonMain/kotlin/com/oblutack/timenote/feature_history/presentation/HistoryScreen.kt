@@ -210,45 +210,41 @@ fun HistoryScreen(
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // --- NEW: THE SETTINGS GEAR ---
-            IconButton(
-                onClick = onSettingsClick,
+            // Unified Action Pill
+            Row(
                 modifier = Modifier
-                    .clip(CircleShape)
+                    .clip(RoundedCornerShape(50))
                     .background(SurfaceDark)
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Settings,
-                    contentDescription = "Settings",
-                    tint = TextSecondary
-                )
-            }
+                // Graph
+                IconButton(
+                    onClick = onGraphClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = "Graph View", tint = DefaultAccentColor, modifier = Modifier.size(18.dp))
+                }
 
-            // --- NEW: THE GRAPH BUTTON ---
-            IconButton(
-                onClick = onGraphClick,
-                modifier = Modifier.clip(androidx.compose.foundation.shape.CircleShape).background(SurfaceDark)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Share,
-                    contentDescription = "Graph View",
-                    tint = DefaultAccentColor
-                )
-            }
+                Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
 
-            Spacer(modifier = Modifier.width(8.dp))
+                // Settings
+                IconButton(
+                    onClick = onSettingsClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                }
 
-            IconButton(
-                onClick = onTrashClick,
-                modifier = Modifier
-                    .clip(CircleShape)
-                    .background(SurfaceDark)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Recently Deleted",
-                    tint = TextSecondary
-                )
+                Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
+
+                // Trash
+                IconButton(
+                    onClick = onTrashClick,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Recently Deleted", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                }
             }
         }
 
@@ -469,7 +465,7 @@ fun HistoryScreen(
                         }
                     }
 
-                    items(finalDisplaySessions, key = { it.id }) { session ->
+                    items(finalDisplaySessions, key = { "${it.id}_${it.hashCode()}" }) { session ->
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value == SwipeToDismissBoxValue.EndToStart) {
@@ -778,7 +774,7 @@ fun HistoryScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                    items(allTags, key = { it.id }) { tag ->
+                    items(allTags, key = { "${it.id}_${it.hashCode()}" }) { tag ->
                         val isSelected = selectedFilterTags.contains(tag.id)
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleFilterTag(tag.id) }.padding(horizontal = 24.dp, vertical = 12.dp),
