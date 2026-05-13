@@ -118,8 +118,25 @@ fun App(database: AppDatabase? = null) {
                 startDestination = "timer",
                 modifier = Modifier.padding(innerPadding).fillMaxSize().background(BackgroundDark)
             ) {
-                composable("timer") {
-                    TimerScreen()
+                composable(
+                    route = "timer?parentId={parentId}&waypointId={waypointId}",
+                    arguments = listOf(
+                        androidx.navigation.navArgument("parentId") { nullable = true; defaultValue = null },
+                        androidx.navigation.navArgument("waypointId") { nullable = true; defaultValue = null }
+                    )
+                ) { backStackEntry ->
+                    val parentId = backStackEntry.arguments?.getString("parentId")
+                    val waypointId = backStackEntry.arguments?.getString("waypointId")
+
+                    val timerViewModel: com.oblutack.timenote.feature_timer.presentation.TimerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+
+                    androidx.compose.runtime.LaunchedEffect(parentId, waypointId) {
+                        if (parentId != null && waypointId != null) {
+                            timerViewModel.onAction(com.oblutack.timenote.feature_timer.presentation.TimerAction.SetParentLinks(parentId, waypointId))
+                        }
+                    }
+
+                    TimerScreen(viewModel = timerViewModel)
                 }
                 composable("history") {
                     HistoryScreen(

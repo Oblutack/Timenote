@@ -47,6 +47,9 @@ data class TimerState(
     val isManageTagsSheetOpen: Boolean = false,
     val tagBeingEditedId: String? = null,
 
+    val parentTimenoteId: String? = null,
+
+    val parentWaypointId: String? = null,
     val isRecordingVoiceMemo: Boolean = false,
     val voiceMemoDuration: String = "00:00",
 
@@ -130,7 +133,9 @@ class TimerViewModel : ViewModel() {
                             isRunning = true,
                             isPaused = backup.isPaused,
                             sessionTitle = backup.sessionTitle,
-                            timelineEvents = backup.timelineEvents
+                            timelineEvents = backup.timelineEvents,
+                            parentTimenoteId = backup.parentTimenoteId,
+                            parentWaypointId = backup.parentWaypointId
                         )}
 
                         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
@@ -248,6 +253,9 @@ class TimerViewModel : ViewModel() {
                     addEventToTimeline("Voice Memo attached", EventType.NOTE, null, savedPath)
                 }
             }
+            is TimerAction.SetParentLinks -> {
+                _state.update { it.copy(parentTimenoteId = action.parentId, parentWaypointId = action.waypointId) }
+            }
         }
     }
 
@@ -347,7 +355,9 @@ class TimerViewModel : ViewModel() {
             pauseSeconds = finalPauseSeconds,
             createdAt = timestampId.toLongOrNull() ?: 0L,
             tags = categories,
-            timelineEvents = _state.value.timelineEvents
+            timelineEvents = _state.value.timelineEvents,
+            parentTimenoteId = _state.value.parentTimenoteId, // <-- NEW
+            parentWaypointId = _state.value.parentWaypointId
         )
 
         com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(newTimenote)
@@ -356,7 +366,9 @@ class TimerViewModel : ViewModel() {
             isCategoryPopupOpen = false,
             selectedCategories = categories,
             lastSessionTitle = title,
-            sessionTitle = ""
+            sessionTitle = "",
+            parentTimenoteId = null, // <-- CLEAR AFTER SAVE
+            parentWaypointId = null
         ) }
     }
 
@@ -459,7 +471,9 @@ class TimerViewModel : ViewModel() {
             isPaused = _state.value.isPaused,
             timelineEvents = _state.value.timelineEvents,
             selectedFolderId = _state.value.selectedFolder?.id,
-            selectedCategoryIds = _state.value.selectedCategories.map { it.id }
+            selectedCategoryIds = _state.value.selectedCategories.map { it.id },
+            parentTimenoteId = _state.value.parentTimenoteId,
+            parentWaypointId = _state.value.parentWaypointId
         )
         val json = jsonParser.encodeToString(backup) // <-- USES NEW PARSER
         viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(json) }
@@ -503,6 +517,7 @@ sealed class TimerAction {
     data object CloseManageTagsSheet : TimerAction()
     data class DeleteTag(val tagId: String) : TimerAction()
     data class EditTag(val tag: TimenoteFolder) : TimerAction()
+    data class SetParentLinks(val parentId: String?, val waypointId: String?) : TimerAction()
     data object StartVoiceMemo : TimerAction()
     data object StopVoiceMemo : TimerAction()
 }

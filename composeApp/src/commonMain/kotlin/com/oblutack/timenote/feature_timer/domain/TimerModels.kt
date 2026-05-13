@@ -29,6 +29,8 @@ data class ActiveSessionBackup(
     val isPaused: Boolean,
     val timelineEvents: List<TimelineEvent>,
     val selectedFolderId: String?,
-    val selectedCategoryIds: List<String>
+    val selectedCategoryIds: List<String>,
+    val parentTimenoteId: String? = null,
+    val parentWaypointId: String? = null
 )
 
