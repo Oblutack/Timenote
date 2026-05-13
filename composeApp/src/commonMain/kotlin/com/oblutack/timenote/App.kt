@@ -160,14 +160,15 @@ fun App(database: AppDatabase? = null) {
                     if (id != null) {
                         com.oblutack.timenote.feature_history.presentation.TimenoteDetailScreen(
                             timenoteId = id,
-                            onBackClick = { navController.popBackStack() }, // Pops the stack natively!
-                            // --- NEW: Handle the Branch Click ---
+                            onBackClick = { navController.popBackStack() },
+                            // --- NEW: Allow jumping to child timenotes ---
+                            onTimenoteClick = { childId -> navController.navigate("details/$childId") },
+                            // ---------------------------------------------
                             onBranchClick = { parentId, waypointId ->
                                 navController.navigate("timer?parentId=$parentId&waypointId=$waypointId") {
                                     popUpTo("timer") { inclusive = false }
                                 }
                             }
-                            // ------------------------------------
                         )
                     }
                 }

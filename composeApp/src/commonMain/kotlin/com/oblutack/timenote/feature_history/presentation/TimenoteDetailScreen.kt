@@ -70,10 +70,12 @@ fun TimenoteDetailScreen(
     timenoteId: String,
     onBackClick: () -> Unit,
     viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() },
-    onBranchClick: (parentId: String, waypointId: String) -> Unit = { _, _ -> }
+    onBranchClick: (parentId: String, waypointId: String) -> Unit = { _, _ -> },
+    onTimenoteClick: (String) -> Unit = {}
 ) {
     val allTimenotes by SessionRepository.timenotes.collectAsState()
     val timenote = allTimenotes.find { it.id == timenoteId }
+    val childTimenotes = allTimenotes.filter { it.parentTimenoteId == timenote?.id }
     val playingAudioPath by viewModel.playingAudioPath.collectAsState()
     val recordingTimenoteId by viewModel.recordingTimenoteId.collectAsState()
     val scope = rememberCoroutineScope()
@@ -530,7 +532,9 @@ fun TimenoteDetailScreen(
                                 useMonochrome = useMonochromeNodes,
                                 playingAudioPath = playingAudioPath,
                                 onPlayAudioClick = { viewModel.playAudio(it) },
-                                onBranchClick = { onBranchClick(timenote.id, event.id) }
+                                onBranchClick = { onBranchClick(timenote.id, event.id) },
+                                childNotes = childTimenotes,
+                                onChildClick = onTimenoteClick
                             )
                         }
                     }
@@ -640,7 +644,9 @@ fun TimenoteTimelineItem(
     useMonochrome: Boolean,
     playingAudioPath: String?,
     onPlayAudioClick: (String) -> Unit,
-    onBranchClick: () -> Unit
+    onBranchClick: () -> Unit,
+    childNotes: List<com.oblutack.timenote.feature_history.domain.Timenote> = emptyList(),
+    onChildClick: (String) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -734,6 +740,30 @@ fun TimenoteTimelineItem(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium
                     )
+                }
+            }
+
+            val waypointChildren = childNotes.filter { it.parentWaypointId == event.id }
+            if (waypointChildren.isNotEmpty()) {
+                waypointChildren.forEach { child ->
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(DefaultAccentColor.copy(alpha = 0.1f))
+                            .border(1.dp, DefaultAccentColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .clickable { onChildClick(child.id) }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "↳ Branched: ${child.title}",
+                            color = DefaultAccentColor,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    }
                 }
             }
         }
