@@ -88,6 +88,8 @@ fun TimenoteDetailScreen(
     var isFolderDialogOpen by remember { mutableStateOf(false) }
     var isNotesOnlyView by remember { mutableStateOf(false) }
 
+    var isVoiceNotesExpanded by remember { mutableStateOf(false) }
+
     // --- 1. Date & Time Formatting ---
     // Safely parse the timestamp. If it's 0 (from old mock data), fallback to current time
     val validTimestamp = if (timenote.createdAt > 0L) timenote.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
@@ -311,54 +313,79 @@ fun TimenoteDetailScreen(
 
         // --- VOICE NOTE SECTION ---
         Spacer(modifier = Modifier.height(8.dp))
+        // --- VOICE NOTE SECTION ---
+        Spacer(modifier = Modifier.height(8.dp))
         Column(
             modifier = Modifier.fillMaxWidth()
         ) {
-            timenote.voiceNotes.forEachIndexed { index, path ->
+            // 1. Determine what to show
+            val hasManyNotes = timenote.voiceNotes.size > 3
+            val displayedNotes = if (isVoiceNotesExpanded) timenote.voiceNotes else timenote.voiceNotes.take(3)
+
+            // 2. Render the visible notes
+            displayedNotes.forEachIndexed { index, path ->
+                val absoluteIndex = timenote.voiceNotes.indexOf(path).takeIf { it != -1 }?.plus(1) ?: (index + 1)
+                val isPlaying = playingAudioPath == path
+
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    modifier = Modifier
+                        // REMOVED: .fillMaxWidth()
+                        .clip(RoundedCornerShape(50))
+                        .background(SurfaceDark)
+                        .border(1.dp, DefaultAccentColor.copy(alpha = 0.5f), RoundedCornerShape(50))
+                        .clickable { viewModel.playAudio(path) }
+                        .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), // Tighter padding for a sleek pill
                     verticalAlignment = Alignment.CenterVertically
+                    // REMOVED: horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    val isPlaying = playingAudioPath == path
-                    Row(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .background(SurfaceDark)
-                            .border(1.dp, DefaultAccentColor, RoundedCornerShape(50))
-                            .clickable { viewModel.playAudio(path) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (isPlaying) "Pause" else "Play Voice Note",
-                            tint = DefaultAccentColor,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isPlaying) "Pause" else "Voice Note ${index + 1}",
-                            color = DefaultAccentColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isPlaying) androidx.compose.material.icons.Icons.Default.Pause else androidx.compose.material.icons.Icons.Default.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        tint = DefaultAccentColor,
+                        modifier = Modifier.size(20.dp) // Slightly smaller icon
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Voice Note $absoluteIndex",
+                        color = DefaultAccentColor,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Spacer(modifier = Modifier.width(12.dp))
 
-                    Spacer(modifier = Modifier.width(16.dp))
-
+                    // The Trash Can directly attached to the pill
                     IconButton(
                         onClick = { viewModel.deleteVoiceNote(timenote.id, path) },
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = "Delete Voice Note",
-                            tint = Color(0xFFE53935)
+                            imageVector = androidx.compose.material.icons.Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = Color(0xFFE53935),
+                            modifier = Modifier.size(16.dp) // Tiny trash icon
                         )
                     }
                 }
+                Spacer(modifier = Modifier.height(8.dp))
             }
 
+            // 3. The "Show More" Button
+            if (hasManyNotes) {
+                Text(
+                    text = if (isVoiceNotesExpanded) "Show Less" else "+ ${timenote.voiceNotes.size - 3} More",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { isVoiceNotesExpanded = !isVoiceNotesExpanded }
+                        .padding(vertical = 8.dp),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // 4. The Record / Add Button
             if (recordingTimenoteId == timenote.id) {
                 Button(
                     onClick = { viewModel.stopRecordingForTimenote() },
@@ -368,30 +395,23 @@ fun TimenoteDetailScreen(
                     ),
                     border = BorderStroke(1.dp, Color(0xFFE53935)),
                     shape = RoundedCornerShape(50)
+                    // REMOVED: modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
+                    Icon(androidx.compose.material.icons.Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Recording...")
                 }
             } else {
                 OutlinedButton(
                     onClick = { viewModel.startRecordingForTimenote(timenote.id) },
-                    modifier = Modifier.height(36.dp),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f))
+                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(50)
+                    // REMOVED: modifier = Modifier.fillMaxWidth()
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Mic,
-                        contentDescription = "Add Voice Note",
-                        modifier = Modifier.size(16.dp),
-                        tint = TextSecondary
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "+ Add Voice Note",
-                        color = TextSecondary,
-                        fontSize = 14.sp
-                    )
+                    Icon(androidx.compose.material.icons.Icons.Default.Mic, contentDescription = "Mic", modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("+ Add Voice Note")
                 }
             }
         }
