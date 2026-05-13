@@ -21,6 +21,8 @@ fun Timenote.toEntity(): TimenoteEntity {
         createdAt = this.createdAt,         // <--- NEW
         tagsJson = Json.encodeToString(this.tags),
         timelineEventsJson = Json.encodeToString(this.timelineEvents),
+        parentTimenoteId = this.parentTimenoteId, // <-- ADD THIS
+        parentWaypointId = this.parentWaypointId,
         isDeleted = this.isDeleted
     )
 }
@@ -38,6 +40,8 @@ fun TimenoteEntity.toDomain(): Timenote {
         pauseSeconds = this.pauseSeconds,   // <--- NEW
         createdAt = this.createdAt,         // <--- NEW
         tags = Json.decodeFromString<List<TimenoteFolder>>(this.tagsJson),
+        parentTimenoteId = this.parentTimenoteId, // <-- ADD THIS
+        parentWaypointId = this.parentWaypointId,
         timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson)
     )
 }

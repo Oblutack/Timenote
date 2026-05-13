@@ -38,6 +38,8 @@ data class Timenote(
     val createdAt: Long,     // <--- NEW
     val tags: List<TimenoteFolder>,
     val timelineEvents: List<TimelineEvent>,
+    val parentTimenoteId: String? = null,
+    val parentWaypointId: String? = null,
     val isDeleted: Boolean = false
 )
 

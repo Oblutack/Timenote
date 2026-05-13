@@ -8,7 +8,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
 // 1. BUMP VERSION TO 2
-@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = 4)
+@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = 5)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun timenoteDao(): TimenoteDao
@@ -37,5 +37,12 @@ val MIGRATION_2_3 = object : Migration(2, 3) {
 val MIGRATION_3_4 = object : Migration(3, 4) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE timenotes ADD COLUMN voiceNotesJson TEXT NOT NULL DEFAULT '[]'")
+    }
+}
+
+val MIGRATION_4_5 = object : Migration(4, 5) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE timenotes ADD COLUMN parentTimenoteId TEXT DEFAULT NULL")
+        connection.execSQL("ALTER TABLE timenotes ADD COLUMN parentWaypointId TEXT DEFAULT NULL")
     }
 }

@@ -21,5 +21,7 @@ data class TimenoteEntity(
     val createdAt: Long,     // <--- NEW
     val tagsJson: String,
     val timelineEventsJson: String,
+    val parentTimenoteId: String?,
+    val parentWaypointId: String?,
     val isDeleted: Boolean
 )
