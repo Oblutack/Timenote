@@ -384,7 +384,7 @@ class TimerViewModel : ViewModel() {
             duration = formatTime(finalActiveSeconds + finalPauseSeconds),
             activeSeconds = finalActiveSeconds,
             pauseSeconds = finalPauseSeconds,
-            createdAt = timestampId.toLongOrNull() ?: 0L,
+            createdAt = now,
             tags = categories,
             timelineEvents = _state.value.timelineEvents,
             parentTimenoteId = _state.value.parentTimenoteId, // <-- NEW

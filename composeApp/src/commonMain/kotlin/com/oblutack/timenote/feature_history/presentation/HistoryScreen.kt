@@ -132,8 +132,9 @@ fun HistoryScreen(
     }
     val finalDisplaySessions = remember(tagFiltered, sortOption) {
         when (sortOption) {
-            SortOption.NEWEST -> tagFiltered.sortedByDescending { it.createdAt }
-            SortOption.OLDEST -> tagFiltered.sortedBy { it.createdAt }
+            // THE FIX: Explicitly cast to Long to ensure perfect mathematical sorting
+            SortOption.NEWEST -> tagFiltered.sortedByDescending { it.createdAt.toLong() }
+            SortOption.OLDEST -> tagFiltered.sortedBy { it.createdAt.toLong() }
             SortOption.LONGEST -> tagFiltered.sortedByDescending { it.activeSeconds }
             SortOption.SHORTEST -> tagFiltered.sortedBy { it.activeSeconds }
         }
@@ -477,7 +478,7 @@ fun HistoryScreen(
                             }
                         )
 
-                        androidx.compose.runtime.LaunchedEffect(sortOption, selectedFilterTags) {
+                        androidx.compose.runtime.LaunchedEffect(sortOption, selectedFilterTags, isCalendarView) {
                             if (finalDisplaySessions.isNotEmpty()) {
                                 listState.animateScrollToItem(0)
                             }
@@ -503,7 +504,7 @@ fun HistoryScreen(
                                 }
                             },
                             content = {
-                                SessionCard(session = session, onClick = { onTimenoteClick(session.id) })
+                                SessionCard(session = session, allSessions = recentSessions, onClick = { onTimenoteClick(session.id) })
                             }
                         )
                     }
@@ -857,7 +858,14 @@ fun FolderCard(
 }
 
 @Composable
-fun SessionCard(session: Timenote, onClick: () -> Unit) {
+fun SessionCard(
+    session: com.oblutack.timenote.feature_history.domain.Timenote,
+    allSessions: List<com.oblutack.timenote.feature_history.domain.Timenote>,
+    onClick: () -> Unit
+) {
+    val childCount = allSessions.count { it.parentTimenoteId == session.id }
+    val isChild = session.parentTimenoteId != null
+
     // 1. Calculate Date and Year strings
     val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(
         if (session.createdAt > 0L) session.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
@@ -908,6 +916,36 @@ fun SessionCard(session: Timenote, onClick: () -> Unit) {
 
             // Tags / Folders
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (isChild) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, Color(0xFF9C27B0), RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "↳ Child",
+                            color = Color(0xFF9C27B0),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+                
+                if (childCount > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, Color(0xFF4CAF50), RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Branches: $childCount",
+                            color = Color(0xFF4CAF50),
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+
                 session.tags.forEach { tag ->
                     Box(
                         modifier = Modifier

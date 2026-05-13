@@ -169,6 +169,7 @@ fun FolderDetailScreen(
                     items(folderTimenotes, key = { "${it.id}_${it.hashCode()}" }) { session ->
                         SessionCard(
                             session = session,
+                            allSessions = allTimenotes,
                             onClick = { onTimenoteClick(session.id) }
                         )
                     }
