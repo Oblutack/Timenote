@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Share
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -87,6 +88,7 @@ fun HistoryScreen(
     onFolderClick: (String) -> Unit,
     onTrashClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onGraphClick: () -> Unit,
     viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
 ) {
     val recentSessions by viewModel.sessions.collectAsState()
@@ -219,6 +221,18 @@ fun HistoryScreen(
                     imageVector = androidx.compose.material.icons.Icons.Default.Settings,
                     contentDescription = "Settings",
                     tint = TextSecondary
+                )
+            }
+
+            // --- NEW: THE GRAPH BUTTON ---
+            IconButton(
+                onClick = onGraphClick,
+                modifier = Modifier.clip(androidx.compose.foundation.shape.CircleShape).background(SurfaceDark)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = "Graph View",
+                    tint = DefaultAccentColor
                 )
             }
 

@@ -145,7 +145,14 @@ fun App(database: AppDatabase? = null) {
                         onTimenoteClick = { id -> navController.navigate("details/$id") },
                         onFolderClick = { id -> navController.navigate("folder_details/$id") },
                         onTrashClick = { navController.navigate("trash") },
-                        onSettingsClick = { navController.navigate("settings") }
+                        onSettingsClick = { navController.navigate("settings") },
+                        onGraphClick = { navController.navigate("graph") },
+                    )
+                }
+                composable("graph") {
+                    com.oblutack.timenote.feature_history.presentation.GraphScreen(
+                        onBackClick = { navController.popBackStack() },
+                        onTimenoteClick = { id -> navController.navigate("details/$id") }
                     )
                 }
                 composable("details/{id}") { backStackEntry ->
