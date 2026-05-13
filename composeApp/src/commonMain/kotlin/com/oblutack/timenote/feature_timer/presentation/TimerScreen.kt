@@ -67,6 +67,27 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        if (state.parentSessionTitle != null) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "BRANCHED FROM:",
+                    color = Color(0xFF9C27B0),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = state.parentSessionTitle!!.uppercase(),
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.5.sp
+                )
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+        }
+
         // --- NEW: Smooth Fade-In "Last Session" Label ---
         // 1. Determine if we should show it
         val showLastLabel = !state.isRunning && !state.isPaused && state.timelineEvents.isNotEmpty()

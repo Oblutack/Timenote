@@ -48,8 +48,11 @@ data class TimerState(
     val tagBeingEditedId: String? = null,
 
     val parentTimenoteId: String? = null,
-
     val parentWaypointId: String? = null,
+
+    val parentSessionTitle: String? = null,
+    val parentWaypointTitle: String? = null,
+
     val isRecordingVoiceMemo: Boolean = false,
     val voiceMemoDuration: String = "00:00",
 
@@ -255,6 +258,22 @@ class TimerViewModel : ViewModel() {
             }
             is TimerAction.SetParentLinks -> {
                 _state.update { it.copy(parentTimenoteId = action.parentId, parentWaypointId = action.waypointId) }
+
+                // Fetch the parent data so the UI can display it!
+                if (action.parentId != null) {
+                    viewModelScope.launch {
+                        val parentSession = com.oblutack.timenote.data.repository.SessionRepository.getTimenoteById(action.parentId)
+                        if (parentSession != null) {
+                            val waypoint = parentSession.timelineEvents.find { it.id == action.waypointId }
+                            _state.update { currentState ->
+                                currentState.copy(
+                                    parentSessionTitle = parentSession.title,
+                                    parentWaypointTitle = waypoint?.title
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -280,6 +299,12 @@ class TimerViewModel : ViewModel() {
         hasRestoredBackup = true
 
         addEventToTimeline("Session Started", EventType.START)
+
+        if (_state.value.parentSessionTitle != null && _state.value.parentWaypointTitle != null) {
+            val branchMessage = "Branched from: ${_state.value.parentWaypointTitle} (${_state.value.parentSessionTitle})"
+            addEventToTimeline(branchMessage, EventType.NOTE, Color(0xFF9C27B0)) // Purple to signify a branch!
+        }
+
         _state.update { it.copy(isRunning = true, isPaused = false) }
 
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()

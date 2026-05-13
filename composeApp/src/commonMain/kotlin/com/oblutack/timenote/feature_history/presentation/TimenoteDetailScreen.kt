@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -68,13 +69,42 @@ import androidx.compose.runtime.rememberCoroutineScope
 fun TimenoteDetailScreen(
     timenoteId: String,
     onBackClick: () -> Unit,
-    viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() }
+    viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() },
+    onBranchClick: (parentId: String, waypointId: String) -> Unit = { _, _ -> }
 ) {
     val allTimenotes by SessionRepository.timenotes.collectAsState()
     val timenote = allTimenotes.find { it.id == timenoteId }
     val playingAudioPath by viewModel.playingAudioPath.collectAsState()
     val recordingTimenoteId by viewModel.recordingTimenoteId.collectAsState()
     val scope = rememberCoroutineScope()
+
+    val folders by SessionRepository.folders.collectAsState()
+    var isFolderDialogOpen by remember { mutableStateOf(false) }
+    var isNotesOnlyView by remember { mutableStateOf(false) }
+    var isVoiceNotesExpanded by remember { mutableStateOf(false) }
+    var isTimelineExpanded by remember { mutableStateOf(false) }
+
+    val cleanDescription = timenote?.description?.let { if (it.contains("waypoints recorded")) "" else it } ?: ""
+    var optimisticDescription by remember(timenote?.id) { mutableStateOf<String?>(null) }
+    val displayDescription = optimisticDescription ?: cleanDescription
+    var isEditingDescription by remember { mutableStateOf(false) }
+    var descriptionText by remember(cleanDescription) {
+        mutableStateOf(
+            TextFieldValue(
+                text = cleanDescription,
+                selection = TextRange(cleanDescription.length) // <--- Places cursor at the very end!
+            )
+        )
+    }
+
+    val focusRequester = remember { FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(isEditingDescription) {
+        if (isEditingDescription) {
+            focusRequester.requestFocus()
+        }
+    }
+    val scrollState = androidx.compose.foundation.rememberScrollState()
+    val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
 
     if (timenote == null) {
         Box(modifier = Modifier.fillMaxSize().background(BackgroundDark), contentAlignment = Alignment.Center) {
@@ -83,12 +113,7 @@ fun TimenoteDetailScreen(
         return
     }
 
-    val folders by SessionRepository.folders.collectAsState()
     val currentFolder = folders.find { it.id == timenote.folderId }
-    var isFolderDialogOpen by remember { mutableStateOf(false) }
-    var isNotesOnlyView by remember { mutableStateOf(false) }
-
-    var isVoiceNotesExpanded by remember { mutableStateOf(false) }
 
     // --- 1. Date & Time Formatting ---
     // Safely parse the timestamp. If it's 0 (from old mock data), fallback to current time
@@ -112,31 +137,6 @@ fun TimenoteDetailScreen(
 
     val workPercent = (workRatio * 100).toInt()
     val pausePercent = (pauseRatio * 100).toInt()
-
-    var isTimelineExpanded by remember { mutableStateOf(false) }
-
-    val cleanDescription = if (timenote.description.contains("waypoints recorded")) "" else timenote.description
-    var optimisticDescription by remember(timenote.id) { mutableStateOf<String?>(null) }
-    val displayDescription = optimisticDescription ?: cleanDescription
-    var isEditingDescription by remember { mutableStateOf(false) }
-    var descriptionText by remember(cleanDescription) {
-        mutableStateOf(
-            TextFieldValue(
-                text = cleanDescription,
-                selection = TextRange(cleanDescription.length) // <--- Places cursor at the very end!
-            )
-        )
-    }
-
-    val focusRequester = remember { FocusRequester() }
-    androidx.compose.runtime.LaunchedEffect(isEditingDescription) {
-        if (isEditingDescription) {
-            focusRequester.requestFocus()
-        }
-    }
-    val scrollState = androidx.compose.foundation.rememberScrollState()
-
-    val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
 
     Column(
         modifier = Modifier
@@ -529,7 +529,8 @@ fun TimenoteDetailScreen(
                                 isLastItem = index == timenote.timelineEvents.size - 1,
                                 useMonochrome = useMonochromeNodes,
                                 playingAudioPath = playingAudioPath,
-                                onPlayAudioClick = { viewModel.playAudio(it) }
+                                onPlayAudioClick = { viewModel.playAudio(it) },
+                                onBranchClick = { onBranchClick(timenote.id, event.id) }
                             )
                         }
                     }
@@ -638,7 +639,8 @@ fun TimenoteTimelineItem(
     isLastItem: Boolean,
     useMonochrome: Boolean,
     playingAudioPath: String?,
-    onPlayAudioClick: (String) -> Unit
+    onPlayAudioClick: (String) -> Unit,
+    onBranchClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -692,8 +694,8 @@ fun TimenoteTimelineItem(
 
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
+                .weight(1f)
+                .padding(bottom = 16.dp, end = 8.dp)
         ) {
             Text(
                 text = event.title,
@@ -733,6 +735,16 @@ fun TimenoteTimelineItem(
                         fontWeight = FontWeight.Medium
                     )
                 }
+            }
+        }
+
+        if (event.type == EventType.NOTE) {
+            IconButton(onClick = onBranchClick) {
+                Icon(
+                    imageVector = androidx.compose.material.icons.Icons.Default.Add,
+                    contentDescription = "Branch Timer",
+                    tint = TextSecondary
+                )
             }
         }
     }
