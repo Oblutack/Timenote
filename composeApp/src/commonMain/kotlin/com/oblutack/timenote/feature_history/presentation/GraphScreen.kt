@@ -31,6 +31,7 @@ import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.domain.Timenote
 import kotlin.math.sqrt
+import androidx.compose.animation.core.animateFloat
 
 // Holds the calculated X,Y positions for the Canvas to draw
 data class GraphNode(
@@ -51,6 +52,28 @@ fun GraphScreen(
     var scale by remember { mutableStateOf(1f) }
     var pan by remember { mutableStateOf(Offset(200f, 200f)) } // Start slightly padded inward
     val textMeasurer = rememberTextMeasurer()
+
+    val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "NodePulse")
+
+    val glowRadius by infiniteTransition.animateFloat(
+        initialValue = 40f,
+        targetValue = 55f, // Grows larger
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "RadiusPulse"
+    )
+
+    val glowAlpha by infiniteTransition.animateFloat(
+        initialValue = 0.1f,
+        targetValue = 0.3f, // Gets brighter
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "AlphaPulse"
+    )
 
     // The Auto-Layout Algorithm
     val nodes = remember(timenotes) {
@@ -174,7 +197,11 @@ fun GraphScreen(
                         val nodeColor = node.note.tags.firstOrNull()?.color ?: DefaultAccentColor
 
                         // Outer Glow
-                        drawCircle(color = nodeColor.copy(alpha = 0.15f), radius = 45f, center = Offset(node.x, node.y))
+                        drawCircle(
+                            color = nodeColor.copy(alpha = glowAlpha),
+                            radius = glowRadius,
+                            center = Offset(node.x, node.y)
+                        )
                         // Core Node
                         drawCircle(color = nodeColor, radius = 18f, center = Offset(node.x, node.y))
                         // Inner Dot
