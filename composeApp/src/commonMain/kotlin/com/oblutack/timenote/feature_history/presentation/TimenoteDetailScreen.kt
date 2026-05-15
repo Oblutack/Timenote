@@ -294,147 +294,23 @@ fun TimenoteDetailScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         // --- 2. Description Section ---
-        androidx.compose.animation.AnimatedContent(
-            targetState = isEditingDescription,
-            transitionSpec = {
-                androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(200)) togetherWith
-                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(100))
-            },
-            label = "DescriptionEditAnimation"
-        ) { isEditing ->
-            if (!isEditing) {
-                // --- VIEW MODE ---
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 16.dp)
-                        .clickable { isEditingDescription = true }
-                ) {
-                    if (displayDescription.isBlank()) {
-                        Text("Tap to add a description...", color = TextSecondary)
-                    } else {
-                        val dynamicAccentColor = timenote.tags.firstOrNull()?.color ?: DefaultAccentColor
-                        Text(
-                            text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, dynamicAccentColor),
-                            color = TextPrimary,
-                            fontSize = 16.sp,
-                            lineHeight = 24.sp
-                        )
-                    }
-                }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 16.dp)
+                .clickable { isEditingDescription = true }
+        ) {
+            if (displayDescription.isBlank()) {
+                Text("Tap to add a description...", color = TextSecondary)
             } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Bold
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceDark)
-                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
-                            .clickable {
-                                val start = descriptionText.selection.min
-                                val end = descriptionText.selection.max
-                                val text = descriptionText.text
-                                val newText = text.substring(0, start) + "**" + text.substring(start, end) + "**" + text.substring(end)
-                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(end + 4))
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("B", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    }
-                    // Italic
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceDark)
-                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
-                            .clickable {
-                                val start = descriptionText.selection.min
-                                val end = descriptionText.selection.max
-                                val text = descriptionText.text
-                                val newText = text.substring(0, start) + "_" + text.substring(start, end) + "_" + text.substring(end)
-                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(end + 2))
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("I", fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = TextPrimary)
-                    }
-                    // Header
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(SurfaceDark)
-                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
-                            .clickable {
-                                val start = descriptionText.selection.min
-                                val end = descriptionText.selection.max
-                                val text = descriptionText.text
-                                val newText = text.substring(0, start) + "# " + text.substring(start, end) + text.substring(end)
-                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(end + 2))
-                            }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("H1", fontWeight = FontWeight.Bold, color = TextPrimary)
-                    }
-                }
-
-                OutlinedTextField(
-                    value = descriptionText,
-                    onValueChange = { descriptionText = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 100.dp)
-                        .focusRequester(focusRequester),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = SurfaceDark,
-                        unfocusedContainerColor = SurfaceDark,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = TextPrimary,
-                        unfocusedTextColor = TextPrimary
-                    )
+                val dynamicAccentColor = timenote?.tags?.firstOrNull()?.color ?: DefaultAccentColor
+                Text(
+                    text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, dynamicAccentColor),
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = {
-                        isEditingDescription = false
-                        // FIX: Wrap the reset string back into a TextFieldValue!
-                        descriptionText = TextFieldValue(
-                            text = cleanDescription,
-                            selection = TextRange(cleanDescription.length)
-                        )
-                    }) {
-                        Text("Cancel", color = TextSecondary)
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = {
-                        val newText = descriptionText.text
-                        com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(
-                            timenote.id,
-                            newText
-                        )
-                        optimisticDescription = newText
-                        isEditingDescription = false
-                    }) {
-                        Text("Save", color = DefaultAccentColor)
-                    }
-                }
             }
-        }
         }
 
         // --- VOICE NOTE SECTION ---
@@ -824,6 +700,112 @@ fun TimenoteDetailScreen(
                 ) {
                     Text("Save Tags", color = Color.White)
                 }
+            }
+        }
+    }
+    if (isEditingDescription) {
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+        ModalBottomSheet(
+            onDismissRequest = { isEditingDescription = false },
+            sheetState = sheetState,
+            containerColor = SurfaceDark,
+            modifier = Modifier.fillMaxHeight(0.9f) // Makes it almost full screen!
+        ) {
+            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+
+                // --- TOP BAR ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(onClick = {
+                        isEditingDescription = false
+                        descriptionText = androidx.compose.ui.text.input.TextFieldValue(
+                            text = cleanDescription,
+                            selection = TextRange(cleanDescription.length)
+                        )
+                    }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                    Text("Edit Note", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    TextButton(onClick = {
+                        if (timenote != null) {
+                            com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
+                            optimisticDescription = descriptionText.text
+                        }
+                        isEditingDescription = false
+                    }) {
+                        Text("Save", color = DefaultAccentColor)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- MARKDOWN FORMATTING TOOLBAR ---
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Bold Button
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(BackgroundDark)
+                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                val s = descriptionText.selection.start
+                                val e = descriptionText.selection.end
+                                val t = descriptionText.text
+                                val newText = t.substring(0, s) + "**" + t.substring(s, e) + "**" + t.substring(e)
+                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 4))
+                            },
+                        contentAlignment = Alignment.Center
+                    ) { Text("B", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+
+                    // Italic Button
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(BackgroundDark)
+                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                val s = descriptionText.selection.start
+                                val e = descriptionText.selection.end
+                                val t = descriptionText.text
+                                val newText = t.substring(0, s) + "_" + t.substring(s, e) + "_" + t.substring(e)
+                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 2))
+                            },
+                        contentAlignment = Alignment.Center
+                    ) { Text("I", color = TextPrimary, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 18.sp) }
+
+                    // Header Button
+                    Box(
+                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(BackgroundDark)
+                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                val s = descriptionText.selection.start
+                                val t = descriptionText.text
+                                val newText = t.substring(0, s) + "# " + t.substring(s)
+                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 2))
+                            },
+                        contentAlignment = Alignment.Center
+                    ) { Text("H1", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // --- THE TEXT EDITOR ---
+                OutlinedTextField(
+                    value = descriptionText,
+                    onValueChange = { descriptionText = it },
+                    modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(focusRequester),
+                    placeholder = { Text("Start typing your markdown notes here...", color = TextSecondary) },
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = TextPrimary, lineHeight = 24.sp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                    )
+                )
             }
         }
     }
