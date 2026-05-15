@@ -64,6 +64,7 @@ import androidx.compose.ui.text.TextRange
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.togetherWith
+import androidx.compose.material.icons.filled.Edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +86,15 @@ fun TimenoteDetailScreen(
     var isFolderDialogOpen by remember { mutableStateOf(false) }
     var isNotesOnlyView by remember { mutableStateOf(false) }
     var isVoiceNotesExpanded by remember { mutableStateOf(false) }
+    var isEditingTitle by remember { mutableStateOf(false) }
+    var titleText by remember(timenote?.title) {
+        val text = timenote?.title ?: ""
+        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text, TextRange(text.length)))
+    }
+    val titleFocusRequester = remember { FocusRequester() }
+    androidx.compose.runtime.LaunchedEffect(isEditingTitle) {
+        if (isEditingTitle) titleFocusRequester.requestFocus()
+    }
     var isTimelineExpanded by remember { mutableStateOf(false) }
 
     val cleanDescription = timenote?.description?.let { if (it.contains("waypoints recorded")) "" else it } ?: ""
@@ -141,6 +151,10 @@ fun TimenoteDetailScreen(
     val workPercent = (workRatio * 100).toInt()
     val pausePercent = (pauseRatio * 100).toInt()
 
+    val allTags by SessionRepository.tags.collectAsState()
+    var isEditTagsSheetOpen by remember { mutableStateOf(false) }
+    var tempSelectedTags by remember(timenote?.tags) { mutableStateOf(timenote?.tags ?: emptyList()) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -159,12 +173,45 @@ fun TimenoteDetailScreen(
             Text("Timenote Details", color = TextSecondary, fontSize = 18.sp)
         }
 
-        Text(
-            text = timenote.title,
-            color = TextPrimary,
-            fontSize = 32.sp,
-            fontWeight = FontWeight.Bold
-        )
+        androidx.compose.animation.AnimatedContent(
+            targetState = isEditingTitle,
+            label = "TitleEditAnimation"
+        ) { isEditing ->
+            if (!isEditing) {
+                Text(
+                    text = timenote.title,
+                    color = TextPrimary,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.fillMaxWidth().clickable { isEditingTitle = true }
+                )
+            } else {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = titleText,
+                        onValueChange = { titleText = it },
+                        modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
+                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextPrimary),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = SurfaceDark, unfocusedContainerColor = SurfaceDark,
+                            focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
+                        )
+                    )
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        TextButton(onClick = {
+                            isEditingTitle = false
+                            titleText = androidx.compose.ui.text.input.TextFieldValue(timenote.title, TextRange(timenote.title.length))
+                        }) { Text("Cancel", color = TextSecondary) }
+
+                        TextButton(onClick = {
+                            SessionRepository.updateTimenoteTitle(timenote.id, titleText.text)
+                            isEditingTitle = false
+                        }) { Text("Save", color = DefaultAccentColor) }
+                    }
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -498,25 +545,41 @@ fun TimenoteDetailScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        if (timenote.tags.isNotEmpty()) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(timenote.tags) { tag ->
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, tag.color, RoundedCornerShape(50))
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = tag.name,
-                            color = tag.color,
-                            fontSize = 14.sp
-                        )
-                    }
+
+        // --- TAGS SECTION ---
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            items(timenote.tags) { tag ->
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(50))
+                        .border(1.dp, tag.color, RoundedCornerShape(50))
+                        .padding(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(text = tag.name, color = tag.color, fontSize = 14.sp)
                 }
             }
-            Spacer(modifier = Modifier.height(32.dp))
+            // The tiny Edit Button at the end of the row!
+            item {
+                Box(
+                    modifier = Modifier
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(SurfaceDark)
+                        .clickable {
+                            tempSelectedTags = timenote.tags // Reset temp state
+                            isEditTagsSheetOpen = true
+                        }
+                        .padding(8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(androidx.compose.material.icons.Icons.Default.Edit, contentDescription = "Edit Tags", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                }
+            }
         }
+        Spacer(modifier = Modifier.height(32.dp))
+
 
         // 3. Collapsible Timeline (Accordion)
         val rotation by animateFloatAsState(targetValue = if (isTimelineExpanded) 180f else 0f)
@@ -708,6 +771,58 @@ fun TimenoteDetailScreen(
                             Text(folder.name, color = TextPrimary, fontSize = 16.sp)
                         }
                     }
+                }
+            }
+        }
+    }
+    if (isEditTagsSheetOpen) {
+        ModalBottomSheet(
+            onDismissRequest = { isEditTagsSheetOpen = false },
+            containerColor = SurfaceDark
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp)) {
+                Text("Edit Tags", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+
+                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
+                    items(allTags) { tag ->
+                        val isSelected = tempSelectedTags.any { it.id == tag.id }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    tempSelectedTags = if (isSelected) {
+                                        tempSelectedTags.filter { it.id != tag.id }
+                                    } else {
+                                        tempSelectedTags + tag
+                                    }
+                                }
+                                .padding(vertical = 12.dp, horizontal = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(modifier = Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(tag.color))
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Text(tag.name, color = TextPrimary, fontSize = 16.sp)
+                            }
+                            if (isSelected) {
+                                Icon(androidx.compose.material.icons.Icons.Default.CheckCircle, contentDescription = "Selected", tint = tag.color)
+                            }
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
+                Button(
+                    onClick = {
+                        SessionRepository.updateTimenoteTags(timenote.id, tempSelectedTags)
+                        isEditTagsSheetOpen = false
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor)
+                ) {
+                    Text("Save Tags", color = Color.White)
                 }
             }
         }

@@ -141,6 +141,28 @@ object SessionRepository {
         }
     }
 
+    // NEW: Update Title inline
+    fun updateTimenoteTitle(timenoteId: String, newTitle: String) {
+        coroutineScope.launch {
+            val note = getTimenoteById(timenoteId)
+            if (note != null) {
+                val updatedNote = note.copy(title = newTitle)
+                dao?.insertTimenote(updatedNote.toEntity())
+            }
+        }
+    }
+
+    // NEW: Update Tags inline
+    fun updateTimenoteTags(timenoteId: String, newTags: List<TimenoteFolder>) {
+        coroutineScope.launch {
+            val note = getTimenoteById(timenoteId)
+            if (note != null) {
+                val updatedNote = note.copy(tags = newTags)
+                dao?.insertTimenote(updatedNote.toEntity())
+            }
+        }
+    }
+
     // --- TRASH BIN ACTIONS ---
     fun restoreTimenote(id: String) { coroutineScope.launch { dao?.restoreTimenote(id) } }
     fun hardDeleteTimenote(id: String) { coroutineScope.launch { dao?.hardDeleteTimenote(id) } }
