@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.animation.togetherWith
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -245,32 +246,101 @@ fun TimenoteDetailScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 2. Description Section
-        if (!isEditingDescription) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 16.dp)
-                    .clickable { isEditingDescription = true }
-            ) {
-                if (displayDescription.isBlank()) {
-                    Text("Tap to add a description...", color = TextSecondary)
-                } else {
-                    val accentColor = currentFolder?.color ?: DefaultAccentColor // Grab the folder color to highlight Bolds!
-                    Text(
-                        text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, accentColor),
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        lineHeight = 24.sp
-                    )
+        // --- 2. Description Section ---
+        androidx.compose.animation.AnimatedContent(
+            targetState = isEditingDescription,
+            transitionSpec = {
+                androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(200)) togetherWith
+                        androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(100))
+            },
+            label = "DescriptionEditAnimation"
+        ) { isEditing ->
+            if (!isEditing) {
+                // --- VIEW MODE ---
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .clickable { isEditingDescription = true }
+                ) {
+                    if (displayDescription.isBlank()) {
+                        Text("Tap to add a description...", color = TextSecondary)
+                    } else {
+                        val dynamicAccentColor = timenote.tags.firstOrNull()?.color ?: DefaultAccentColor
+                        Text(
+                            text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, dynamicAccentColor),
+                            color = TextPrimary,
+                            fontSize = 16.sp,
+                            lineHeight = 24.sp
+                        )
+                    }
                 }
-            }
-        } else {
+            } else {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp)
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Bold
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                val start = descriptionText.selection.min
+                                val end = descriptionText.selection.max
+                                val text = descriptionText.text
+                                val newText = text.substring(0, start) + "**" + text.substring(start, end) + "**" + text.substring(end)
+                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(end + 4))
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("B", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    }
+                    // Italic
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                val start = descriptionText.selection.min
+                                val end = descriptionText.selection.max
+                                val text = descriptionText.text
+                                val newText = text.substring(0, start) + "_" + text.substring(start, end) + "_" + text.substring(end)
+                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(end + 2))
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("I", fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, color = TextPrimary)
+                    }
+                    // Header
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(SurfaceDark)
+                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
+                            .clickable {
+                                val start = descriptionText.selection.min
+                                val end = descriptionText.selection.max
+                                val text = descriptionText.text
+                                val newText = text.substring(0, start) + "# " + text.substring(start, end) + text.substring(end)
+                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(end + 2))
+                            }
+                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("H1", fontWeight = FontWeight.Bold, color = TextPrimary)
+                    }
+                }
+
                 OutlinedTextField(
                     value = descriptionText,
                     onValueChange = { descriptionText = it },
@@ -317,6 +387,7 @@ fun TimenoteDetailScreen(
                     }
                 }
             }
+        }
         }
 
         // --- VOICE NOTE SECTION ---

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.Timenote" parent="@android:style/Theme.Material.NoActionBar">
+        <!-- The background behind the app -->
+        <item name="android:windowBackground">#121212</item>
+        <!-- The Android 12+ Splash Screen Background -->
+        <item name="android:windowSplashScreenBackground">#121212</item>
+        <!-- Makes the top battery/wifi bar dark too! -->
+        <item name="android:statusBarColor">#121212</item>
+    </style>
+</resources>

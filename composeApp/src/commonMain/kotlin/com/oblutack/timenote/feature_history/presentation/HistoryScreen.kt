@@ -960,8 +960,9 @@ fun SessionCard(
             // Description (Capped at 2 lines, respects the weight bounds)
             if (session.description.isNotBlank() && !isLegacyDesc) {
                 Spacer(modifier = Modifier.height(8.dp))
+                val dynamicAccentColor = session.tags.firstOrNull()?.color ?: DefaultAccentColor
                 Text(
-                    text = session.description,
+                    text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(session.description, dynamicAccentColor),
                     color = TextSecondary,
                     fontSize = 14.sp,
                     maxLines = 2,
