@@ -256,7 +256,13 @@ fun TimenoteDetailScreen(
                 if (displayDescription.isBlank()) {
                     Text("Tap to add a description...", color = TextSecondary)
                 } else {
-                    Text(text = displayDescription, color = TextPrimary, fontSize = 16.sp)
+                    val accentColor = currentFolder?.color ?: DefaultAccentColor // Grab the folder color to highlight Bolds!
+                    Text(
+                        text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, accentColor),
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        lineHeight = 24.sp
+                    )
                 }
             }
         } else {
