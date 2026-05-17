@@ -73,6 +73,9 @@ class TimerViewModel : ViewModel() {
     // Prevents restoring the backup multiple times in a row
     private var hasRestoredBackup = false
 
+    private var frozenActiveSeconds = 0
+    private var frozenPauseSeconds = 0
+
     // NATIVE JSON PARSER: Ignores unknown data and prevents crashes!
     private val jsonParser = Json {
         ignoreUnknownKeys = true
@@ -348,6 +351,13 @@ class TimerViewModel : ViewModel() {
         timerJob?.cancel()
         com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.stopService()
 
+        // --- THE FIX: Freeze the math right now, BEFORE we change the state! ---
+        val now = com.oblutack.timenote.getCurrentTimeMillis()
+        val finalActiveMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
+        frozenActiveSeconds = (finalActiveMillis / 1000).toInt()
+        frozenPauseSeconds = (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
+        // -----------------------------------------------------------------------
+
         // 1. SET TO FALSE IMMEDIATELY so backups are blocked!
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
@@ -368,12 +378,6 @@ class TimerViewModel : ViewModel() {
     private fun executeSave(categories: List<TimenoteFolder>) {
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
 
-        // Final Math Calculation
-        val now = com.oblutack.timenote.getCurrentTimeMillis()
-        val finalActiveMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
-        val finalActiveSeconds = (finalActiveMillis / 1000).toInt()
-        val finalPauseSeconds = (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
-
         val timestampId = platformSpecificId()
 
         val newTimenote = com.oblutack.timenote.feature_history.domain.Timenote(
@@ -381,13 +385,15 @@ class TimerViewModel : ViewModel() {
             folderId = _state.value.selectedFolder?.id,
             title = title,
             description = "",
-            duration = formatTime(finalActiveSeconds + finalPauseSeconds),
-            activeSeconds = finalActiveSeconds,
-            pauseSeconds = finalPauseSeconds,
-            createdAt = now,
+            // --- THE FIX: Just use the math we already froze! ---
+            duration = formatTime(frozenActiveSeconds + frozenPauseSeconds),
+            activeSeconds = frozenActiveSeconds,
+            pauseSeconds = frozenPauseSeconds,
+            createdAt = com.oblutack.timenote.getCurrentTimeMillis(),
+            // ----------------------------------------------------
             tags = categories,
             timelineEvents = _state.value.timelineEvents,
-            parentTimenoteId = _state.value.parentTimenoteId, // <-- NEW
+            parentTimenoteId = _state.value.parentTimenoteId,
             parentWaypointId = _state.value.parentWaypointId
         )
 
@@ -398,7 +404,7 @@ class TimerViewModel : ViewModel() {
             selectedCategories = categories,
             lastSessionTitle = title,
             sessionTitle = "",
-            parentTimenoteId = null, // <-- CLEAR AFTER SAVE
+            parentTimenoteId = null,
             parentWaypointId = null
         ) }
     }

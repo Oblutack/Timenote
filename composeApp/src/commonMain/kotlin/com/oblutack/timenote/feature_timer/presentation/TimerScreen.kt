@@ -494,13 +494,18 @@ fun TimerScreen(
                     )
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    listOf(
-                        Color(0xFF4FA8F9), Color(0xFF4CAF50),
-                        Color(0xFFFF9800), Color(0xFF9C27B0)
-                    ).forEach { color ->
+                    val defaultColors = listOf(
+                        Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
+                        Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
+                    )
+                    val allColors = defaultColors + customColors.map { Color(it.toULong()) }
+
+                    allColors.forEach { color ->
                         Box(
                             modifier = Modifier
                                 .size(32.dp)

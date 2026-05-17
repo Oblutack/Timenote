@@ -144,12 +144,13 @@ fun TimenoteDetailScreen(
     // --- 2. Work vs Pause Breakdown Math ---
     val totalSeconds = timenote.activeSeconds + timenote.pauseSeconds
 
-    // Protect against division by zero just in case
+    // Protect against division by zero
     val workRatio = if (totalSeconds > 0) timenote.activeSeconds.toFloat() / totalSeconds.toFloat() else 1f
     val pauseRatio = if (totalSeconds > 0) timenote.pauseSeconds.toFloat() / totalSeconds.toFloat() else 0f
 
-    val workPercent = (workRatio * 100).toInt()
-    val pausePercent = (pauseRatio * 100).toInt()
+    // THE FIX: Round the first value mathematically, then subtract from 100 to guarantee a perfect 100% total!
+    val workPercent = if (totalSeconds > 0) kotlin.math.round(workRatio * 100).toInt() else 100
+    val pausePercent = if (totalSeconds > 0) 100 - workPercent else 0
 
     val allTags by SessionRepository.tags.collectAsState()
     var isEditTagsSheetOpen by remember { mutableStateOf(false) }
