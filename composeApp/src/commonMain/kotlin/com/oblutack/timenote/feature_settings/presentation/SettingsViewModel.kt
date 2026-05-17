@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.launch
 
 class SettingsViewModel : ViewModel() {
 
@@ -48,7 +50,7 @@ class SettingsViewModel : ViewModel() {
     }
 
     fun addPickedColor(color: androidx.compose.ui.graphics.Color) {
-        androidx.lifecycle.viewModelScope.launch {
+        viewModelScope.launch { // <-- Cleaned up!
             // Extracts the raw ULong and saves it to DataStore
             com.oblutack.timenote.data.repository.SettingsRepository.addCustomColor(color.value.toLong())
         }
