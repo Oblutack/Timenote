@@ -298,7 +298,10 @@ fun TimenoteDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 16.dp)
-                .clickable { isEditingDescription = true }
+                .clickable(
+                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    indication = null
+                ) { isEditingDescription = true }
         ) {
             if (displayDescription.isBlank()) {
                 Text("Tap to add a description...", color = TextSecondary)
@@ -710,13 +713,13 @@ fun TimenoteDetailScreen(
             onDismissRequest = { isEditingDescription = false },
             sheetState = sheetState,
             containerColor = SurfaceDark,
-            modifier = Modifier.fillMaxHeight(0.9f) // Makes it almost full screen!
+            modifier = Modifier.fillMaxHeight(0.95f) // Slightly taller
         ) {
-            Column(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.fillMaxSize()) {
 
                 // --- TOP BAR ---
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -737,72 +740,77 @@ fun TimenoteDetailScreen(
                         }
                         isEditingDescription = false
                     }) {
-                        Text("Save", color = DefaultAccentColor)
+                        Text("Save", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
                     }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
-                // --- MARKDOWN FORMATTING TOOLBAR ---
+                // --- PREMIUM MARKDOWN TOOLBAR ---
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.Center, // Centers the buttons!
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Bold Button
+                    val btnModifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(BackgroundDark).border(1.dp, TextSecondary.copy(alpha=0.15f), RoundedCornerShape(12.dp))
+
                     Box(
-                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(BackgroundDark)
-                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
-                            .clickable {
-                                val s = descriptionText.selection.start
-                                val e = descriptionText.selection.end
-                                val t = descriptionText.text
-                                val newText = t.substring(0, s) + "**" + t.substring(s, e) + "**" + t.substring(e)
-                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 4))
-                            },
+                        modifier = btnModifier.clickable {
+                            val s = descriptionText.selection.start
+                            val e = descriptionText.selection.end
+                            val t = descriptionText.text
+                            val newText = t.substring(0, s) + "**" + t.substring(s, e) + "**" + t.substring(e)
+                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 4))
+                        },
                         contentAlignment = Alignment.Center
                     ) { Text("B", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
 
-                    // Italic Button
+                    Spacer(modifier = Modifier.width(16.dp)) // Nice gap between buttons
+
                     Box(
-                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(BackgroundDark)
-                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
-                            .clickable {
-                                val s = descriptionText.selection.start
-                                val e = descriptionText.selection.end
-                                val t = descriptionText.text
-                                val newText = t.substring(0, s) + "_" + t.substring(s, e) + "_" + t.substring(e)
-                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 2))
-                            },
+                        modifier = btnModifier.clickable {
+                            val s = descriptionText.selection.start
+                            val e = descriptionText.selection.end
+                            val t = descriptionText.text
+                            val newText = t.substring(0, s) + "_" + t.substring(s, e) + "_" + t.substring(e)
+                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 2))
+                        },
                         contentAlignment = Alignment.Center
                     ) { Text("I", color = TextPrimary, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 18.sp) }
 
-                    // Header Button
+                    Spacer(modifier = Modifier.width(16.dp))
+
                     Box(
-                        modifier = Modifier.size(40.dp).clip(RoundedCornerShape(8.dp)).background(BackgroundDark)
-                            .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(8.dp))
-                            .clickable {
-                                val s = descriptionText.selection.start
-                                val t = descriptionText.text
-                                val newText = t.substring(0, s) + "# " + t.substring(s)
-                                descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 2))
-                            },
+                        modifier = btnModifier.clickable {
+                            val s = descriptionText.selection.start
+                            val t = descriptionText.text
+                            val newText = t.substring(0, s) + "# " + t.substring(s)
+                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 2))
+                        },
                         contentAlignment = Alignment.Center
                     ) { Text("H1", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
+                // Subtle divider line under the toolbar
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TextSecondary.copy(alpha=0.1f)))
 
                 // --- THE TEXT EDITOR ---
+                // Automatically request focus to pop up the keyboard
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    focusRequester.requestFocus()
+                }
+
                 OutlinedTextField(
                     value = descriptionText,
                     onValueChange = { descriptionText = it },
-                    modifier = Modifier.fillMaxWidth().weight(1f).focusRequester(focusRequester),
-                    placeholder = { Text("Start typing your markdown notes here...", color = TextSecondary) },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 16.sp, color = TextPrimary, lineHeight = 24.sp),
+                    modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp).focusRequester(focusRequester),
+                    placeholder = { Text("Start typing...", color = TextSecondary) },
+                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, color = TextPrimary, lineHeight = 28.sp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent,
+                        focusedBorderColor = Color.Transparent, // Completely invisible borders
                         unfocusedBorderColor = Color.Transparent,
                     )
                 )
