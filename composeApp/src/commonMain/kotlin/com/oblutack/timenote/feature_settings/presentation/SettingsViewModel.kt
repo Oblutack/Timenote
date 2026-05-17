@@ -47,6 +47,12 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
+    fun addPickedColor(color: androidx.compose.ui.graphics.Color) {
+        androidx.lifecycle.viewModelScope.launch {
+            // Extracts the raw ULong and saves it to DataStore
+            com.oblutack.timenote.data.repository.SettingsRepository.addCustomColor(color.value.toLong())
+        }
+    }
     fun deleteCustomColor(colorLong: Long) {
         viewModelScope.launch {
             SettingsRepository.removeCustomColor(colorLong)
