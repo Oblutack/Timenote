@@ -12,6 +12,15 @@ import kotlinx.coroutines.launch
 
 class SettingsViewModel : ViewModel() {
 
+    val enableBackgroundBlur = com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), true)
+
+    fun toggleBackgroundBlur(enabled: Boolean) {
+        viewModelScope.launch {
+            com.oblutack.timenote.data.repository.SettingsRepository.setBackgroundBlur(enabled)
+        }
+    }
+
     val useMonochromeNodes = SettingsRepository.useMonochromeNodesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 

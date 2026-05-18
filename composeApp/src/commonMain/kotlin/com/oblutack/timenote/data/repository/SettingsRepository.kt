@@ -12,6 +12,7 @@ object SettingsRepository {
 
     // --- KEYS ---
     private val USE_MONOCHROME_NODES = booleanPreferencesKey("use_monochrome_nodes")
+    private val ENABLE_BACKGROUND_BLUR = booleanPreferencesKey("enable_background_blur") // <-- NEW
     private val CUSTOM_COLORS_JSON = stringPreferencesKey("custom_colors_json")
 
     // NEW: The key for our emergency timer backup
@@ -23,6 +24,10 @@ object SettingsRepository {
     }
 
     // --- READ PREFERENCES ---
+    val enableBackgroundBlurFlow: Flow<Boolean> // <-- NEW
+        get() = dataStore.data
+            .catch { emit(emptyPreferences()) }
+            .map { it[ENABLE_BACKGROUND_BLUR] ?: true }
     val useMonochromeNodesFlow: Flow<Boolean>
         get() = dataStore.data
             .catch { emit(emptyPreferences()) }
@@ -43,6 +48,9 @@ object SettingsRepository {
             .map { it[ACTIVE_SESSION_BACKUP] }
 
     // --- WRITE PREFERENCES ---
+    suspend fun setBackgroundBlur(enabled: Boolean) { // <-- NEW
+        dataStore.edit { it[ENABLE_BACKGROUND_BLUR] = enabled }
+    }
     suspend fun setMonochromeNodes(enabled: Boolean) {
         dataStore.edit { it[USE_MONOCHROME_NODES] = enabled }
     }

@@ -46,6 +46,7 @@ import com.oblutack.timenote.feature_timer.domain.EventType
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.blur
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,11 +57,24 @@ fun TimerScreen(
 
     val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
     val customColors by com.oblutack.timenote.data.repository.SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
+    // 1. Get the Setting
+    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+
+    // 2. Check if ANY popup is open
+    val isPopupOpen = state.isAddNoteDialogOpen || state.isCategoryPopupOpen || state.isCreateTagDialogOpen || state.isManageTagsSheetOpen
+
+    // 3. The Premium Physics Animation
+    val blurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "BlurAnimation"
+    )
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .blur(radius = blurRadius)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

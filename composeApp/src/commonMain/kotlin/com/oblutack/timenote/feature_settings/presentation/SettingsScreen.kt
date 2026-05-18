@@ -35,6 +35,7 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel { SettingsViewModel() }
 ) {
     val useMonochromeNodes by viewModel.useMonochromeNodes.collectAsState()
+    val enableBackgroundBlur by viewModel.enableBackgroundBlur.collectAsState() // <-- NEW
     val customColors by viewModel.customColors.collectAsState()
 
     var isColorPickerOpen by remember { mutableStateOf(false) }
@@ -79,6 +80,29 @@ fun SettingsScreen(
             Switch(
                 checked = useMonochromeNodes,
                 onCheckedChange = { viewModel.toggleMonochromeNodes(it) },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceDark)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Dynamic Background Blur", color = TextPrimary, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Smoothly blurs the app background when menus open.", color = TextSecondary, fontSize = 12.sp)
+            }
+            Switch(
+                checked = enableBackgroundBlur,
+                onCheckedChange = { viewModel.toggleBackgroundBlur(it) },
                 colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
             )
         }
