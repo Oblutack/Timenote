@@ -8,6 +8,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import androidx.lifecycle.viewModelScope
+import kotlinx.datetime.toLocalDateTime
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -18,6 +23,22 @@ enum class SortOption(val displayName: String) {
 
 class HistoryViewModel : ViewModel() {
     val sessions = SessionRepository.timenotes
+
+    val heatmapData: StateFlow<Map<String, Int>> = sessions.map { allSessions ->
+        val map = mutableMapOf<String, Int>()
+        allSessions.forEach { session ->
+            // Safely convert the timestamp to a local date string
+            val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(
+                if (session.createdAt > 0L) session.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
+            )
+            val dateStr = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date.toString()
+
+            // Add this session's active time to that day's total
+            map[dateStr] = (map[dateStr] ?: 0) + session.activeSeconds
+        }
+        map
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyMap())
+
     val folders = SessionRepository.folders
     val tags = SessionRepository.tags
 

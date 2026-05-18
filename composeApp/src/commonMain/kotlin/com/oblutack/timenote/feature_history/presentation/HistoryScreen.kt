@@ -165,6 +165,8 @@ fun HistoryScreen(
 
     val customColors by com.oblutack.timenote.data.repository.SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
 
+    val heatmapData by viewModel.heatmapData.collectAsState()
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -421,91 +423,18 @@ fun HistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 ) {
-                    if (isCalendarView) {
-                        item {
-                            Column(modifier = Modifier.fillMaxWidth()) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    IconButton(onClick = {
-                                        val prevMonth = if (currentMonth.monthNumber == 1) 12 else currentMonth.monthNumber - 1
-                                        val prevYear = if (currentMonth.monthNumber == 1) currentMonth.year - 1 else currentMonth.year
-                                        currentMonth = LocalDate(prevYear, prevMonth, 1)
-                                    }) {
-                                        Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "Previous Month", tint = TextPrimary)
+                        if (isCalendarView) {
+                            item {
+                                FlowHeatmap(
+                                    heatmapData = heatmapData,
+                                    selectedDate = selectedDate,
+                                    onDateSelected = { clickedDate ->
+                                        // Toggle logic: If they click the same date, deselect it
+                                        selectedDate = if (selectedDate == clickedDate) null else clickedDate
                                     }
-                                    Text(
-                                        text = "${currentMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${currentMonth.year}",
-                                        color = TextPrimary,
-                                        fontSize = 18.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    IconButton(onClick = {
-                                        val nextMonth = if (currentMonth.monthNumber == 12) 1 else currentMonth.monthNumber + 1
-                                        val nextYear = if (currentMonth.monthNumber == 12) currentMonth.year + 1 else currentMonth.year
-                                        currentMonth = LocalDate(nextYear, nextMonth, 1)
-                                    }) {
-                                        Icon(Icons.Default.KeyboardArrowRight, contentDescription = "Next Month", tint = TextPrimary)
-                                    }
-                                }
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    listOf("M", "T", "W", "T", "F", "S", "S").forEach { day ->
-                                        Text(day, color = TextSecondary, fontSize = 14.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                                    }
-                                }
-
-                                val startDayOfWeek = LocalDate(currentMonth.year, currentMonth.monthNumber, 1).dayOfWeek.isoDayNumber
-                                val offset = startDayOfWeek - 1
-                                val totalDays = getDaysInMonth(currentMonth.monthNumber, currentMonth.year)
-
-                                LazyVerticalGrid(
-                                    columns = GridCells.Fixed(7),
-                                    modifier = Modifier.fillMaxWidth().height(280.dp),
-                                    contentPadding = PaddingValues(bottom = 16.dp)
-                                ) {
-                                    items(offset) { Spacer(modifier = Modifier.aspectRatio(1f)) }
-                                    items(totalDays) { dayIndex ->
-                                        val day = dayIndex + 1
-                                        val thisDate = LocalDate(currentMonth.year, currentMonth.monthNumber, day)
-                                        val isSelected = selectedDate == thisDate
-                                        val daySessions = sessionsByDate[thisDate]
-
-                                        Box(
-                                            modifier = Modifier
-                                                .aspectRatio(1f)
-                                                .clip(CircleShape)
-                                                .background(if (isSelected) SurfaceDark else Color.Transparent)
-                                                .clickable { selectedDate = thisDate },
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                                Text(
-                                                    text = day.toString(),
-                                                    color = if (thisDate == today) DefaultAccentColor else TextPrimary,
-                                                    fontSize = 16.sp
-                                                )
-                                                if (daySessions != null && daySessions.isNotEmpty()) {
-                                                    Spacer(modifier = Modifier.height(2.dp))
-                                                    Box(
-                                                        modifier = Modifier
-                                                            .size(4.dp)
-                                                            .clip(CircleShape)
-                                                            .background(daySessions.first().tags.firstOrNull()?.color ?: DefaultAccentColor)
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
+                                )
                             }
                         }
-                    }
 
                     if (finalDisplaySessions.isEmpty()) {
                         item {
