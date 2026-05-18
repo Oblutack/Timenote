@@ -73,6 +73,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.GridOn
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -337,14 +338,14 @@ fun HistoryScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.DateRange,
+                            imageVector = Icons.Default.GridOn,
                             contentDescription = "Calendar",
                             tint = if (isCalendarView) DefaultAccentColor else TextSecondary,
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = "Calendar",
+                            text = "Heatmap",
                             color = if (isCalendarView) DefaultAccentColor else TextSecondary,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
@@ -423,18 +424,21 @@ fun HistoryScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth().weight(1f)
                 ) {
-                        if (isCalendarView) {
                             item {
-                                FlowHeatmap(
-                                    heatmapData = heatmapData,
-                                    selectedDate = selectedDate,
-                                    onDateSelected = { clickedDate ->
-                                        // Toggle logic: If they click the same date, deselect it
-                                        selectedDate = if (selectedDate == clickedDate) null else clickedDate
-                                    }
-                                )
+                                androidx.compose.animation.AnimatedVisibility(
+                                    visible = isCalendarView,
+                                    enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
+                                    exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
+                                ) {
+                                    FlowHeatmap(
+                                        heatmapData = heatmapData,
+                                        selectedDate = selectedDate,
+                                        onDateSelected = { clickedDate ->
+                                            selectedDate = if (selectedDate == clickedDate) null else clickedDate
+                                        }
+                                    )
+                                }
                             }
-                        }
 
                     if (finalDisplaySessions.isEmpty()) {
                         item {
