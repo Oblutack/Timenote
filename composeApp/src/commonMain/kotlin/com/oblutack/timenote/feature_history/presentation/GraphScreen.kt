@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -31,7 +32,6 @@ import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.domain.Timenote
 import kotlin.math.sqrt
-import androidx.compose.animation.core.animateFloat
 
 // Holds the calculated X,Y positions for the Canvas to draw
 data class GraphNode(
@@ -50,14 +50,14 @@ fun GraphScreen(
 
     // Interactive Canvas State (Pan & Zoom)
     var scale by remember { mutableStateOf(1f) }
-    var pan by remember { mutableStateOf(Offset(200f, 200f)) } // Start slightly padded inward
+    var pan by remember { mutableStateOf(Offset(200f, 200f)) }
     val textMeasurer = rememberTextMeasurer()
 
     val infiniteTransition = androidx.compose.animation.core.rememberInfiniteTransition(label = "NodePulse")
 
     val glowRadius by infiniteTransition.animateFloat(
         initialValue = 40f,
-        targetValue = 55f, // Grows larger
+        targetValue = 55f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
             animation = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
             repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
@@ -67,7 +67,7 @@ fun GraphScreen(
 
     val glowAlpha by infiniteTransition.animateFloat(
         initialValue = 0.1f,
-        targetValue = 0.3f, // Gets brighter
+        targetValue = 0.3f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
             animation = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
             repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
@@ -75,31 +75,30 @@ fun GraphScreen(
         label = "AlphaPulse"
     )
 
-    // The Auto-Layout Algorithm
+    // --- THE UPGRADED AUTO-LAYOUT ALGORITHM ---
     val nodes = remember(timenotes) {
         val calculatedNodes = mutableListOf<GraphNode>()
         val childrenMap = timenotes.groupBy { it.parentTimenoteId }
-
-        // Find "Roots" (Timenotes that have no parent)
         val roots = timenotes.filter { it.parentTimenoteId == null || timenotes.none { parent -> parent.id == it.parentTimenoteId } }
 
         var currentY = 400f
 
-        // Recursive function to space out branches
-        fun placeNode(note: Timenote, depth: Int) {
-            val x = 300f + (depth * 500f) // Push roots to the right, compress horizontal spacing
-            val y = currentY
-
-            calculatedNodes.add(GraphNode(note, x, y))
+        // FIX: Returns Float so the parent can calculate the exact mathematical center of its children!
+        fun placeNode(note: Timenote, depth: Int): Float {
+            val x = 300f + (depth * 500f)
 
             val children = childrenMap[note.id] ?: emptyList()
-            if (children.isNotEmpty()) {
-                children.forEach { child ->
-                    placeNode(child, depth + 1)
-                }
+            val y = if (children.isNotEmpty()) {
+                val childYs = children.map { placeNode(it, depth + 1) }
+                childYs.average().toFloat() // Centers the parent!
             } else {
+                val myY = currentY
                 currentY += 250f
+                myY
             }
+
+            calculatedNodes.add(GraphNode(note, x, y))
+            return y
         }
 
         roots.forEach { root -> placeNode(root, 0) }
@@ -152,13 +151,8 @@ fun GraphScreen(
                     translate(pan.x, pan.y)
                     scale(scale, scale, Offset.Zero)
                 }) {
-
                     // 1. PREMIUM DOT GRID BACKGROUND
-                    // Draws a faint dot grid that scales and pans with your graph
                     val dotSpacing = 100f
-                    val gridWidth = 4000f // Creates a massive virtual canvas
-                    val gridHeight = 4000f
-
                     for (x in -2000..2000 step dotSpacing.toInt()) {
                         for (y in -2000..2000 step dotSpacing.toInt()) {
                             drawCircle(
@@ -169,14 +163,13 @@ fun GraphScreen(
                         }
                     }
 
-                    // 2. DRAW CONNECTIONS (Bézier Curves)
+                    // 2. DRAW CONNECTIONS (Bézier Curves for Children)
                     nodes.forEach { node ->
                         if (node.note.parentTimenoteId != null) {
                             val parentNode = nodes.find { it.note.id == node.note.parentTimenoteId }
                             if (parentNode != null) {
                                 val path = Path().apply {
                                     moveTo(parentNode.x, parentNode.y)
-                                    // Smooth S-Curve linking parent to child
                                     cubicTo(
                                         x1 = parentNode.x + 200f, y1 = parentNode.y,
                                         x2 = node.x - 200f, y2 = node.y,
@@ -185,29 +178,45 @@ fun GraphScreen(
                                 }
                                 drawPath(
                                     path = path,
-                                    color = DefaultAccentColor.copy(alpha = 0.5f), // Made lines blue so they pop!
+                                    color = DefaultAccentColor.copy(alpha = 0.5f),
                                     style = Stroke(width = 4f)
                                 )
                             }
                         }
                     }
 
-                    // 3. DRAW NODES (Glowing Orbs + Titles)
+                    // 3. DRAW MENTION LINKS (Dashed Purple Lines for Tags)
+                    // FIX: Moved inside `withTransform` so it pans/zooms with the graph!
+                    val mentionRegex = Regex("@\\[.*?\\]\\((.*?)\\)")
+                    nodes.forEach { node ->
+                        val mentions = mentionRegex.findAll(node.note.description).map { it.groupValues[1] }.toList()
+                        mentions.forEach { targetId ->
+                            val targetNode = nodes.find { it.note.id == targetId }
+                            if (targetNode != null) {
+                                val path = Path().apply {
+                                    moveTo(node.x, node.y)
+                                    lineTo(targetNode.x, targetNode.y)
+                                }
+                                drawPath(
+                                    path = path,
+                                    color = Color(0xFF9C27B0).copy(alpha = 0.5f),
+                                    style = Stroke(
+                                        width = 3f,
+                                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f))
+                                    )
+                                )
+                            }
+                        }
+                    }
+
+                    // 4. DRAW NODES (Glowing Orbs + Titles)
                     nodes.forEach { node ->
                         val nodeColor = node.note.tags.firstOrNull()?.color ?: DefaultAccentColor
 
-                        // Outer Glow
-                        drawCircle(
-                            color = nodeColor.copy(alpha = glowAlpha),
-                            radius = glowRadius,
-                            center = Offset(node.x, node.y)
-                        )
-                        // Core Node
+                        drawCircle(color = nodeColor.copy(alpha = glowAlpha), radius = glowRadius, center = Offset(node.x, node.y))
                         drawCircle(color = nodeColor, radius = 18f, center = Offset(node.x, node.y))
-                        // Inner Dot
                         drawCircle(color = BackgroundDark, radius = 8f, center = Offset(node.x, node.y))
 
-                        // Clean Text Measuring
                         val title = node.note.title.ifBlank { "Untitled" }
                         val textLayoutResult = textMeasurer.measure(
                             text = title,
@@ -218,7 +227,7 @@ fun GraphScreen(
                             textLayoutResult = textLayoutResult,
                             topLeft = Offset(
                                 x = node.x - (textLayoutResult.size.width / 2),
-                                y = node.y + 35f // Pushed closer to the node
+                                y = node.y + 35f
                             )
                         )
                     }

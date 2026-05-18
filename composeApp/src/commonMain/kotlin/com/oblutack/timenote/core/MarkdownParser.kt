@@ -52,15 +52,42 @@ fun parseMarkdownToAnnotatedString(text: String, accentColor: Color): AnnotatedS
             )
         }
 
+        // 5. NEW: @MENTIONS (@Tag)
+        // Matches an '@' followed by any letters/numbers (stops at a space)
+        val mentionRegex = Regex("@\\[(.*?)\\]\\((.*?)\\)")
+        mentionRegex.findAll(text).forEach { match ->
+            val id = match.groupValues[2]
+
+            // THE FIX: Removed the ugly sharp background, just keep it Bold and Colored!
+            addStyle(
+                style = SpanStyle(color = accentColor, fontWeight = FontWeight.Bold),
+                start = match.range.first,
+                end = match.range.last + 1
+            )
+
+            addStringAnnotation(
+                tag = "MENTION",
+                annotation = id,
+                start = match.range.first,
+                end = match.range.last + 1
+            )
+        }
+
         // --- CLEANUP ---
         // Hide the actual markdown symbols (**, _, #) by making them transparent!
         val symbolsRegex = Regex("(\\*\\*|_|(?m)^# |~~)")
         symbolsRegex.findAll(text).forEach { match ->
-            addStyle(
-                style = SpanStyle(color = Color.Transparent, fontSize = 0.sp), // Shrinks and hides the symbols
-                start = match.range.first,
-                end = match.range.last + 1
-            )
+            addStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp), match.range.first, match.range.last + 1)
+        }
+
+        // Hide the smart link brackets "@[" and "](ID)"
+        val linkStartRegex = Regex("@\\[")
+        linkStartRegex.findAll(text).forEach { match ->
+            addStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp), match.range.first, match.range.last + 1)
+        }
+        val linkEndRegex = Regex("\\]\\(.*?\\)")
+        linkEndRegex.findAll(text).forEach { match ->
+            addStyle(SpanStyle(color = Color.Transparent, fontSize = 0.sp), match.range.first, match.range.last + 1)
         }
     }
 }

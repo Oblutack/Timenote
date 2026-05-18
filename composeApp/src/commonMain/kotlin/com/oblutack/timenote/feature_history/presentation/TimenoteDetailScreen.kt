@@ -306,21 +306,33 @@ fun TimenoteDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 16.dp)
+                .defaultMinSize(minHeight = 80.dp) // Ensures a large tap area even if text is 1 word!
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null
-                ) { isEditingDescription = true }
+                ) { isEditingDescription = true } // Fallback: clicking the empty box opens the editor
+                .padding(vertical = 16.dp)
         ) {
             if (displayDescription.isBlank()) {
                 Text("Tap to add a description...", color = TextSecondary)
             } else {
                 val dynamicAccentColor = timenote?.tags?.firstOrNull()?.color ?: DefaultAccentColor
-                Text(
-                    text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, dynamicAccentColor),
-                    color = TextPrimary,
-                    fontSize = 16.sp,
-                    lineHeight = 24.sp
+                val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, dynamicAccentColor)
+
+                androidx.compose.foundation.text.ClickableText(
+                    text = annotatedText,
+                    modifier = Modifier.fillMaxWidth(), // THE FIX: Stretches the text box across the screen!
+                    style = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                    onClick = { offset ->
+                        // Only jump to the link if they tapped EXACTLY on the tagged word
+                        val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
+                        if (annotations.isNotEmpty()) {
+                            onTimenoteClick(annotations.first().item)
+                        } else {
+                            // If they tapped regular text or empty space, open editor!
+                            isEditingDescription = true
+                        }
+                    }
                 )
             }
         }
@@ -803,6 +815,57 @@ fun TimenoteDetailScreen(
                 Spacer(modifier = Modifier.height(8.dp))
                 // Subtle divider line under the toolbar
                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TextSecondary.copy(alpha=0.1f)))
+
+                // --- AUTO SUGGEST LOGIC ---
+                val cursorPosition = descriptionText.selection.start
+                val textUntilCursor = descriptionText.text.substring(0, cursorPosition.coerceAtMost(descriptionText.text.length))
+                val lastAtIndex = textUntilCursor.lastIndexOf('@')
+
+                var mentionQuery: String? = null
+                if (lastAtIndex != -1) {
+                    val queryPart = textUntilCursor.substring(lastAtIndex + 1)
+                    // If there are no newlines or closing brackets, and it's less than 30 chars, trigger search!
+                    if (!queryPart.contains("\n") && !queryPart.contains("]") && queryPart.length < 30) {
+                        mentionQuery = queryPart
+                    }
+                }
+
+                androidx.compose.animation.AnimatedVisibility(visible = mentionQuery != null) {
+                    val suggestions = allTimenotes.filter {
+                        it.title.contains(mentionQuery ?: "", ignoreCase = true) && it.id != timenote?.id
+                    }.take(4) // Show top 4 suggestions
+
+                    if (suggestions.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(BackgroundDark)
+                                .border(1.dp, DefaultAccentColor.copy(alpha=0.5f), RoundedCornerShape(8.dp))
+                        ) {
+                            items(suggestions) { suggestion ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            // INJECT THE SMART LINK!
+                                            val t = descriptionText.text
+                                            val insertText = "@[${suggestion.title}](${suggestion.id}) "
+                                            val newText = t.substring(0, lastAtIndex) + insertText + t.substring(cursorPosition)
+                                            descriptionText = descriptionText.copy(
+                                                text = newText,
+                                                selection = TextRange(lastAtIndex + insertText.length)
+                                            )
+                                        }
+                                        .padding(12.dp)
+                                ) {
+                                    Text(suggestion.title, color = TextPrimary, fontSize = 14.sp)
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // --- THE TEXT EDITOR ---
                 // Automatically request focus to pop up the keyboard
