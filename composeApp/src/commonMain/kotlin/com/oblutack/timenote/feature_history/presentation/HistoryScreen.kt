@@ -72,6 +72,7 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.PushPin
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -152,7 +153,7 @@ fun HistoryScreen(
             SortOption.OLDEST -> searchFiltered.sortedBy { it.createdAt.toLong() }
             SortOption.LONGEST -> searchFiltered.sortedByDescending { it.activeSeconds }
             SortOption.SHORTEST -> searchFiltered.sortedBy { it.activeSeconds }
-        }
+        }.sortedByDescending { it.isPinned }
     }
 
     var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
@@ -603,13 +604,15 @@ fun HistoryScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val sortedFolders = folders.sortedByDescending { it.isPinned }
+
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     horizontalArrangement = Arrangement.spacedBy(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    items(folders) { folder ->
+                    items(sortedFolders) { folder ->
                         FolderCard(
                             folder = folder,
                             onClick = { onFolderClick(folder.id) },
@@ -760,19 +763,15 @@ fun HistoryScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                newFolderName = selectedFolder.name
-                                newFolderDescription = selectedFolder.description ?: ""
-                                newFolderColor = selectedFolder.color
-                                folderBeingEditedId = selectedFolder.id
-                                isCreateFolderDialogOpen = true
+                                viewModel.toggleFolderPin(selectedFolder.id)
                                 folderOptionsId = null
                             }
                             .padding(16.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(imageVector = Icons.Default.Edit, contentDescription = "Edit", tint = TextPrimary)
+                        Icon(imageVector = Icons.Default.PushPin, contentDescription = if (selectedFolder.isPinned) "Unpin" else "Pin", tint = TextPrimary)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text(text = "Edit Folder", color = TextPrimary, fontSize = 16.sp)
+                        Text(text = if (selectedFolder.isPinned) "Unpin Folder" else "Pin Folder", color = TextPrimary, fontSize = 16.sp)
                     }
 
                     Row(
@@ -886,13 +885,24 @@ fun FolderCard(
                 overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = folder.description?.takeIf { it.isNotBlank() } ?: "Folder",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (folder.isPinned) {
+                    Icon(
+                        imageVector = Icons.Default.PushPin,
+                        contentDescription = "Pinned",
+                        tint = DefaultAccentColor,
+                        modifier = Modifier.size(12.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(
+                    text = folder.description?.takeIf { it.isNotBlank() } ?: "Folder",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+            }
         }
 
         // Right Side: Massive 3-dot hit target (Takes up 25% of the card)
@@ -1025,6 +1035,15 @@ fun SessionCard(
         Column(
             horizontalAlignment = Alignment.End // Right-aligns all the text
         ) {
+            if (session.isPinned) {
+                Icon(
+                    imageVector = Icons.Default.PushPin,
+                    contentDescription = "Pinned",
+                    tint = DefaultAccentColor,
+                    modifier = Modifier.size(14.dp)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
             Text(
                 text = session.duration,
                 color = TextSecondary,

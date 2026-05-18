@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -171,7 +172,14 @@ fun TimenoteDetailScreen(
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Timenote Details", color = TextSecondary, fontSize = 18.sp)
+            Text("Timenote Details", color = TextSecondary, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            IconButton(onClick = { viewModel.toggleTimenotePin(timenote.id) }) {
+                Icon(
+                    imageVector = Icons.Default.PushPin,
+                    contentDescription = if (timenote.isPinned) "Unpin" else "Pin",
+                    tint = if (timenote.isPinned) DefaultAccentColor else TextSecondary
+                )
+            }
         }
 
         androidx.compose.animation.AnimatedContent(
