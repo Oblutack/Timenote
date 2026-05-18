@@ -75,6 +75,11 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -432,10 +437,27 @@ fun HistoryScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
 
+                val fadeBrush = remember {
+                    Brush.verticalGradient(
+                        0f to Color.Transparent, // Top is invisible
+                        0.02f to Color.Black,    // Fades to solid quickly
+                        0.98f to Color.Black,    // Stays solid until the bottom
+                        1f to Color.Transparent  // Bottom is invisible
+                    )
+                }
+
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
-                    modifier = Modifier.fillMaxWidth().weight(1f)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        // THE FIX: Apply the fading edge mask!
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(brush = fadeBrush, blendMode = BlendMode.DstIn)
+                        }
                 ) {
                             item {
                                 androidx.compose.animation.AnimatedVisibility(

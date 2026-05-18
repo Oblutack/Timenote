@@ -748,9 +748,8 @@ fun TimenoteDetailScreen(
             onDismissRequest = { isEditingDescription = false },
             sheetState = sheetState,
             containerColor = SurfaceDark,
-            modifier = Modifier.fillMaxHeight(0.95f) // Slightly taller
         ) {
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.95f).padding(horizontal = 16.dp, vertical = 8.dp)) {
 
                 // --- TOP BAR ---
                 Row(
