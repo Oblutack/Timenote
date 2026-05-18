@@ -23,6 +23,7 @@ fun Timenote.toEntity(): TimenoteEntity {
         timelineEventsJson = Json.encodeToString(this.timelineEvents),
         parentTimenoteId = this.parentTimenoteId, // <-- ADD THIS
         parentWaypointId = this.parentWaypointId,
+        isPinned = this.isPinned,
         isDeleted = this.isDeleted
     )
 }
@@ -42,6 +43,7 @@ fun TimenoteEntity.toDomain(): Timenote {
         tags = Json.decodeFromString<List<TimenoteFolder>>(this.tagsJson),
         parentTimenoteId = this.parentTimenoteId, // <-- ADD THIS
         parentWaypointId = this.parentWaypointId,
+        isPinned = this.isPinned,
         timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson)
     )
 }
@@ -54,6 +56,7 @@ fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): Folde
         colorLong = this.color.value.toLong(),
         createdAt = this.createdAt,
         isDeleted = this.isDeleted,
+        isPinned = this.isPinned,
         description = this.description,
     )
 }
@@ -64,6 +67,7 @@ fun FolderEntity.toDomain(): com.oblutack.timenote.feature_history.domain.Projec
         name = this.name,
         description = this.description,
         color = androidx.compose.ui.graphics.Color(this.colorLong.toULong()),
+        isPinned = this.isPinned,
         createdAt = this.createdAt
     )
 }

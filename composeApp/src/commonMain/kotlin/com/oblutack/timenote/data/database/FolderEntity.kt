@@ -10,5 +10,6 @@ data class FolderEntity(
     val description: String?,
     val colorLong: Long,
     val createdAt: Long,
+    val isPinned: Boolean,
     val isDeleted: Boolean
 )

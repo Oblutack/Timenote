@@ -91,6 +91,11 @@ object SessionRepository {
         return _timenotes.value.find { it.id == id }
     }
 
+    // (If you don't have getFolderById yet, add this quick helper right next to getTimenoteById):
+    fun getFolderById(id: String): com.oblutack.timenote.feature_history.domain.ProjectFolder? {
+        return _folders.value.find { it.id == id }
+    }
+
     // NEW: Save a Custom Tag to the Database
     fun saveTag(tag: TimenoteFolder) {
         coroutineScope.launch {
@@ -174,6 +179,20 @@ object SessionRepository {
         coroutineScope.launch {
             _deletedTimenotes.value.forEach { dao?.hardDeleteTimenote(it.id) }
             _deletedFolders.value.forEach { dao?.hardDeleteFolder(it.id) }
+        }
+    }
+
+    fun toggleFolderPin(id: String) {
+        coroutineScope.launch {
+            val folder = getFolderById(id) // You might need to add getFolderById similar to getTimenoteById
+            if (folder != null) dao?.updateFolderPin(id, !folder.isPinned)
+        }
+    }
+
+    fun toggleTimenotePin(id: String) {
+        coroutineScope.launch {
+            val note = getTimenoteById(id)
+            if (note != null) dao?.updateTimenotePin(id, !note.isPinned)
         }
     }
 

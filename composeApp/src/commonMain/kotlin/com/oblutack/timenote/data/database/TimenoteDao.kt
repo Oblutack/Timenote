@@ -66,4 +66,10 @@ interface TimenoteDao {
     // 4. Hard Delete
     @Query("DELETE FROM project_folders WHERE id = :id")
     suspend fun hardDeleteFolder(id: String)
+
+    @Query("UPDATE project_folders SET isPinned = :isPinned WHERE id = :id")
+    suspend fun updateFolderPin(id: String, isPinned: Boolean)
+
+    @Query("UPDATE timenotes SET isPinned = :isPinned WHERE id = :id")
+    suspend fun updateTimenotePin(id: String, isPinned: Boolean)
 }

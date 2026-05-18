@@ -23,5 +23,6 @@ data class TimenoteEntity(
     val timelineEventsJson: String,
     val parentTimenoteId: String?,
     val parentWaypointId: String?,
+    val isPinned: Boolean,
     val isDeleted: Boolean
 )

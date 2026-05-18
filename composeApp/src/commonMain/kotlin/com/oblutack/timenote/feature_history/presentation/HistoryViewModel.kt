@@ -143,4 +143,12 @@ class HistoryViewModel : ViewModel() {
             }
         }
     }
+
+    fun toggleFolderPin(id: String) {
+        SessionRepository.toggleFolderPin(id)
+    }
+
+    fun toggleTimenotePin(id: String) {
+        SessionRepository.toggleTimenotePin(id)
+    }
 }

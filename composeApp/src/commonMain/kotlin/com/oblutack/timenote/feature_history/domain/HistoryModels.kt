@@ -12,6 +12,7 @@ data class ProjectFolder(
     val description: String? = null,
     @Serializable(with = ColorSerializer::class) val color: Color,
     val createdAt: Long,
+    val isPinned: Boolean = false,
     val isDeleted: Boolean = false
 )
 
@@ -40,6 +41,7 @@ data class Timenote(
     val timelineEvents: List<TimelineEvent>,
     val parentTimenoteId: String? = null,
     val parentWaypointId: String? = null,
+    val isPinned: Boolean = false,
     val isDeleted: Boolean = false
 )
 
