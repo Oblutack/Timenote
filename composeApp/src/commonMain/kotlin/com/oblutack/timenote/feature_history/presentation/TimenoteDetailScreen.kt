@@ -66,6 +66,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.draw.blur
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -157,10 +158,23 @@ fun TimenoteDetailScreen(
     var isEditTagsSheetOpen by remember { mutableStateOf(false) }
     var tempSelectedTags by remember(timenote?.tags) { mutableStateOf(timenote?.tags ?: emptyList()) }
 
+    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+
+    // Check if ANY popup is open on the Details screen
+    val isPopupOpen = isFolderDialogOpen || isEditingDescription || isEditTagsSheetOpen
+
+    val blurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "DetailsBlur"
+    )
+
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .blur(radius = blurRadius)
             .verticalScroll(scrollState)
             .padding(top = 24.dp, start = 24.dp, end = 24.dp)
     ) {

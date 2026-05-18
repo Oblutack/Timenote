@@ -27,6 +27,7 @@ import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
+import androidx.compose.ui.draw.blur
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,10 +42,19 @@ fun SettingsScreen(
     var isColorPickerOpen by remember { mutableStateOf(false) }
     var tempPickedColor by remember { mutableStateOf(DefaultAccentColor) }
 
+    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+
+    val blurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (enableBlur && isColorPickerOpen) 16.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "SettingsBlur"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .blur(radius = blurRadius)
             .padding(24.dp)
     ) {
         // --- TOP BAR ---
@@ -83,7 +93,7 @@ fun SettingsScreen(
                 colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(12.dp))
 
         Row(

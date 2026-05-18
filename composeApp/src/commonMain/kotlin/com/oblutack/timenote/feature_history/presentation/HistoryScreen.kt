@@ -74,6 +74,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.ui.draw.blur
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -168,10 +169,22 @@ fun HistoryScreen(
 
     val heatmapData by viewModel.heatmapData.collectAsState()
 
+    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+
+    // Check if ANY popup is open on the History screen
+    val isPopupOpen = isCreateFolderDialogOpen || folderOptionsId != null || isSortSheetOpen || isTagFilterSheetOpen
+
+    val blurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "HistoryBlur"
+    )
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
+            .blur(radius = blurRadius)
             .padding(24.dp)
     ) {
 
