@@ -544,33 +544,45 @@ fun TimenoteDetailScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(SurfaceDark)
-                        .padding(4.dp),
+                        .padding(bottom = 24.dp)
+                        .clip(RoundedCornerShape(50)) // Fully rounded pill
+                        .border(1.dp, TextSecondary.copy(alpha = 0.2f), RoundedCornerShape(50)) // Ghost border
+                        .padding(4.dp), // Padding inside the border so the active tab floats
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
+                    val activeBg = SurfaceDark // Or Color(0xFF2C2C2C) if you want it slightly lighter
+
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (!isNotesOnlyView) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (!isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable { isNotesOnlyView = false }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Timeline", color = if (!isNotesOnlyView) TextPrimary else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "Timeline",
+                            color = if (!isNotesOnlyView) TextPrimary else TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (isNotesOnlyView) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clip(RoundedCornerShape(50))
+                            .background(if (isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable { isNotesOnlyView = true }
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("Notes Only", color = if (isNotesOnlyView) TextPrimary else TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = "Notes Only",
+                            color = if (isNotesOnlyView) TextPrimary else TextSecondary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 }
                 // -------------------------------------
