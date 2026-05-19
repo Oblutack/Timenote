@@ -1,43 +1,79 @@
 package com.oblutack.timenote
 
+import android.content.Context
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.MediaPlayer
+import android.os.Build
 import com.oblutack.timenote.feature_timer.domain.AudioPlayer
 
-class AndroidAudioPlayer : AudioPlayer {
+class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
 
     private var player: MediaPlayer? = null
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+    private var focusRequest: AudioFocusRequest? = null
+
+    // 1. REQUEST FOCUS
+    private fun requestAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) // Pauses Spotify!
+                .setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH) // Tells Android this is important talking
+                        .build()
+                )
+                .setAcceptsDelayedFocusGain(true)
+                .setOnAudioFocusChangeListener { /* Handle focus changes if needed */ }
+                .build()
+            audioManager.requestAudioFocus(focusRequest!!)
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+        }
+    }
+
+    // 2. ABANDON FOCUS
+    private fun abandonAudioFocus() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            focusRequest?.let { audioManager.abandonAudioFocusRequest(it) }
+        } else {
+            @Suppress("DEPRECATION")
+            audioManager.abandonAudioFocus(null)
+        }
+    }
 
     override fun play(filePath: String, onComplete: () -> Unit) {
-        // 1. If we are paused, try to safely resume
         if (player != null) {
             try {
                 if (!player!!.isPlaying) {
+                    requestAudioFocus() // Re-grab focus if resuming
                     player?.start()
                     return
                 }
-            } catch (e: Exception) {
-                // If it fails, ignore and recreate the player below
-            }
+            } catch (e: Exception) { }
         }
 
-        // 2. Safely destroy any existing hardware locks
         safeRelease()
 
-        // 3. Create a fresh, crash-proof player
         try {
+            requestAudioFocus() // Grab focus before playing!
+
             player = MediaPlayer().apply {
                 setDataSource(filePath)
                 prepare()
                 start()
 
                 setOnCompletionListener {
-                    safeRelease() // Destroys the player cleanly
-                    onComplete()  // Resets the UI
+                    safeRelease()
+                    abandonAudioFocus() // Give Spotify back its music!
+                    onComplete()
                 }
 
-                // If the hardware glitches, this prevents a phone reboot!
                 setOnErrorListener { _, _, _ ->
                     safeRelease()
+                    abandonAudioFocus()
                     onComplete()
                     true
                 }
@@ -45,6 +81,7 @@ class AndroidAudioPlayer : AudioPlayer {
         } catch (e: Exception) {
             e.printStackTrace()
             safeRelease()
+            abandonAudioFocus()
             onComplete()
         }
     }
@@ -53,6 +90,7 @@ class AndroidAudioPlayer : AudioPlayer {
         try {
             if (player?.isPlaying == true) {
                 player?.pause()
+                abandonAudioFocus() // Let music play while we are paused
             }
         } catch (e: Exception) {
             e.printStackTrace()
@@ -61,28 +99,16 @@ class AndroidAudioPlayer : AudioPlayer {
 
     override fun stop() {
         safeRelease()
+        abandonAudioFocus()
     }
 
-    // THE MAGIC FIX: Safely navigates the Android C++ State Machine
     private fun safeRelease() {
-        try {
-            player?.stop()
-        } catch (e: Exception) {
-            // Ignore: It was already stopped or completed
-        }
-        try {
-            player?.release()
-        } catch (e: Exception) {
-            // Ignore
-        }
+        try { player?.stop() } catch (e: Exception) { }
+        try { player?.release() } catch (e: Exception) { }
         player = null
     }
 
     override fun isPlaying(): Boolean {
-        return try {
-            player?.isPlaying ?: false
-        } catch (e: Exception) {
-            false
-        }
+        return try { player?.isPlaying ?: false } catch (e: Exception) { false }
     }
 }
