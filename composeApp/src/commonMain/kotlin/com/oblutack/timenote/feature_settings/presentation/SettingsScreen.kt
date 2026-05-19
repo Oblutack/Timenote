@@ -51,6 +51,8 @@ fun SettingsScreen(
         label = "SettingsBlur"
     )
 
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -204,16 +206,32 @@ fun SettingsScreen(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // We need a state variable to track the last color we buzzed for
+                var lastHapticColorValue by remember { mutableStateOf(0UL) }
+
                 // The Magic Math Canvas
                 PremiumColorWheel(
-                    modifier = Modifier.fillMaxWidth(0.85f), // Scales beautifully
-                    onColorChanged = { tempPickedColor = it }
+                    modifier = Modifier.fillMaxWidth(0.85f),
+                    onColorChanged = { newColor ->
+                        tempPickedColor = newColor
+
+                        // THROTTLE LOGIC: Only buzz if the color value changes by a decent chunk
+                        // This prevents the motor from exploding while dragging 60fps!
+                        if (enableHaptics) {
+                            val diff = kotlin.math.abs(newColor.value.toLong() - lastHapticColorValue.toLong())
+                            if (diff > 5000000L) { // A math threshold for "significant color change"
+                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                lastHapticColorValue = newColor.value
+                            }
+                        }
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(48.dp))
 
                 Button(
                     onClick = {
+                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                         viewModel.addPickedColor(tempPickedColor)
                         isColorPickerOpen = false
                     },

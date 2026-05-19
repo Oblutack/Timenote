@@ -185,6 +185,9 @@ fun HistoryScreen(
         label = "HistoryBlur"
     )
 
+    val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -247,7 +250,10 @@ fun HistoryScreen(
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(50))
                             .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
-                            .clickable { onTabSelected(0) },
+                            .clickable {
+                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                onTabSelected(0)
+                            },
 
                         contentAlignment = Alignment.Center
                     ) {
@@ -264,7 +270,10 @@ fun HistoryScreen(
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(50))
                             .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
-                            .clickable { onTabSelected(1) },
+                            .clickable {
+                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                onTabSelected(1)
+                            },
 
                         contentAlignment = Alignment.Center
                     ) {
@@ -496,6 +505,7 @@ fun HistoryScreen(
                         val dismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) // <-- ADD THIS
                                     viewModel.deleteTimenote(session.id)
                                     true
                                 } else {

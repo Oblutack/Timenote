@@ -169,6 +169,9 @@ fun TimenoteDetailScreen(
         label = "DetailsBlur"
     )
 
+    val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
 
     Column(
         modifier = Modifier
@@ -395,7 +398,10 @@ fun TimenoteDetailScreen(
 
                     // The Trash Can directly attached to the pill
                     IconButton(
-                        onClick = { viewModel.deleteVoiceNote(timenote.id, path) },
+                        onClick = {
+                            if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                            viewModel.deleteVoiceNote(timenote.id, path)
+                        },
                         modifier = Modifier.size(28.dp)
                     ) {
                         Icon(
@@ -557,7 +563,10 @@ fun TimenoteDetailScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(50))
                             .background(if (!isNotesOnlyView) activeBg else Color.Transparent)
-                            .clickable { isNotesOnlyView = false }
+                            .clickable {
+                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                isNotesOnlyView = false
+                            }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -573,7 +582,10 @@ fun TimenoteDetailScreen(
                             .weight(1f)
                             .clip(RoundedCornerShape(50))
                             .background(if (isNotesOnlyView) activeBg else Color.Transparent)
-                            .clickable { isNotesOnlyView = true }
+                            .clickable {
+                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                isNotesOnlyView = true
+                            }
                             .padding(vertical = 10.dp),
                         contentAlignment = Alignment.Center
                     ) {
@@ -780,6 +792,7 @@ fun TimenoteDetailScreen(
                     }
                     Text("Edit Note", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     TextButton(onClick = {
+                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
                         if (timenote != null) {
                             com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
                             optimisticDescription = descriptionText.text
