@@ -18,15 +18,15 @@ interface TimenoteDao {
     fun getAllActiveTimenotes(): Flow<List<TimenoteEntity>>
 
     // 2. Get the trash!
-    @Query("SELECT * FROM timenotes WHERE isDeleted = 1 ORDER BY id DESC")
+    @Query("SELECT * FROM timenotes WHERE isDeleted = 1 ORDER BY deletedAt DESC")
     fun getDeletedTimenotes(): Flow<List<TimenoteEntity>>
 
     // 3. "Soft Delete" (Hides it)
-    @Query("UPDATE timenotes SET isDeleted = 1 WHERE id = :id")
-    suspend fun softDeleteTimenote(id: String)
+    @Query("UPDATE timenotes SET isDeleted = 1, deletedAt = :timestamp WHERE id = :id")
+    suspend fun softDeleteTimenote(id: String, timestamp: Long)
 
     // 4. Restore (Pulls it out of trash)
-    @Query("UPDATE timenotes SET isDeleted = 0 WHERE id = :id")
+    @Query("UPDATE timenotes SET isDeleted = 0, deletedAt = NULL WHERE id = :id")
     suspend fun restoreTimenote(id: String)
 
     // 5. Hard Delete (For emptying the trash)
@@ -52,15 +52,15 @@ interface TimenoteDao {
     @Query("SELECT * FROM project_folders WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllActiveFolders(): Flow<List<FolderEntity>>
 
-    @Query("SELECT * FROM project_folders WHERE isDeleted = 1 ORDER BY createdAt DESC")
+    @Query("SELECT * FROM project_folders WHERE isDeleted = 1 ORDER BY deletedAt DESC")
     fun getDeletedFolders(): Flow<List<FolderEntity>>
 
     // 2. "Soft Delete" (Hides it)
-    @Query("UPDATE project_folders SET isDeleted = 1 WHERE id = :id")
-    suspend fun softDeleteFolder(id: String)
+    @Query("UPDATE project_folders SET isDeleted = 1, deletedAt = :timestamp WHERE id = :id")
+    suspend fun softDeleteFolder(id: String, timestamp: Long)
 
     // 3. Restore
-    @Query("UPDATE project_folders SET isDeleted = 0 WHERE id = :id")
+    @Query("UPDATE project_folders SET isDeleted = 0, deletedAt = NULL WHERE id = :id")
     suspend fun restoreFolder(id: String)
 
     // 4. Hard Delete

@@ -24,7 +24,8 @@ fun Timenote.toEntity(): TimenoteEntity {
         parentTimenoteId = this.parentTimenoteId, // <-- ADD THIS
         parentWaypointId = this.parentWaypointId,
         isPinned = this.isPinned,
-        isDeleted = this.isDeleted
+        isDeleted = this.isDeleted,
+        deletedAt = this.deletedAt
     )
 }
 
@@ -44,7 +45,8 @@ fun TimenoteEntity.toDomain(): Timenote {
         parentTimenoteId = this.parentTimenoteId, // <-- ADD THIS
         parentWaypointId = this.parentWaypointId,
         isPinned = this.isPinned,
-        timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson)
+        timelineEvents = Json.decodeFromString<List<TimelineEvent>>(this.timelineEventsJson),
+        deletedAt = this.deletedAt
     )
 }
 
@@ -58,6 +60,7 @@ fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): Folde
         isDeleted = this.isDeleted,
         isPinned = this.isPinned,
         description = this.description,
+        deletedAt = this.deletedAt
     )
 }
 
@@ -68,6 +71,7 @@ fun FolderEntity.toDomain(): com.oblutack.timenote.feature_history.domain.Projec
         description = this.description,
         color = androidx.compose.ui.graphics.Color(this.colorLong.toULong()),
         isPinned = this.isPinned,
-        createdAt = this.createdAt
+        createdAt = this.createdAt,
+        deletedAt = this.deletedAt
     )
 }

@@ -84,7 +84,7 @@ object SessionRepository {
     }
 
     fun deleteTimenote(id: String) {
-        coroutineScope.launch { dao?.softDeleteTimenote(id) }
+        coroutineScope.launch { dao?.softDeleteTimenote(id, com.oblutack.timenote.getCurrentTimeMillis()) }
     }
 
     // 1. Find all children and sub-children recursively
@@ -102,24 +102,21 @@ object SessionRepository {
     fun cascadeSoftDeleteTimenote(id: String) {
         coroutineScope.launch {
             val descendants = getDescendantIds(id)
-            dao?.softDeleteTimenote(id)
-            descendants.forEach { childId ->
-                dao?.softDeleteTimenote(childId)
-            }
+            val now = com.oblutack.timenote.getCurrentTimeMillis()
+            dao?.softDeleteTimenote(id, now)
+            descendants.forEach { childId -> dao?.softDeleteTimenote(childId, now) }
         }
     }
 
     // 3. Orphan Children: Deletes the parent, and turns children into Roots
     fun deleteAndOrphanChildren(id: String) {
         coroutineScope.launch {
-            // Unlink direct children
             val directChildren = _timenotes.value.filter { it.parentTimenoteId == id }
             directChildren.forEach { child ->
                 val orphanedChild = child.copy(parentTimenoteId = null, parentWaypointId = null)
                 dao?.insertTimenote(orphanedChild.toEntity())
             }
-            // Delete the parent
-            dao?.softDeleteTimenote(id)
+            dao?.softDeleteTimenote(id, com.oblutack.timenote.getCurrentTimeMillis())
         }
     }
     fun getTimenoteById(id: String): Timenote? {
@@ -152,10 +149,7 @@ object SessionRepository {
     }
 
     fun deleteFolder(id: String) {
-        coroutineScope.launch {
-            dao?.softDeleteFolder(id)
-            // Optional: If you delete a folder, you might want to un-assign all notes in it!
-        }
+        coroutineScope.launch { dao?.softDeleteFolder(id, com.oblutack.timenote.getCurrentTimeMillis()) }
     }
 
     // NEW: Update a Timenote's Folder

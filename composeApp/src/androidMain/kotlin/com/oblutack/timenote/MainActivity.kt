@@ -45,6 +45,7 @@ class MainActivity : ComponentActivity() {
             .addMigrations(com.oblutack.timenote.data.database.MIGRATION_3_4)
             .addMigrations(com.oblutack.timenote.data.database.MIGRATION_4_5)
             .addMigrations(com.oblutack.timenote.data.database.MIGRATION_5_6)
+            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_6_7)
 
         val database = instantiateDatabase(dbBuilder)
 

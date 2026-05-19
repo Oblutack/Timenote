@@ -8,7 +8,7 @@ import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
 
 // 1. BUMP VERSION TO 2
-@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = 6)
+@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = 7)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun timenoteDao(): TimenoteDao
@@ -51,5 +51,12 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
     override fun migrate(connection: SQLiteConnection) {
         connection.execSQL("ALTER TABLE project_folders ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
         connection.execSQL("ALTER TABLE timenotes ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0")
+    }
+}
+
+val MIGRATION_6_7 = object : Migration(6, 7) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE project_folders ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+        connection.execSQL("ALTER TABLE timenotes ADD COLUMN deletedAt INTEGER DEFAULT NULL")
     }
 }

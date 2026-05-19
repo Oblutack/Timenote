@@ -13,7 +13,8 @@ data class ProjectFolder(
     @Serializable(with = ColorSerializer::class) val color: Color,
     val createdAt: Long,
     val isPinned: Boolean = false,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )
 
 @Serializable
@@ -42,7 +43,8 @@ data class Timenote(
     val parentTimenoteId: String? = null,
     val parentWaypointId: String? = null,
     val isPinned: Boolean = false,
-    val isDeleted: Boolean = false
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )
 
 val mockFolders = listOf(

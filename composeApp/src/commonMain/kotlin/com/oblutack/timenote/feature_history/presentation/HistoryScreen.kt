@@ -178,7 +178,7 @@ fun HistoryScreen(
     val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     // Check if ANY popup is open on the History screen
-    val isPopupOpen = isCreateFolderDialogOpen || folderOptionsId != null || isSortSheetOpen || isTagFilterSheetOpen
+    val isPopupOpen = isCreateFolderDialogOpen || folderOptionsId != null || isSortSheetOpen || isTagFilterSheetOpen || sessionPendingDelete != null
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
