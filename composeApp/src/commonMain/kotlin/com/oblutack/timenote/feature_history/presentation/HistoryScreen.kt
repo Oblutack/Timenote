@@ -74,6 +74,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.GridOn
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
@@ -187,6 +188,9 @@ fun HistoryScreen(
 
     val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
+    val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
+    val descendantCount by viewModel.descendantCount.collectAsState()
 
     Column(
         modifier = Modifier
@@ -502,15 +506,13 @@ fun HistoryScreen(
                     }
 
                     items(finalDisplaySessions, key = { "${it.id}_${it.hashCode()}" }) { session ->
-                        val dismissState = rememberSwipeToDismissBoxState(
+                        val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart) {
-                                    if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress) // <-- ADD THIS
-                                    viewModel.deleteTimenote(session.id)
-                                    true
-                                } else {
-                                    false
-                                }
+                                if (value == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart) {
+                                    if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                    viewModel.requestDelete(session) // <-- THE NEW INTERCEPTOR
+                                    false // Bounce back
+                                } else false
                             }
                         )
 
@@ -824,6 +826,43 @@ fun HistoryScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+    }
+
+    if (sessionPendingDelete != null) {
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { viewModel.cancelDelete() },
+            containerColor = SurfaceDark
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(androidx.compose.material.icons.Icons.Default.Warning, contentDescription = "Warning", tint = Color(0xFFE53935), modifier = Modifier.size(48.dp))
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Delete Branch?", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("This session has $descendantCount connected child sessions.", color = TextSecondary, fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Spacer(modifier = Modifier.height(32.dp))
+
+                Button(
+                    onClick = { viewModel.confirmDelete(cascade = true) },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                ) { Text("Delete all ${descendantCount + 1} sessions", color = Color.White) }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick = { viewModel.confirmDelete(cascade = false) },
+                    modifier = Modifier.fillMaxWidth(),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE53935)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
+                ) { Text("Delete just this session") }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                TextButton(onClick = { viewModel.cancelDelete() }) {
+                    Text("Cancel", color = TextSecondary)
                 }
             }
         }

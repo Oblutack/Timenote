@@ -87,6 +87,41 @@ object SessionRepository {
         coroutineScope.launch { dao?.softDeleteTimenote(id) }
     }
 
+    // 1. Find all children and sub-children recursively
+    fun getDescendantIds(parentId: String): List<String> {
+        val children = _timenotes.value.filter { it.parentTimenoteId == parentId }
+        val descendantIds = mutableListOf<String>()
+        children.forEach { child ->
+            descendantIds.add(child.id)
+            descendantIds.addAll(getDescendantIds(child.id)) // Recursive call for grandchildren!
+        }
+        return descendantIds
+    }
+
+    // 2. Cascade Delete: Deletes the parent and ALL descendants
+    fun cascadeSoftDeleteTimenote(id: String) {
+        coroutineScope.launch {
+            val descendants = getDescendantIds(id)
+            dao?.softDeleteTimenote(id)
+            descendants.forEach { childId ->
+                dao?.softDeleteTimenote(childId)
+            }
+        }
+    }
+
+    // 3. Orphan Children: Deletes the parent, and turns children into Roots
+    fun deleteAndOrphanChildren(id: String) {
+        coroutineScope.launch {
+            // Unlink direct children
+            val directChildren = _timenotes.value.filter { it.parentTimenoteId == id }
+            directChildren.forEach { child ->
+                val orphanedChild = child.copy(parentTimenoteId = null, parentWaypointId = null)
+                dao?.insertTimenote(orphanedChild.toEntity())
+            }
+            // Delete the parent
+            dao?.softDeleteTimenote(id)
+        }
+    }
     fun getTimenoteById(id: String): Timenote? {
         return _timenotes.value.find { it.id == id }
     }

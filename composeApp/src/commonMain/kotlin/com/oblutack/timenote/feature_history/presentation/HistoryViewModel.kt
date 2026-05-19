@@ -172,4 +172,38 @@ class HistoryViewModel : ViewModel() {
     fun toggleTimenotePin(id: String) {
         SessionRepository.toggleTimenotePin(id)
     }
+
+    // --- DELETE CASCADER STATE ---
+    private val _sessionPendingDelete = MutableStateFlow<com.oblutack.timenote.feature_history.domain.Timenote?>(null)
+    val sessionPendingDelete = _sessionPendingDelete.asStateFlow()
+
+    private val _descendantCount = MutableStateFlow(0)
+    val descendantCount = _descendantCount.asStateFlow()
+
+    fun requestDelete(session: com.oblutack.timenote.feature_history.domain.Timenote) {
+        val descendants = com.oblutack.timenote.data.repository.SessionRepository.getDescendantIds(session.id)
+        if (descendants.isNotEmpty()) {
+            // It has children! Pause and ask the user.
+            _descendantCount.value = descendants.size
+            _sessionPendingDelete.value = session
+        } else {
+            // No children. Delete instantly.
+            com.oblutack.timenote.data.repository.SessionRepository.deleteTimenote(session.id)
+        }
+    }
+
+    fun confirmDelete(cascade: Boolean) {
+        val session = _sessionPendingDelete.value ?: return
+        if (cascade) {
+            com.oblutack.timenote.data.repository.SessionRepository.cascadeSoftDeleteTimenote(session.id)
+        } else {
+            com.oblutack.timenote.data.repository.SessionRepository.deleteAndOrphanChildren(session.id)
+        }
+        cancelDelete()
+    }
+
+    fun cancelDelete() {
+        _sessionPendingDelete.value = null
+        _descendantCount.value = 0
+    }
 }
