@@ -55,6 +55,9 @@ fun TimerScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
+    val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+
     val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
     val customColors by com.oblutack.timenote.data.repository.SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
     // 1. Get the Setting
@@ -307,7 +310,10 @@ fun TimerScreen(
         ) {
             if (!state.isRunning) {
                 Button(
-                    onClick = { viewModel.onAction(TimerAction.Start) },
+                    onClick = {
+                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        viewModel.onAction(TimerAction.Start)
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
                         contentColor = Color.White
@@ -321,7 +327,10 @@ fun TimerScreen(
                 }
             } else if (!state.isPaused) {
                 Button(
-                    onClick = { viewModel.onAction(TimerAction.Pause) },
+                    onClick = {
+                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // A lighter tap for pause
+                        viewModel.onAction(TimerAction.Pause)
+                    },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
                         contentColor = Color.White
@@ -350,7 +359,10 @@ fun TimerScreen(
             }
 
             OutlinedButton(
-                onClick = { viewModel.onAction(TimerAction.End) },
+                onClick = {
+                    if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    viewModel.onAction(TimerAction.End)
+                },
                 colors = ButtonDefaults.outlinedButtonColors(
                     contentColor = TextSecondary,
                     containerColor = SurfaceDark

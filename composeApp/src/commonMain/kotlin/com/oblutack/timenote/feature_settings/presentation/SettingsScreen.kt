@@ -36,7 +36,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = viewModel { SettingsViewModel() }
 ) {
     val useMonochromeNodes by viewModel.useMonochromeNodes.collectAsState()
-    val enableBackgroundBlur by viewModel.enableBackgroundBlur.collectAsState() // <-- NEW
+    val enableBackgroundBlur by viewModel.enableBackgroundBlur.collectAsState()
+    val enableHaptics by viewModel.enableHaptics.collectAsState()
     val customColors by viewModel.customColors.collectAsState()
 
     var isColorPickerOpen by remember { mutableStateOf(false) }
@@ -113,6 +114,29 @@ fun SettingsScreen(
             Switch(
                 checked = enableBackgroundBlur,
                 onCheckedChange = { viewModel.toggleBackgroundBlur(it) },
+                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(SurfaceDark)
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Haptic Feedback", color = TextPrimary, fontSize = 16.sp)
+                Spacer(modifier = Modifier.height(4.dp))
+                Text("Vibrate on button presses and timer actions.", color = TextSecondary, fontSize = 12.sp)
+            }
+            Switch(
+                checked = enableHaptics,
+                onCheckedChange = { viewModel.toggleHaptics(it) },
                 colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
             )
         }

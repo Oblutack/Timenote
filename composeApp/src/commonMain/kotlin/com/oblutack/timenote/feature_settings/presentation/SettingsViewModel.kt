@@ -33,6 +33,15 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
+    val enableHaptics = com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow
+        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), true)
+
+    fun toggleHaptics(enabled: Boolean) {
+        viewModelScope.launch {
+            com.oblutack.timenote.data.repository.SettingsRepository.setHaptics(enabled)
+        }
+    }
+
     fun addCustomColor(hexString: String) {
         viewModelScope.launch {
             val cleanHex = hexString.removePrefix("#").uppercase()
