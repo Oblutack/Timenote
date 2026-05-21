@@ -32,6 +32,12 @@ import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.domain.Timenote
 import kotlin.math.sqrt
+import androidx.compose.ui.draw.blur
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+
 
 // Holds the calculated X,Y positions for the Canvas to draw
 data class GraphNode(
@@ -77,6 +83,14 @@ fun GraphScreen(
         label = "AlphaPulse"
     )
 
+    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+
+    val blurRadius by androidx.compose.animation.core.animateDpAsState(
+        targetValue = if (enableBlur && selectedGraphNodeId != null) 16.dp else 0.dp,
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "GraphBlur"
+    )
+
     // --- THE UPGRADED AUTO-LAYOUT ALGORITHM ---
     val nodes = remember(timenotes) {
         val calculatedNodes = mutableListOf<GraphNode>()
@@ -107,7 +121,7 @@ fun GraphScreen(
         calculatedNodes
     }
 
-    Column(modifier = Modifier.fillMaxSize().background(BackgroundDark)) {
+    Column(modifier = Modifier.fillMaxSize().background(BackgroundDark).blur(radius = blurRadius)) {
         // --- TOP BAR ---
         Row(
             modifier = Modifier.fillMaxWidth().padding(16.dp),
@@ -278,17 +292,60 @@ fun GraphScreen(
                         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(12.dp))
+                                .padding(16.dp)
                         ) {
-                            Column {
-                                Text("Node Time", color = TextSecondary, fontSize = 12.sp)
-                                Text(note.duration, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text("Family Time ($childCount children)", color = TextSecondary, fontSize = 12.sp)
-                                Text(familyTime, color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                            Column(modifier = Modifier.fillMaxWidth()) {
+
+                                // ROW 1: Total Times
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Column {
+                                        Text("Node Time", color = TextSecondary, fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(note.duration, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text("Family Time ($childCount children)", color = TextSecondary, fontSize = 12.sp)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(familyTime, color = DefaultAccentColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TextSecondary.copy(alpha = 0.15f)))
+                                Spacer(modifier = Modifier.height(16.dp))
+
+                                // ROW 2: Work vs Pause Breakdown
+                                val totalSeconds = note.activeSeconds + note.pauseSeconds
+                                val workRatio = if (totalSeconds > 0) note.activeSeconds.toFloat() / totalSeconds.toFloat() else 1f
+                                val workPercent = if (totalSeconds > 0) kotlin.math.round(workRatio * 100).toInt() else 100
+                                val pausePercent = if (totalSeconds > 0) 100 - workPercent else 0
+                                val tagColor = note.tags.firstOrNull()?.color ?: DefaultAccentColor
+
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(tagColor))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("$workPercent% Work", color = TextSecondary, fontSize = 12.sp)
+                                    }
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF333333)))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text("$pausePercent% Pause", color = TextSecondary, fontSize = 12.sp)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                // The actual Progress Bar
+                                Row(modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(50))) {
+                                    Box(modifier = Modifier.weight(workRatio.coerceAtLeast(0.01f)).fillMaxHeight().background(tagColor))
+                                    Box(modifier = Modifier.weight((1f - workRatio).coerceAtLeast(0.01f)).fillMaxHeight().background(Color(0xFF333333)))
+                                }
                             }
                         }
                     }
