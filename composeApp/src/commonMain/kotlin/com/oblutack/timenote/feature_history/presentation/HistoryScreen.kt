@@ -177,6 +177,9 @@ fun HistoryScreen(
 
     val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
+    val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
+    val descendantCount by viewModel.descendantCount.collectAsState()
+
     // Check if ANY popup is open on the History screen
     val isPopupOpen = isCreateFolderDialogOpen || folderOptionsId != null || isSortSheetOpen || isTagFilterSheetOpen || sessionPendingDelete != null
 
@@ -188,9 +191,6 @@ fun HistoryScreen(
 
     val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
-
-    val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
-    val descendantCount by viewModel.descendantCount.collectAsState()
 
     Column(
         modifier = Modifier

@@ -67,6 +67,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.draw.blur
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -323,34 +325,103 @@ fun TimenoteDetailScreen(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 80.dp) // Ensures a large tap area even if text is 1 word!
+                .defaultMinSize(minHeight = 80.dp)
                 .clickable(
                     interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                     indication = null
-                ) { isEditingDescription = true } // Fallback: clicking the empty box opens the editor
+                ) { isEditingDescription = true }
                 .padding(vertical = 16.dp)
         ) {
             if (displayDescription.isBlank()) {
                 Text("Tap to add a description...", color = TextSecondary)
             } else {
                 val dynamicAccentColor = timenote?.tags?.firstOrNull()?.color ?: DefaultAccentColor
-                val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(displayDescription, dynamicAccentColor)
+                val lines = displayDescription.split("\n")
 
-                androidx.compose.foundation.text.ClickableText(
-                    text = annotatedText,
-                    modifier = Modifier.fillMaxWidth(), // THE FIX: Stretches the text box across the screen!
-                    style = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
-                    onClick = { offset ->
-                        // Only jump to the link if they tapped EXACTLY on the tagged word
-                        val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
-                        if (annotations.isNotEmpty()) {
-                            onTimenoteClick(annotations.first().item)
-                        } else {
-                            // If they tapped regular text or empty space, open editor!
-                            isEditingDescription = true
+                // THE FIX: Render line-by-line as Compose Blocks!
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    lines.forEachIndexed { lineIndex, line ->
+                        val trimmed = line.trimStart()
+                        val isUnchecked = trimmed.startsWith("- [ ]")
+                        val isChecked = trimmed.startsWith("- [x]", ignoreCase = true)
+                        val isBullet = trimmed.startsWith("- ") && !isUnchecked && !isChecked
+
+                        when {
+                            // 1. RENDER NATIVE CHECKBOXES
+                            isUnchecked || isChecked -> {
+                                val content = line.substringAfter("] ")
+                                Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
+                                    Icon(
+                                        imageVector = if (isChecked) androidx.compose.material.icons.Icons.Default.CheckCircle else androidx.compose.material.icons.Icons.Default.RadioButtonUnchecked,
+                                        contentDescription = "Checkbox",
+                                        tint = if (isChecked) dynamicAccentColor else TextSecondary,
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clickable(
+                                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                                indication = null
+                                            ) {
+                                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                val newLines = lines.toMutableList()
+                                                newLines[lineIndex] = if (isChecked) line.replaceFirst(Regex("\\[[xX]\\]"), "[ ]") else line.replaceFirst("[ ]", "[x]")
+                                                com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(timenote!!.id, newLines.joinToString("\n"))
+                                            }
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+
+                                    // Auto-strikethrough if checked!
+                                    val textToParse = if (isChecked) "~~$content~~" else content
+                                    val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(textToParse, dynamicAccentColor)
+
+                                    androidx.compose.foundation.text.ClickableText(
+                                        text = annotatedText,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        style = androidx.compose.ui.text.TextStyle(color = if (isChecked) TextSecondary else TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                        onClick = { offset ->
+                                            val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
+                                            if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
+                                            else isEditingDescription = true
+                                        }
+                                    )
+                                }
+                            }
+
+                            // 2. RENDER NATIVE BULLET POINTS
+                            isBullet -> {
+                                val content = line.substringAfter("- ")
+                                Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
+                                    Text("•", color = TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(end = 8.dp))
+                                    val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(content, dynamicAccentColor)
+                                    androidx.compose.foundation.text.ClickableText(
+                                        text = annotatedText,
+                                        modifier = Modifier.fillMaxWidth(),
+                                        style = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                        onClick = { offset ->
+                                            val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
+                                            if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
+                                            else isEditingDescription = true
+                                        }
+                                    )
+                                }
+                            }
+
+                            // 3. RENDER NORMAL TEXT
+                            else -> {
+                                val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(line, dynamicAccentColor)
+                                androidx.compose.foundation.text.ClickableText(
+                                    text = annotatedText,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    style = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                    onClick = { offset ->
+                                        val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
+                                        if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
+                                        else isEditingDescription = true
+                                    }
+                                )
+                            }
                         }
                     }
-                )
+                }
             }
         }
 
@@ -848,6 +919,32 @@ fun TimenoteDetailScreen(
                         },
                         contentAlignment = Alignment.Center
                     ) { Text("H1", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Checklist Button
+                    Box(
+                        modifier = btnModifier.clickable {
+                            val s = descriptionText.selection.start
+                            val t = descriptionText.text
+                            val newText = t.substring(0, s) + "- [ ] " + t.substring(s)
+                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 6))
+                        },
+                        contentAlignment = Alignment.Center
+                    ) { Text("[ ]", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    // Bullet List Button
+                    Box(
+                        modifier = btnModifier.clickable {
+                            val s = descriptionText.selection.start
+                            val t = descriptionText.text
+                            val newText = t.substring(0, s) + "- " + t.substring(s)
+                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 2))
+                        },
+                        contentAlignment = Alignment.Center
+                    ) { Text("•", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
