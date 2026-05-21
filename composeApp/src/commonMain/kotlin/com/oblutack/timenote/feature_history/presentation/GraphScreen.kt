@@ -37,6 +37,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.animation.core.LinearEasing
 
 
 // Holds the calculated X,Y positions for the Canvas to draw
@@ -89,6 +90,18 @@ fun GraphScreen(
         targetValue = if (enableBlur && selectedGraphNodeId != null) 16.dp else 0.dp,
         animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
         label = "GraphBlur"
+    )
+
+    // --- PARTICLE FLOW ANIMATION ---
+    // A constant, looping value from 0.0 to 1.0
+    val particleProgress by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
+            animation = androidx.compose.animation.core.tween(3000, easing = androidx.compose.animation.core.LinearEasing),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+        ),
+        label = "ParticleProgress"
     )
 
     // --- THE UPGRADED AUTO-LAYOUT ALGORITHM ---
@@ -180,10 +193,12 @@ fun GraphScreen(
                     }
 
                     // 2. DRAW CONNECTIONS (Bézier Curves for Children)
+                    // 2. DRAW CONNECTIONS (Bézier Curves & Particles)
                     nodes.forEach { node ->
                         if (node.note.parentTimenoteId != null) {
                             val parentNode = nodes.find { it.note.id == node.note.parentTimenoteId }
                             if (parentNode != null) {
+                                // A. Draw the Static Line
                                 val path = Path().apply {
                                     moveTo(parentNode.x, parentNode.y)
                                     cubicTo(
@@ -194,8 +209,44 @@ fun GraphScreen(
                                 }
                                 drawPath(
                                     path = path,
-                                    color = DefaultAccentColor.copy(alpha = 0.5f),
+                                    color = DefaultAccentColor.copy(alpha = 0.3f),
                                     style = Stroke(width = 4f)
+                                )
+
+                                // B. The Particle Flow Math!
+                                // We offset the start time based on the ID so they don't all flow in unison
+                                val offset = kotlin.math.abs(node.note.id.hashCode() % 1000) / 1000f
+                                val t = (particleProgress + offset) % 1f
+
+                                // Cubic Bézier Formula to find the exact X/Y coordinate at time 't'
+                                val u = 1f - t
+                                val tt = t * t
+                                val uu = u * u
+                                val uuu = uu * u
+                                val ttt = tt * t
+
+                                val p0x = parentNode.x; val p0y = parentNode.y
+                                val p1x = parentNode.x + 200f; val p1y = parentNode.y
+                                val p2x = node.x - 200f; val p2y = node.y
+                                val p3x = node.x; val p3y = node.y
+
+                                val particleX = (uuu * p0x) + (3 * uu * t * p1x) + (3 * u * tt * p2x) + (ttt * p3x)
+                                val particleY = (uuu * p0y) + (3 * uu * t * p1y) + (3 * u * tt * p2y) + (ttt * p3y)
+
+                                // C. Draw the Glowing Particle
+                                val particleColor = node.note.tags.firstOrNull()?.color ?: DefaultAccentColor
+
+                                // Outer Particle Glow
+                                drawCircle(
+                                    color = particleColor.copy(alpha = 0.5f),
+                                    radius = 8f,
+                                    center = Offset(particleX, particleY)
+                                )
+                                // Solid Particle Core
+                                drawCircle(
+                                    color = Color.White,
+                                    radius = 3f,
+                                    center = Offset(particleX, particleY)
                                 )
                             }
                         }
