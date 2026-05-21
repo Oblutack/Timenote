@@ -261,6 +261,7 @@ fun HistoryScreen(
                             .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
                             .clickable {
                                 if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                selectedTab = 0
                                 onTabSelected(0)
                             },
 
@@ -281,6 +282,7 @@ fun HistoryScreen(
                             .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
                             .clickable {
                                 if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                selectedTab = 1
                                 onTabSelected(1)
                             },
 
