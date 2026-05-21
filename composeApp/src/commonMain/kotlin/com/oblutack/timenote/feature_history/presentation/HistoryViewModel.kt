@@ -206,4 +206,28 @@ class HistoryViewModel : ViewModel() {
         _sessionPendingDelete.value = null
         _descendantCount.value = 0
     }
+
+    // --- GRAPH SCREEN STATE ---
+    private val _selectedGraphNodeId = MutableStateFlow<String?>(null)
+    val selectedGraphNodeId = _selectedGraphNodeId.asStateFlow()
+
+    fun selectGraphNode(id: String?) {
+        _selectedGraphNodeId.value = id
+    }
+
+    // Mathematically calculates the total time of a node + ALL descendants
+    fun calculateFamilyTime(nodeId: String): String {
+        val allNotes = sessions.value
+        val descendants = com.oblutack.timenote.data.repository.SessionRepository.getDescendantIds(nodeId)
+
+        // Find the parent + all children
+        val familyNodes = allNotes.filter { it.id == nodeId || descendants.contains(it.id) }
+
+        val totalActiveSeconds = familyNodes.sumOf { it.activeSeconds }
+
+        val hours = totalActiveSeconds / 3600
+        val minutes = (totalActiveSeconds % 3600) / 60
+        val seconds = totalActiveSeconds % 60
+        return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+    }
 }

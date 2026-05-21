@@ -149,12 +149,16 @@ fun App(database: AppDatabase? = null) {
                         onGraphClick = { navController.navigate("graph") },
                     )
                 }
+
                 composable("graph") {
+                    val historyViewModel: com.oblutack.timenote.feature_history.presentation.HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
                     com.oblutack.timenote.feature_history.presentation.GraphScreen(
                         onBackClick = { navController.popBackStack() },
-                        onTimenoteClick = { id -> navController.navigate("details/$id") }
+                        onTimenoteClick = { id -> navController.navigate("details/$id") },
+                        viewModel = historyViewModel // <-- NEW
                     )
                 }
+
                 composable("details/{id}") { backStackEntry ->
                     val id = backStackEntry.arguments?.getString("id")
                     if (id != null) {

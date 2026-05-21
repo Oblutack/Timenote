@@ -44,9 +44,11 @@ data class GraphNode(
 @Composable
 fun GraphScreen(
     onBackClick: () -> Unit,
-    onTimenoteClick: (String) -> Unit
+    onTimenoteClick: (String) -> Unit,
+    viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() }
 ) {
     val timenotes by SessionRepository.timenotes.collectAsState()
+    val selectedGraphNodeId by viewModel.selectedGraphNodeId.collectAsState()
 
     // Interactive Canvas State (Pan & Zoom)
     var scale by remember { mutableStateOf(1f) }
@@ -139,7 +141,7 @@ fun GraphScreen(
                                 val dy = canvasTapY - node.y
                                 val distance = sqrt((dx * dx + dy * dy).toDouble())
                                 if (distance < 60f) {
-                                    onTimenoteClick(node.note.id)
+                                    viewModel.selectGraphNode(node.note.id)
                                 }
                             }
                         }
@@ -231,6 +233,79 @@ fun GraphScreen(
                             )
                         )
                     }
+                }
+            }
+        }
+    }
+
+    if (selectedGraphNodeId != null) {
+        val note = timenotes.find { it.id == selectedGraphNodeId }
+        if (note != null) {
+            val childCount = SessionRepository.getDescendantIds(note.id).size
+            val familyTime = viewModel.calculateFamilyTime(note.id)
+
+            ModalBottomSheet(
+                onDismissRequest = { viewModel.selectGraphNode(null) },
+                containerColor = SurfaceDark
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(24.dp)
+                ) {
+                    Text(
+                        text = note.title.ifBlank { "Untitled" },
+                        color = TextPrimary,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    val firstTag = note.tags.firstOrNull()
+                    if (firstTag != null) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Box(
+                            modifier = Modifier
+                                .background(firstTag.color.copy(alpha = 0.2f), shape = androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(firstTag.name, color = firstTag.color, fontSize = 12.sp)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Card(
+                        colors = CardDefaults.cardColors(containerColor = SurfaceDark),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.3f)),
+                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text("Node Time", color = TextSecondary, fontSize = 12.sp)
+                                Text(note.duration, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text("Family Time ($childCount children)", color = TextSecondary, fontSize = 12.sp)
+                                Text(familyTime, color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    Button(
+                        onClick = {
+                            viewModel.selectGraphNode(null)
+                            onTimenoteClick(note.id)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor)
+                    ) {
+                        Text("View Details", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
         }
