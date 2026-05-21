@@ -1,26 +1,36 @@
-# Timenote
+<div align="center">
+  <h1>Timenote</h1>
+  <p><b>The ultimate local-first productivity and time-tracking ecosystem.</b></p>
 
-**The ultimate local-first productivity and time-tracking ecosystem.**
+  <p>
+    <img src="https://img.shields.io/badge/Kotlin-0095D5?style=for-the-badge&logo=kotlin&logoColor=white" alt="Kotlin" />
+    <img src="https://img.shields.io/badge/Android-3DDC84?style=for-the-badge&logo=android&logoColor=white" alt="Android" />
+    <img src="https://img.shields.io/badge/iOS-000000?style=for-the-badge&logo=ios&logoColor=white" alt="iOS" />
+    <img src="https://img.shields.io/badge/Compose_Multiplatform-4285F4?style=for-the-badge&logo=jetpackcompose&logoColor=white" alt="Compose Multiplatform" />
+  </p>
 
-Built for precision execution, extensive tracking, and deep reflection. Engineered entirely with Kotlin Multiplatform and Compose Multiplatform, Timenote delivers an uncompromising, hardware-accelerated experience inside a unified, dark-theme-exclusive architecture.
+  <p>
+    <i>Built for precision execution, extensive tracking, and deep reflection. Engineered entirely with Kotlin Multiplatform and Compose Multiplatform, Timenote delivers an uncompromising, hardware-accelerated experience inside a unified, dark-theme-exclusive architecture.</i>
+  </p>
+</div>
 
 ---
 
-## Overview
+## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/layer-group.svg" width="20" height="20" alt="Overview"> Overview
 
 Timenote is designed for focused work environments requiring rigorous time tracking and local-first data ownership. For the 2026 software landscape, it prioritizes a fully minimalist, tactile user interface with absolutely zero cloud dependency. Data is yours, processed locally, and visualized dynamically.
 
 ---
 
-## Core Architecture
+## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/microchip.svg" width="20" height="20" alt="Architecture"> Core Architecture
 
 Timenote champions a clean architecture standard through strict MVVM methodologies. UI state relies inherently on StateFlow subscriptions hoisted properly up the ViewModels, avoiding lifecycle degradation across platform back-stack architectures. All SQL routines are mapped logically via DAOs, feeding asynchronous flows directly to the application layer.
 
-Hardware-accelerated rendering and background timekeeping ensure maximum performance without battery drain or data drift.
+> **Performance First:** Hardware-accelerated rendering and background timekeeping ensure maximum performance without battery drain or data drift.
 
 ---
 
-## Features
+## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/star.svg" width="20" height="20" alt="Features"> Features
 
 - **Spatial Workflow Mapping**
   A dynamic, pannable node-graph built in pure Canvas that visualizes the hierarchical relationship between parent and child timer sessions. 
@@ -35,41 +45,46 @@ Hardware-accelerated rendering and background timekeeping ensure maximum perform
 
 ---
 
-## Tech Stack
+## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/cube.svg" width="20" height="20" alt="Tech Stack"> Tech Stack
 
 The entire ecosystem exists in `commonMain`, with absolute minimal platform-specific code.
 
-* **Kotlin Multiplatform (KMP)**
-* **Compose Multiplatform**
-* **KMP Room (Native SQLite)**
-* **KMP DataStore (Preferences)**
-* **kotlinx-datetime & kotlinx-coroutines**
+| Technology | Description |
+| :--- | :--- |
+| **Kotlin Multiplatform (KMP)** | Core business logic and shared data layer |
+| **Compose Multiplatform** | 100% shared declarative UI |
+| **KMP Room** | Native SQLite data persistence |
+| **KMP DataStore** | Multiplatform preferences architecture |
+| **kotlinx-datetime** | Standardized multiplatform chronometrics |
+| **kotlinx-coroutines** | Asynchronous execution framework |
 
 ---
 
-## Build Instructions
+## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/wrench.svg" width="20" height="20" alt="Build Instructions"> Build Instructions
 
 ### Prerequisites
-- Android Studio (Latest version recommended) or IntelliJ IDEA with KMP plugins.
-- Xcode (If building for iOS).
+- **Android Studio** (Latest version recommended) or IntelliJ IDEA with KMP plugins.
+- **Xcode** (If building for iOS).
 
 ### Android
 1. Open the project inside Android Studio.
 2. Select the `composeApp` run configuration.
 3. Build and run onto your Android emulator or physical device.
 
-Alternatively, from the root terminal:
-`./gradlew :composeApp:assembleDebug` (macOS/Linux)
-`.\gradlew.bat :composeApp:assembleDebug` (Windows)
+*Alternatively, from the root terminal:*
+- macOS/Linux: `./gradlew :composeApp:assembleDebug`
+- Windows: `.\gradlew.bat :composeApp:assembleDebug`
 
 ### iOS
 1. Open the project inside Android Studio and allow Gradle sync.
 2. Run the `iosApp` run configuration targeted to an active iOS Simulator.
 
-**OR**
+*Or to build natively via Xcode:*
 1. Pre-build the shared Compose frameworks via Gradle.
 2. Open the `/iosApp` directory natively into Xcode and execute the default configuration.
 
 ---
 
-*Timenote - Built with Kotlin Multiplatform.*
+<div align="center">
+  <i>Timenote - Built with Kotlin Multiplatform.</i>
+</div>
