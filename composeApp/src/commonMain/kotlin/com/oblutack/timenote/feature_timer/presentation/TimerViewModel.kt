@@ -245,7 +245,7 @@ class TimerViewModel : ViewModel() {
                 ) }
             }
             is TimerAction.StartVoiceMemo -> {
-                if (_state.value.isRunning && !_state.value.isPaused) { // <-- ADDED SAFETY CHECK
+                if (_state.value.isRunning) {
                     _state.update { it.copy(isRecordingVoiceMemo = true, voiceMemoDuration = "00:00") }
                     val fileName = "VoiceMemo_${platformSpecificId()}"
                     com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.startRecording(fileName)
