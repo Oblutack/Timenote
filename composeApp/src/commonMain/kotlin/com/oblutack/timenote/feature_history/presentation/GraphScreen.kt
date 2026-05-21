@@ -144,7 +144,7 @@ fun GraphScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Knowledge Graph", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Timenote Graph", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
         }
 
         // --- THE CANVAS ---

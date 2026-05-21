@@ -81,6 +81,8 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.EmojiEvents
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -179,9 +181,12 @@ fun HistoryScreen(
 
     val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
     val descendantCount by viewModel.descendantCount.collectAsState()
+    val streaks by viewModel.streaks.collectAsState()
+    val selectedDailySummary by viewModel.selectedDailySummary.collectAsState()
 
-    // Check if ANY popup is open on the History screen
-    val isPopupOpen = isCreateFolderDialogOpen || folderOptionsId != null || isSortSheetOpen || isTagFilterSheetOpen || sessionPendingDelete != null
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Timenotes, 1 = Folders
+
+    val isPopupOpen = folderBeingEditedId != null || sessionPendingDelete != null || selectedDailySummary != null
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
@@ -479,10 +484,11 @@ fun HistoryScreen(
                                     exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
                                 ) {
                                     FlowHeatmap(
-                                        heatmapData = heatmapData,
-                                        selectedDate = selectedDate,
+                                        heatmapData = heatmapData, // THE FIX: Correct parameter name
+                                        selectedDate = selectedDate, // THE FIX: Pass the missing parameter
+                                        streaks = streaks,
                                         onDateSelected = { clickedDate ->
-                                            selectedDate = if (selectedDate == clickedDate) null else clickedDate
+                                            viewModel.selectDateForSummary(clickedDate)
                                         }
                                     )
                                 }
@@ -863,6 +869,72 @@ fun HistoryScreen(
 
                 TextButton(onClick = { viewModel.cancelDelete() }) {
                     Text("Cancel", color = TextSecondary)
+                }
+            }
+        }
+    }
+
+    // --- DAILY SUMMARY BOTTOM SHEET ---
+    if (selectedDailySummary != null) {
+        val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val summary = selectedDailySummary!!
+
+        androidx.compose.material3.ModalBottomSheet(
+            onDismissRequest = { viewModel.closeDailySummary() },
+            sheetState = sheetState,
+            containerColor = SurfaceDark
+        ) {
+            Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 48.dp)) {
+
+                // Formatted Date (e.g., "May 18, 2026")
+                val monthStr = summary.date.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+                Text(
+                    text = "$monthStr ${summary.date.dayOfMonth}, ${summary.date.year}",
+                    color = TextSecondary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Total Focused Time
+                val h = summary.totalSeconds / 3600
+                val m = (summary.totalSeconds % 3600) / 60
+                val timeStr = if (h > 0) "${h}h ${m}m" else "${m}m"
+
+                Text(
+                    text = timeStr,
+                    color = TextPrimary,
+                    fontSize = 40.sp,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Details Row
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Sessions: ${summary.sessionCount}", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+
+                    if (summary.topTag != null) {
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha=0.3f)))
+                        Spacer(modifier = Modifier.width(16.dp))
+
+                        Text("Top Tag:", color = TextSecondary, fontSize = 14.sp)
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .border(1.dp, summary.topTag!!.color, RoundedCornerShape(50))
+                                .padding(horizontal = 12.dp, vertical = 4.dp)
+                        ) {
+                            Text(summary.topTag!!.name, color = summary.topTag!!.color, fontSize = 12.sp)
+                        }
+                    }
                 }
             }
         }

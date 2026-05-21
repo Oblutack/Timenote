@@ -13,6 +13,9 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import androidx.lifecycle.viewModelScope
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.coroutines.flow.map
+import kotlinx.datetime.plus
+import kotlinx.datetime.minus
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -38,6 +41,90 @@ class HistoryViewModel : ViewModel() {
         }
         map
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // --- STREAK TRACKING ---
+    val streaks: StateFlow<Pair<Int, Int>> = heatmapData.map { data ->
+        val activeDates = data.filter { it.value > 0 }.keys
+            .map { kotlinx.datetime.LocalDate.parse(it) }
+            .sortedDescending()
+
+        if (activeDates.isEmpty()) return@map Pair(0, 0)
+
+        val today = kotlinx.datetime.Instant.fromEpochMilliseconds(com.oblutack.timenote.getCurrentTimeMillis())
+            .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
+        val yesterday = today.minus(kotlinx.datetime.DatePeriod(days = 1))
+
+        // 1. Calculate Best Streak
+        var maxStreak = 0
+        var tempStreak = 0
+        var lastDateForMax: kotlinx.datetime.LocalDate? = null
+
+        activeDates.reversed().forEach { d ->
+            if (lastDateForMax == null) {
+                tempStreak = 1
+            } else if (lastDateForMax!!.plus(kotlinx.datetime.DatePeriod(days = 1)) == d) {
+                tempStreak++
+            } else {
+                tempStreak = 1
+            }
+            if (tempStreak > maxStreak) maxStreak = tempStreak
+            lastDateForMax = d
+        }
+
+        // 2. Calculate Current Streak (Must have worked today or yesterday to keep it alive)
+        var currentStreak = 0
+        var checkDate = today
+
+        if (activeDates.contains(today)) {
+            currentStreak = 1
+            checkDate = yesterday
+        } else if (activeDates.contains(yesterday)) {
+            currentStreak = 1
+            checkDate = yesterday.minus(1, kotlinx.datetime.DateTimeUnit.DAY)
+        } else {
+            return@map Pair(0, maxStreak) // Streak broken
+        }
+
+        while (activeDates.contains(checkDate)) {
+            currentStreak++
+            checkDate = checkDate.minus(kotlinx.datetime.DatePeriod(days = 1))
+        }
+
+        Pair(currentStreak, maxStreak)
+    }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), Pair(0, 0))
+
+    // --- DAILY SUMMARY STATE ---
+    private val _selectedDailySummary = MutableStateFlow<com.oblutack.timenote.feature_history.domain.DailySummary?>(null)
+    val selectedDailySummary = _selectedDailySummary.asStateFlow()
+
+    fun selectDateForSummary(date: kotlinx.datetime.LocalDate) {
+        val sessionsOnDate = sessions.value.filter { session ->
+            val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(
+                if (session.createdAt > 0L) session.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
+            )
+            instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date == date
+        }
+
+        if (sessionsOnDate.isEmpty()) {
+            _selectedDailySummary.value = com.oblutack.timenote.feature_history.domain.DailySummary(date, 0, 0, null)
+            return
+        }
+
+        val totalSecs = sessionsOnDate.sumOf { it.activeSeconds }
+        val count = sessionsOnDate.size
+
+        // Find the most used tag on that day!
+        val topTag = sessionsOnDate.flatMap { it.tags }
+            .groupingBy { it }
+            .eachCount()
+            .maxByOrNull { it.value }?.key
+
+        _selectedDailySummary.value = com.oblutack.timenote.feature_history.domain.DailySummary(date, totalSecs, count, topTag)
+    }
+
+    fun closeDailySummary() {
+        _selectedDailySummary.value = null
+    }
 
     val folders = SessionRepository.folders
     val tags = SessionRepository.tags

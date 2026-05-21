@@ -6,6 +6,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.LocalFireDepartment
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,16 +22,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
+import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import kotlinx.datetime.*
+import androidx.compose.material.icons.filled.Bolt
+import androidx.compose.material.icons.filled.EmojiEvents
 
 @Composable
 fun FlowHeatmap(
     heatmapData: Map<String, Int>,
     selectedDate: LocalDate?,
+    streaks: Pair<Int, Int>,
     onDateSelected: (LocalDate) -> Unit
 ) {
-    // FADE IN ANIMATION
     val alpha = remember { androidx.compose.animation.core.Animatable(0f) }
     LaunchedEffect(Unit) {
         alpha.animateTo(1f, animationSpec = androidx.compose.animation.core.tween(600))
@@ -35,18 +42,15 @@ fun FlowHeatmap(
 
     val today = Instant.fromEpochMilliseconds(com.oblutack.timenote.getCurrentTimeMillis())
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
-    // ISO Day: 1 = Monday, 7 = Sunday
     val todayIso = today.dayOfWeek.isoDayNumber
 
     val days = remember(today) {
         val list = mutableListOf<LocalDate?>()
-        // Generate 15 full weeks. Pad the beginning so the top row is ALWAYS Monday.
         val totalPastDays = (14 * 7) + (todayIso - 1)
         for (i in totalPastDays downTo 1) {
-            list.add(today.minus(i, DateTimeUnit.DAY))
+            list.add(today.minus(DatePeriod(days = i)))
         }
         list.add(today)
-        // Pad the rest of the current week with nulls (future days)
         for (i in 1..(7 - todayIso)) {
             list.add(null)
         }
@@ -57,13 +61,12 @@ fun FlowHeatmap(
 
     val monthLabels = remember(weeks) {
         val labels = mutableMapOf<Int, String>()
-        var lastMonth = -1
+        var lastMonth: Month? = null
         weeks.forEachIndexed { index, week ->
-            // Find the first valid day in the week to check the month
             val firstValidDay = week.firstOrNull { it != null }
-            if (firstValidDay != null && firstValidDay.monthNumber != lastMonth) {
+            if (firstValidDay != null && firstValidDay.month != lastMonth) {
                 labels[index] = firstValidDay.month.name.take(3).lowercase().replaceFirstChar { it.uppercase() }
-                lastMonth = firstValidDay.monthNumber
+                lastMonth = firstValidDay.month
             }
         }
         labels
@@ -72,31 +75,52 @@ fun FlowHeatmap(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp) // REDUCED OUTER PADDING
+            .padding(vertical = 8.dp)
             .background(SurfaceDark, RoundedCornerShape(16.dp))
-            .padding(12.dp) // REDUCED INNER PADDING
-            .alpha(alpha.value) // APPLIES THE FADE ANIMATION
+            .padding(12.dp)
+            .alpha(alpha.value)
     ) {
-        Text("FLOW STATE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        // --- TOP BAR (PREMIUM ICONS INSTEAD OF EMOJIS) ---
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("FLOW STATE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Minimalist Blue Circle for Current Streak
+                Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(DefaultAccentColor))
+                Spacer(Modifier.width(6.dp))
+                Text("Current: ${streaks.first}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                // Minimalist Orange Circle for Best Streak
+                Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFFF9800)))
+                Spacer(Modifier.width(6.dp))
+                Text("Best: ${streaks.second}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
         Spacer(modifier = Modifier.height(12.dp))
 
+        // --- RESTORED HEATMAP GRID ---
         Row(modifier = Modifier.fillMaxWidth()) {
-            // --- Y-AXIS DAY LABELS ---
             Column(
-                modifier = Modifier.padding(top = 22.dp, end = 8.dp), // Aligns perfectly under the Month labels
+                modifier = Modifier.padding(top = 22.dp, end = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 val dayStyle = androidx.compose.ui.text.TextStyle(color = TextSecondary.copy(alpha=0.5f), fontSize = 10.sp)
                 Text("M", style = dayStyle, modifier = Modifier.height(16.dp))
-                Text("", style = dayStyle, modifier = Modifier.height(16.dp)) // Tue
-                Text("W", style = dayStyle, modifier = Modifier.height(16.dp)) // Wed
-                Text("", style = dayStyle, modifier = Modifier.height(16.dp)) // Thu
-                Text("F", style = dayStyle, modifier = Modifier.height(16.dp)) // Fri
-                Text("", style = dayStyle, modifier = Modifier.height(16.dp)) // Sat
-                Text("", style = dayStyle, modifier = Modifier.height(16.dp)) // Sun
+                Text("", style = dayStyle, modifier = Modifier.height(16.dp))
+                Text("W", style = dayStyle, modifier = Modifier.height(16.dp))
+                Text("", style = dayStyle, modifier = Modifier.height(16.dp))
+                Text("F", style = dayStyle, modifier = Modifier.height(16.dp))
+                Text("", style = dayStyle, modifier = Modifier.height(16.dp))
+                Text("", style = dayStyle, modifier = Modifier.height(16.dp))
             }
 
-            // --- THE HEATMAP GRID ---
             LazyRow(
                 modifier = Modifier.weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -104,18 +128,14 @@ fun FlowHeatmap(
             ) {
                 items(weeks.size) { weekIndex ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-
-                        // Month Label
                         Box(modifier = Modifier.height(16.dp), contentAlignment = Alignment.BottomStart) {
                             if (monthLabels.containsKey(weekIndex)) {
                                 Text(monthLabels[weekIndex]!!, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             }
                         }
 
-                        // 7 Day Squares
                         weeks[weekIndex].forEach { date ->
                             if (date == null) {
-                                // Future day placeholder (invisible)
                                 Box(modifier = Modifier.size(16.dp))
                             } else {
                                 val seconds = heatmapData[date.toString()] ?: 0

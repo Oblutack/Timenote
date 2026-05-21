@@ -54,3 +54,11 @@ val mockFolders = listOf(
     TimenoteFolder("4", "Personal", null, 3, Color(0xFF9C27B0))  // <-- Added 'null,'
 )
 
+data class DailySummary(
+    val date: kotlinx.datetime.LocalDate,
+    val totalSeconds: Int,
+    val sessionCount: Int,
+    val topTag: TimenoteFolder?
+)
+
+
