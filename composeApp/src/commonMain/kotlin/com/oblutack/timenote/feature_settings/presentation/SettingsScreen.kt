@@ -226,7 +226,7 @@ fun SettingsScreen(
                     // 2. Report a Bug
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable {
-                            uriHandler.openUri("mailto:support@timenote.app?subject=Timenote%20Bug%20Report")
+                            uriHandler.openUri("mailto:timenotesupport@gmail.com?subject=Timenote%20Bug%20Report")
                         }.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
