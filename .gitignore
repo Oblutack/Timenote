@@ -3,7 +3,9 @@
 .kotlin
 .gradle
 **/build/
+**/release/
 !src/**/build/
+!src/**/release/
 local.properties
 .idea
 .DS_Store
