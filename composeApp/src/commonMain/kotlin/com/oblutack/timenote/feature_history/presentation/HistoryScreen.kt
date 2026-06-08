@@ -466,6 +466,12 @@ fun HistoryScreen(
                     )
                 }
 
+                androidx.compose.runtime.LaunchedEffect(sortOption, selectedFilterTags, isCalendarView) {
+                    if (finalDisplaySessions.isNotEmpty()) {
+                        listState.animateScrollToItem(0)
+                    }
+                }
+
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -524,11 +530,6 @@ fun HistoryScreen(
                             }
                         )
 
-                        androidx.compose.runtime.LaunchedEffect(sortOption, selectedFilterTags, isCalendarView) {
-                            if (finalDisplaySessions.isNotEmpty()) {
-                                listState.animateScrollToItem(0)
-                            }
-                        }
 
                         SwipeToDismissBox(
                             state = dismissState,
