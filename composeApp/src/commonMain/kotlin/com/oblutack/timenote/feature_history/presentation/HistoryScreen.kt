@@ -513,7 +513,7 @@ fun HistoryScreen(
                         }
                     }
 
-                    items(finalDisplaySessions, key = { "${it.id}_${it.hashCode()}" }) { session ->
+                    items(finalDisplaySessions, key = { it.id }) { session ->
                         val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
                                 if (value == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart) {
@@ -819,7 +819,7 @@ fun HistoryScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
-                    items(allTags, key = { "${it.id}_${it.hashCode()}" }) { tag ->
+                    items(allTags, key = { it.id }) { tag ->
                         val isSelected = selectedFilterTags.contains(tag.id)
                         Row(
                             modifier = Modifier.fillMaxWidth().clickable { viewModel.toggleFilterTag(tag.id) }.padding(horizontal = 24.dp, vertical = 12.dp),
