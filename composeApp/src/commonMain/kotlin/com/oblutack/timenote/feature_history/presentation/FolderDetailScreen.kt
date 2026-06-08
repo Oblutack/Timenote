@@ -37,6 +37,10 @@ import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.BlendMode
 
 @Composable
 fun FolderDetailScreen(
@@ -162,8 +166,23 @@ fun FolderDetailScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 24.dp),
-                    contentPadding = PaddingValues(bottom = 24.dp),
+                        .padding(horizontal = 24.dp)
+                        // --- THE FIX: Fading Edges ---
+                        .graphicsLayer { alpha = 0.99f }
+                        .drawWithContent {
+                            drawContent()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    0f to Color.Transparent,
+                                    0.05f to Color.Black,
+                                    0.95f to Color.Black,
+                                    1f to Color.Transparent
+                                ),
+                                blendMode = BlendMode.DstIn
+                            )
+                        },
+                    // -----------------------------
+                    contentPadding = PaddingValues(top = 16.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     items(folderTimenotes, key = { it.id }) { session ->

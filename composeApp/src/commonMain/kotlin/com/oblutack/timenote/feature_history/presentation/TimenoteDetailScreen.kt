@@ -210,6 +210,7 @@ fun TimenoteDetailScreen(
                     text = timenote.title,
                     color = TextPrimary,
                     fontSize = 32.sp,
+                    lineHeight = 38.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.fillMaxWidth().clickable { isEditingTitle = true }
                 )
