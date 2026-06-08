@@ -62,7 +62,7 @@ fun SettingsScreen(
 
     val scrollState = androidx.compose.foundation.rememberScrollState()
 
-        Column(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(BackgroundDark)
@@ -216,7 +216,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().clickable { isHelpSheetOpen = true }.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Info, contentDescription = "Help", tint = TextPrimary)
+                        Icon(Icons.Default.Info, contentDescription = "Help", tint = TextPrimary)
                         Spacer(modifier = Modifier.width(16.dp))
                         Text("Help & Tutorials", color = TextPrimary, fontSize = 16.sp)
                     }
@@ -230,7 +230,7 @@ fun SettingsScreen(
                         }.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Build, contentDescription = "Bug", tint = TextPrimary)
+                        Icon(Icons.Default.Build, contentDescription = "Bug", tint = TextPrimary)
                         Spacer(modifier = Modifier.width(16.dp))
                         Text("Report a Bug", color = TextPrimary, fontSize = 16.sp)
                     }
@@ -245,13 +245,25 @@ fun SettingsScreen(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
                 ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Favorite, contentDescription = "Heart", modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Favorite, contentDescription = "Heart", modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Buy me a coffee", fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp)) // Extra padding at the very bottom
             }
+
+        // Fixed: Replaced weight with a standard height spacer!
+        Spacer(modifier = Modifier.height(48.dp))
+
+        // --- DEV TOOL (DELETE BEFORE UPLOAD) ---
+        Button(
+            onClick = { viewModel.triggerDummyData() },
+            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
+        ) {
+            Text("INJECT DUMMY DATA", color = Color.White, fontWeight = FontWeight.Bold)
+        }
     }
 
     // --- THE COLOR WHEEL BOTTOM SHEET ---

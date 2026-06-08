@@ -78,4 +78,8 @@ class SettingsViewModel : ViewModel() {
             SettingsRepository.removeCustomColor(colorLong)
         }
     }
+
+    fun triggerDummyData() {
+        com.oblutack.timenote.data.repository.SessionRepository.injectDummyData()
+    }
 }
