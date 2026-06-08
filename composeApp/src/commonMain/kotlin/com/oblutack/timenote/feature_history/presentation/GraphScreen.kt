@@ -152,9 +152,13 @@ fun GraphScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .pointerInput(Unit) {
-                    detectTransformGestures { _, panChange, zoomChange, _ ->
-                        scale = (scale * zoomChange).coerceIn(0.2f, 3f)
-                        pan += panChange
+                    detectTransformGestures { centroid, panChange, zoomChange, _ ->
+                        val oldScale = scale
+                        scale = (scale * zoomChange).coerceIn(0.15f, 4f)
+
+                        // THE FIX: True focal-point zoom math!
+                        val fractionalChange = scale / oldScale - 1
+                        pan = pan + panChange - (centroid - pan) * fractionalChange
                     }
                 }
                 .pointerInput(Unit) {
