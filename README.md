@@ -12,6 +12,11 @@
   <p>
     <i>Built for precision execution, extensive tracking, and deep reflection. Engineered entirely with Kotlin Multiplatform and Compose Multiplatform, Timenote delivers an uncompromising, hardware-accelerated experience inside a unified, dark-theme-exclusive architecture.</i>
   </p>
+
+<br>
+
+<img src="https://github.com/user-attachments/assets/b6a40089-9b73-425e-942a-9e3fcc25327b" alt="Timenote App Banner" width="100%" />
+  
 </div>
 
 ---
