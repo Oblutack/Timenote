@@ -18,7 +18,9 @@
 <img src="https://github.com/user-attachments/assets/b6a40089-9b73-425e-942a-9e3fcc25327b" alt="Timenote App Banner" width="100%" />
   
 </div>
+<img src="https://github.com/user-attachments/assets/47ca0038-b7b0-4c31-a608-f2f0688a805d" width="100%" alt="Timenote Showcase" />
 
+  <br><br>
 ---
 
 ## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/layer-group.svg" width="20" height="20" alt="Overview"> Overview
