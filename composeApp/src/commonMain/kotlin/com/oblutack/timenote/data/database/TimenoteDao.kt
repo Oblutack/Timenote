@@ -14,7 +14,7 @@ interface TimenoteDao {
     suspend fun insertTimenote(timenote: TimenoteEntity)
 
     // 1. Only get active notes!
-    @Query("SELECT * FROM timenotes WHERE isDeleted = 0 ORDER BY id DESC")
+    @Query("SELECT * FROM timenotes WHERE isDeleted = 0 ORDER BY createdAt DESC")
     fun getAllActiveTimenotes(): Flow<List<TimenoteEntity>>
 
     // 2. Get the trash!
