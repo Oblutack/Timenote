@@ -12,6 +12,11 @@
   <p>
     <i>Built for precision execution, extensive tracking, and deep reflection. Engineered entirely with Kotlin Multiplatform and Compose Multiplatform, Timenote delivers an uncompromising, hardware-accelerated experience inside a unified, dark-theme-exclusive architecture.</i>
   </p>
+  <p>
+  <a href="https://play.google.com/store/apps/details?id=com.oblutack.timenote">
+    <img alt="Get it on Google Play" src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" height="60"/>
+  </a>
+</p>
 
 <br>
 
