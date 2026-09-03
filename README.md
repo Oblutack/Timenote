@@ -28,13 +28,13 @@
   <br><br>
 ---
 
-## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/layer-group.svg" width="20" height="20" alt="Overview"> Overview
+## Overview
 
 Timenote is designed for focused work environments requiring rigorous time tracking and local-first data ownership. For the 2026 software landscape, it prioritizes a fully minimalist, tactile user interface with absolutely zero cloud dependency. Data is yours, processed locally, and visualized dynamically.
 
 ---
 
-## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/microchip.svg" width="20" height="20" alt="Architecture"> Core Architecture
+## Core Architecture
 
 Timenote champions a clean architecture standard through strict MVVM methodologies. UI state relies inherently on StateFlow subscriptions hoisted properly up the ViewModels, avoiding lifecycle degradation across platform back-stack architectures. All SQL routines are mapped logically via DAOs, feeding asynchronous flows directly to the application layer.
 
@@ -42,7 +42,7 @@ Timenote champions a clean architecture standard through strict MVVM methodologi
 
 ---
 
-## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/star.svg" width="20" height="20" alt="Features"> Features
+## Features
 
 - **Spatial Workflow Mapping**
   A dynamic, pannable node-graph built in pure Canvas that visualizes the hierarchical relationship between parent and child timer sessions. 
@@ -57,7 +57,7 @@ Timenote champions a clean architecture standard through strict MVVM methodologi
 
 ---
 
-## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/cube.svg" width="20" height="20" alt="Tech Stack"> Tech Stack
+## Tech Stack
 
 The entire ecosystem exists in `commonMain`, with absolute minimal platform-specific code.
 
@@ -72,7 +72,7 @@ The entire ecosystem exists in `commonMain`, with absolute minimal platform-spec
 
 ---
 
-## <img src="https://raw.githubusercontent.com/FortAwesome/Font-Awesome/6.x/svgs/solid/wrench.svg" width="20" height="20" alt="Build Instructions"> Build Instructions
+## Build Instructions
 
 ### Prerequisites
 - **Android Studio** (Latest version recommended) or IntelliJ IDEA with KMP plugins.
