@@ -181,12 +181,12 @@ class SyncBookkeepingTest {
         assertEquals(setOf(SyncKind.NOTE to "a", SyncKind.FOLDER to "f"), dao.pendingRemoteDeletes.map { it.entityKind to it.entityId }.toSet())
     }
 
-    @Test fun defaultTagsAreStampedAtTimeZeroSoAnyRealEditWins() = runAppTest {
+    @Test fun defaultTagsAreStampedOlderThanAnyRealEditSoRealEditsWin() = runAppTest {
         val dao = FakeTimenoteDao()
         SessionRepository(dao, backgroundScope, FakeDefaultTagsState(), FakeDeviceId(), now = { clock })
 
         val defaults = dao.fieldVersions.filter { it.entityKind == SyncKind.TAG }
         assertTrue(defaults.isNotEmpty())
-        assertTrue(defaults.all { it.updatedAt == 0L })
+        assertTrue(defaults.all { it.updatedAt < 0L }, "older than legacy rows, which count as time 0")
     }
 }

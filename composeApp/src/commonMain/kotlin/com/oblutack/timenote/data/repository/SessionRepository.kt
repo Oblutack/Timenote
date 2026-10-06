@@ -21,6 +21,9 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** The write time given to the default tags: older than every real edit and every pre-tracking row (time 0). */
+internal const val DEFAULT_TAG_STAMP = -1L
+
 /**
  * Single source of truth for timenotes, folders and tags.
  *
@@ -71,10 +74,11 @@ class SessionRepository(
                     if (loadedTags.isEmpty()) {
                         // First launch: create the default tags once. They are written before the flag is set,
                         // so an interruption in between simply retries instead of leaving the user with none.
-                        // Stamped with time 0 so that a real edit made on any device always wins over a default.
+                        // Stamped older than anything real (even tags from before change tracking, which count as
+                        // time 0), so a tag the user created or edited always wins over a default on any device.
                         mockFolders.forEach { tag ->
                             dao.insertTag(tag.toEntity(updatedAt = 0L))
-                            stamp(SyncKind.TAG, tag.id, 0L, FieldNames.TAG_ALL)
+                            stamp(SyncKind.TAG, tag.id, DEFAULT_TAG_STAMP, FieldNames.TAG_ALL)
                         }
                     }
                     // Tags that already exist come from an older version: nothing to add, just remember it
