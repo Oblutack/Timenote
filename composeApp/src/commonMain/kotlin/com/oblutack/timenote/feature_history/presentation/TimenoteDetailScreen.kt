@@ -100,6 +100,11 @@ fun TimenoteDetailScreen(
     val cleanDescription = timenote?.description?.let { if (it.contains("waypoints recorded")) "" else it } ?: ""
     var optimisticDescription by remember(timenote?.id) { mutableStateOf<String?>(null) }
     val displayDescription = optimisticDescription ?: cleanDescription
+    // Once the database value catches up with the optimistic one, go back to showing the database
+    // value, so later changes (e.g. checkbox toggles) are not hidden behind a stale local copy.
+    androidx.compose.runtime.LaunchedEffect(cleanDescription) {
+        if (optimisticDescription == cleanDescription) optimisticDescription = null
+    }
     var isEditingDescription by remember { mutableStateOf(false) }
     var descriptionText by remember(cleanDescription) {
         mutableStateOf(
@@ -361,7 +366,9 @@ fun TimenoteDetailScreen(
                                                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 val newLines = lines.toMutableList()
                                                 newLines[lineIndex] = if (isChecked) line.replaceFirst(Regex("\\[[xX]\\]"), "[ ]") else line.replaceFirst("[ ]", "[x]")
-                                                sessionRepository.updateTimenoteDescription(timenote.id, newLines.joinToString("\n"))
+                                                val toggled = newLines.joinToString("\n")
+                                                optimisticDescription = toggled
+                                                sessionRepository.updateTimenoteDescription(timenote.id, toggled)
                                             }
                                     )
                                     Spacer(Modifier.width(8.dp))
