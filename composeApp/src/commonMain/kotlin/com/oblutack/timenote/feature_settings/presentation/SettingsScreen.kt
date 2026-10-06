@@ -38,6 +38,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
 import com.oblutack.timenote.di.settingsViewModel
 import com.oblutack.timenote.di.LocalAppContainer
+import androidx.compose.material.icons.filled.Share
+import com.oblutack.timenote.backup.BackupStatus
+import com.oblutack.timenote.backup.rememberBackupLauncher
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,6 +58,10 @@ fun SettingsScreen(
     var tempPickedColor by remember { mutableStateOf(DefaultAccentColor) }
 
     val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+
+    val backupRunner = LocalAppContainer.current.backupRunner
+    val backupStatus by backupRunner.status.collectAsState()
+    val backupLauncher = rememberBackupLauncher(backupRunner)
 
     val uriHandler = LocalUriHandler.current
     var isHelpSheetOpen by remember { mutableStateOf(false) }
@@ -204,6 +211,48 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
+            // --- BACKUP ---
+            Text("BACKUP", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(SurfaceDark)
+                    .padding(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { backupLauncher.export() }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Share, contentDescription = null, tint = TextPrimary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("Export backup", color = TextPrimary, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Save all timenotes, folders, tags and voice memos to one file. Keep it safe, for example in Google Drive.", color = TextSecondary, fontSize = 12.sp)
+                    }
+                }
+
+                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BackgroundDark))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth().clickable { backupLauncher.import() }.padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null, tint = TextPrimary)
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Column {
+                        Text("Import backup", color = TextPrimary, fontSize = 16.sp)
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("Add everything from a backup file. Nothing on this device is deleted.", color = TextSecondary, fontSize = 12.sp)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             Text("SUPPORT & FEEDBACK", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -324,6 +373,33 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    // --- BACKUP PROGRESS / RESULT ---
+    when (val status = backupStatus) {
+        BackupStatus.Idle -> Unit
+        is BackupStatus.Working -> AlertDialog(
+            onDismissRequest = {},
+            containerColor = SurfaceDark,
+            title = { Text(status.label, color = TextPrimary) },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(color = DefaultAccentColor, modifier = Modifier.size(28.dp))
+                    Spacer(modifier = Modifier.width(16.dp))
+                    Text("Please keep the app open.", color = TextSecondary)
+                }
+            },
+            confirmButton = {}
+        )
+        is BackupStatus.Finished -> AlertDialog(
+            onDismissRequest = { backupRunner.dismiss() },
+            containerColor = SurfaceDark,
+            title = { Text(status.title, color = TextPrimary) },
+            text = { Text(status.message, color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { backupRunner.dismiss() }) { Text("OK", color = DefaultAccentColor) }
+            }
+        )
     }
 
     // --- THE HELP / TUTORIAL BOTTOM SHEET ---

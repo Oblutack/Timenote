@@ -9,6 +9,7 @@ import com.oblutack.timenote.feature_timer.domain.TimerServiceCommand
 import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import com.oblutack.timenote.core.AudioFiles
+import com.oblutack.timenote.backup.BackupRunner
 
 /**
  * Manual dependency injection: the platform entry point builds one of these and hands it to App().
@@ -22,6 +23,8 @@ class AppContainer(
     val audioPlayer: AudioPlayer,
     /** Turns stored voice-memo references (file names) into real files on this device and back. */
     val audioFiles: AudioFiles,
+    /** Export and import of a backup file (Settings). */
+    val backupRunner: BackupRunner,
     /** The timer notification buttons emit here; TimerViewModel collects. */
     val serviceCommands: MutableSharedFlow<TimerServiceCommand> = MutableSharedFlow(extraBufferCapacity = 1)
 )

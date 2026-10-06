@@ -19,6 +19,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import com.oblutack.timenote.core.DirectoryAudioFiles
 import java.io.File
+import com.oblutack.timenote.backup.AndroidBackupRunner
+import com.oblutack.timenote.backup.BackupService
 
 // DataStore must be a process-wide singleton, hence the top-level delegate
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
@@ -48,6 +50,8 @@ class TimenoteApplication : Application() {
 
         val settingsRepository = SettingsRepository(dataStore)
 
+        val audioDir = File(filesDir, "voice_memos")
+
         container = AppContainer(
             sessionRepository = SessionRepository(database.timenoteDao(), appScope, settingsRepository, settingsRepository),
             settingsRepository = settingsRepository,
@@ -55,8 +59,14 @@ class TimenoteApplication : Application() {
             audioRecorder = AndroidAudioRecorder(this),
             audioPlayer = AndroidAudioPlayer(this),
             audioFiles = DirectoryAudioFiles(
-                directory = File(filesDir, "voice_memos").absolutePath,
+                directory = audioDir.absolutePath,
                 exists = { File(it).exists() }
+            ),
+            backupRunner = AndroidBackupRunner(
+                context = this,
+                service = BackupService(database.timenoteDao(), settingsRepository),
+                scope = appScope,
+                audioDir = audioDir
             )
         )
 

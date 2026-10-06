@@ -104,6 +104,10 @@ class FakeTimenoteDao : TimenoteDao {
     override suspend fun updateFolderPin(id: String, isPinned: Boolean, updatedAt: Long) =
         updateFolder(id) { it.copy(isPinned = isPinned, updatedAt = updatedAt) }
 
+    override suspend fun getAllFoldersOnce(): List<FolderEntity> = folders.value
+    override suspend fun getAllTagsOnce(): List<TagEntity> = tags.value
+    override suspend fun getAllFieldVersions(): List<FieldVersionEntity> = fieldVersions.toList()
+
     // --- sync bookkeeping ---
     override suspend fun upsertFieldVersion(version: FieldVersionEntity) {
         fieldVersions.removeAll { it.entityKind == version.entityKind && it.entityId == version.entityId && it.field == version.field }

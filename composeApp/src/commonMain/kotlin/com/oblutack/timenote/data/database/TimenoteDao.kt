@@ -102,6 +102,16 @@ interface TimenoteDao {
     @Query("UPDATE timenotes SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateTimenotePin(id: String, isPinned: Boolean, updatedAt: Long)
 
+    // --- FULL SNAPSHOTS (backup and sync): active AND trashed/deleted rows ---
+    @Query("SELECT * FROM project_folders")
+    suspend fun getAllFoldersOnce(): List<FolderEntity>
+
+    @Query("SELECT * FROM tags")
+    suspend fun getAllTagsOnce(): List<TagEntity>
+
+    @Query("SELECT * FROM field_versions")
+    suspend fun getAllFieldVersions(): List<FieldVersionEntity>
+
     // --- SYNC BOOKKEEPING ---
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertFieldVersion(version: FieldVersionEntity)
