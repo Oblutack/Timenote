@@ -6,16 +6,20 @@ import androidx.room.ConstructedBy
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection
 import androidx.sqlite.execSQL
+import androidx.room.RoomDatabaseConstructor
 
-// 1. BUMP VERSION TO 2
-@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = 7)
+// Bump this together with adding a MIGRATION_n_m below and listing it in ALL_MIGRATIONS.
+// MigrationsTest fails if the chain from version 1 to DATABASE_VERSION has a gap.
+const val DATABASE_VERSION = 7
+
+@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = DATABASE_VERSION)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun timenoteDao(): TimenoteDao
 }
 
 @Suppress("NO_ACTUAL_FOR_EXPECT")
-expect object AppDatabaseConstructor : androidx.room.RoomDatabaseConstructor<AppDatabase> {
+expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }
 
@@ -60,3 +64,13 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
         connection.execSQL("ALTER TABLE timenotes ADD COLUMN deletedAt INTEGER DEFAULT NULL")
     }
 }
+
+/** Every migration, registered in one place so a new one can't be forgotten in MainActivity. */
+val ALL_MIGRATIONS: Array<Migration> = arrayOf(
+    MIGRATION_1_2,
+    MIGRATION_2_3,
+    MIGRATION_3_4,
+    MIGRATION_4_5,
+    MIGRATION_5_6,
+    MIGRATION_6_7,
+)

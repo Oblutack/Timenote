@@ -49,6 +49,13 @@ interface TimenoteDao {
     @Query("UPDATE timenotes SET voiceNotesJson = :voiceNotesJson WHERE id = :id")
     suspend fun updateTimenoteVoiceNotes(id: String, voiceNotesJson: String)
 
+    @Query("UPDATE timenotes SET timelineEventsJson = :timelineEventsJson WHERE id = :id")
+    suspend fun updateTimenoteTimelineEvents(id: String, timelineEventsJson: String)
+
+    // One-off snapshot (active and trashed) for data migrations
+    @Query("SELECT * FROM timenotes")
+    suspend fun getAllTimenotesOnce(): List<TimenoteEntity>
+
     @Query("UPDATE timenotes SET parentTimenoteId = NULL, parentWaypointId = NULL WHERE id = :id")
     suspend fun orphanTimenote(id: String)
 

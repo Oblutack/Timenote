@@ -10,8 +10,15 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
+import kotlinx.coroutines.launch
 import com.oblutack.timenote.data.database.AppDatabase
 import com.oblutack.timenote.data.database.instantiateDatabase
+import com.oblutack.timenote.data.database.ALL_MIGRATIONS
+import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.feature_timer.domain.AudioLocator
+import com.oblutack.timenote.feature_timer.domain.ServiceLocator
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 
 // 1. THIS IS THE MAGIC FIX: A true Singleton DataStore
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
@@ -40,22 +47,22 @@ class MainActivity : ComponentActivity() {
             klass = AppDatabase::class.java,
             name = "timenotes.db"
         )
-            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_1_2)
-            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_2_3)
-            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_3_4)
-            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_4_5)
-            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_5_6)
-            .addMigrations(com.oblutack.timenote.data.database.MIGRATION_6_7)
+            .addMigrations(*ALL_MIGRATIONS)
 
         val database = instantiateDatabase(dbBuilder)
 
-        com.oblutack.timenote.data.repository.SettingsRepository.initialize(applicationContext.dataStore)
-        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager = AndroidTimerServiceManager(applicationContext)
+        SettingsRepository.initialize(applicationContext.dataStore)
+        ServiceLocator.timerServiceManager = AndroidTimerServiceManager(applicationContext)
 
         // 3. NEW: Inject the Audio Recorder
-        com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder = AndroidAudioRecorder(applicationContext)
-        com.oblutack.timenote.feature_timer.domain.AudioLocator.audioPlayer = AndroidAudioPlayer(applicationContext)
+        AudioLocator.audioRecorder = AndroidAudioRecorder(applicationContext)
+        AudioLocator.audioPlayer = AndroidAudioPlayer(applicationContext)
 
+
+        // Move memos recorded by older versions out of the OS-clearable cache directory
+        CoroutineScope(Dispatchers.IO).launch {
+            VoiceMemoMigration(applicationContext, database.timenoteDao()).run()
+        }
 
         setContent {
             App(database = database)
