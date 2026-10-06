@@ -355,7 +355,7 @@ fun SettingsScreen(
                     Text("Timenote isn't just a timer, it's a visual workflow mapper. Tap the branch icon (➕) on any timeline waypoint to spawn a child timer. View how your sessions connect by tapping the Graph icon in the History tab.", color = TextSecondary)
 
                     Text("2. Interactive Markdown", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
-                    Text("Make your notes actionable. Use the toolbar in the text editor to create checklists ([ ]). You can tap these checkboxes directly in the timeline view to check them off without opening the editor!", color = TextSecondary)
+                    Text("Make your notes actionable. Use the toolbar in the text editor to create checklists ([ ]). You can tap these checkboxes directly on the note's detail screen to check them off without opening the editor!", color = TextSecondary)
 
                     Text("3. Smart Mentions", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
                     Text("Type '@' in the note editor to instantly search and link to past sessions. Tapping a glowing tag jumps you directly to that session's details.", color = TextSecondary)
