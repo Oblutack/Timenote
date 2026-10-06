@@ -6,9 +6,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
 
-object SettingsRepository {
-
-    private lateinit var dataStore: DataStore<Preferences>
+/** User preferences plus the running-session backup, stored in a (multiplatform) DataStore. */
+class SettingsRepository(private val dataStore: DataStore<Preferences>) {
 
     // --- KEYS ---
     private val USE_MONOCHROME_NODES = booleanPreferencesKey("use_monochrome_nodes")
@@ -18,11 +17,6 @@ object SettingsRepository {
 
     // NEW: The key for our emergency timer backup
     private val ACTIVE_SESSION_BACKUP = stringPreferencesKey("active_session_backup")
-
-    // --- INITIALIZATION ---
-    fun initialize(ds: DataStore<Preferences>) {
-        dataStore = ds
-    }
 
     // --- READ PREFERENCES ---
     val enableBackgroundBlurFlow: Flow<Boolean> // <-- NEW

@@ -8,35 +8,35 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
 
-class SettingsViewModel : ViewModel() {
+class SettingsViewModel(private val settingsRepository: SettingsRepository) : ViewModel() {
 
-    val enableBackgroundBlur = SettingsRepository.enableBackgroundBlurFlow
+    val enableBackgroundBlur = settingsRepository.enableBackgroundBlurFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun toggleBackgroundBlur(enabled: Boolean) {
         viewModelScope.launch {
-            SettingsRepository.setBackgroundBlur(enabled)
+            settingsRepository.setBackgroundBlur(enabled)
         }
     }
 
-    val useMonochromeNodes = SettingsRepository.useMonochromeNodesFlow
+    val useMonochromeNodes = settingsRepository.useMonochromeNodesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
-    val customColors = SettingsRepository.customColorsFlow
+    val customColors = settingsRepository.customColorsFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun toggleMonochromeNodes(enabled: Boolean) {
         viewModelScope.launch {
-            SettingsRepository.setMonochromeNodes(enabled)
+            settingsRepository.setMonochromeNodes(enabled)
         }
     }
 
-    val enableHaptics = SettingsRepository.enableHapticsFlow
+    val enableHaptics = settingsRepository.enableHapticsFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun toggleHaptics(enabled: Boolean) {
         viewModelScope.launch {
-            SettingsRepository.setHaptics(enabled)
+            settingsRepository.setHaptics(enabled)
         }
     }
 
@@ -56,7 +56,7 @@ class SettingsViewModel : ViewModel() {
                         val composeEncodedLong = Color(rawArgb).value.toLong()
 
                         // 4. Save the safe, encoded Compose value to DataStore
-                        SettingsRepository.addCustomColor(composeEncodedLong)
+                        settingsRepository.addCustomColor(composeEncodedLong)
                     }
                 } catch (e: Exception) {
                     // Ignore invalid inputs
@@ -68,12 +68,12 @@ class SettingsViewModel : ViewModel() {
     fun addPickedColor(color: Color) {
         viewModelScope.launch { // <-- Cleaned up!
             // Extracts the raw ULong and saves it to DataStore
-            SettingsRepository.addCustomColor(color.value.toLong())
+            settingsRepository.addCustomColor(color.value.toLong())
         }
     }
     fun deleteCustomColor(colorLong: Long) {
         viewModelScope.launch {
-            SettingsRepository.removeCustomColor(colorLong)
+            settingsRepository.removeCustomColor(colorLong)
         }
     }
 }

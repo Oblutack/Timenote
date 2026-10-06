@@ -25,11 +25,12 @@ import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.di.trashViewModel
 
 @Composable
 fun TrashScreen(
     onBackClick: () -> Unit,
-    viewModel: TrashViewModel = viewModel { TrashViewModel() }
+    viewModel: TrashViewModel = trashViewModel()
 ) {
     val deletedFolders by viewModel.deletedFolders.collectAsState()
     val deletedTimenotes by viewModel.deletedTimenotes.collectAsState()

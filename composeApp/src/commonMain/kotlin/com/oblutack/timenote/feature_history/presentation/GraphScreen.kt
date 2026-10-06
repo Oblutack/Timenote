@@ -29,7 +29,6 @@ import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.domain.Timenote
 import kotlin.math.sqrt
 import androidx.compose.ui.draw.blur
@@ -42,7 +41,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.graphics.PathEffect
-import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.di.historyViewModel
+import com.oblutack.timenote.di.LocalAppContainer
 
 
 // Holds the calculated X,Y positions for the Canvas to draw
@@ -57,9 +57,11 @@ data class GraphNode(
 fun GraphScreen(
     onBackClick: () -> Unit,
     onTimenoteClick: (String) -> Unit,
-    viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() }
+    viewModel: HistoryViewModel = historyViewModel()
 ) {
-    val timenotes by SessionRepository.timenotes.collectAsState()
+    val sessionRepository = LocalAppContainer.current.sessionRepository
+    val settingsRepository = LocalAppContainer.current.settingsRepository
+    val timenotes by sessionRepository.timenotes.collectAsState()
     val selectedGraphNodeId by viewModel.selectedGraphNodeId.collectAsState()
 
     // Interactive Canvas State (Pan & Zoom)
@@ -89,7 +91,7 @@ fun GraphScreen(
         label = "AlphaPulse"
     )
 
-    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && selectedGraphNodeId != null) 16.dp else 0.dp,
@@ -315,7 +317,7 @@ fun GraphScreen(
     if (selectedGraphNodeId != null) {
         val note = timenotes.find { it.id == selectedGraphNodeId }
         if (note != null) {
-            val childCount = SessionRepository.getDescendantIds(note.id).size
+            val childCount = sessionRepository.getDescendantIds(note.id).size
             val familyTime = viewModel.calculateFamilyTime(note.id)
 
             ModalBottomSheet(

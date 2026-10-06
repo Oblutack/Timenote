@@ -9,7 +9,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
-import com.oblutack.timenote.feature_timer.domain.ServiceLocator
+import com.oblutack.timenote.feature_timer.domain.TimerServiceCommand
 
 class TimerForegroundService : Service() {
     private val CHANNEL_ID = "TimerServiceChannel"
@@ -22,10 +22,11 @@ class TimerForegroundService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
+        val commands = (application as TimenoteApplication).container.serviceCommands
         when (intent?.action) {
-            "ACTION_PAUSE" -> ServiceLocator.serviceCommands.tryEmit("PAUSE")
-            "ACTION_RESUME" -> ServiceLocator.serviceCommands.tryEmit("RESUME")
-            "ACTION_END" -> ServiceLocator.serviceCommands.tryEmit("END_FROM_NOTIFICATION") // <-- CHANGED
+            "ACTION_PAUSE" -> commands.tryEmit(TimerServiceCommand.PAUSE)
+            "ACTION_RESUME" -> commands.tryEmit(TimerServiceCommand.RESUME)
+            "ACTION_END" -> commands.tryEmit(TimerServiceCommand.END)
         }
 
         val title = intent?.getStringExtra("TITLE") ?: "Timenote Active"

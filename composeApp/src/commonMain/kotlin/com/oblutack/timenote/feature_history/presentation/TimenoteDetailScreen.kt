@@ -37,7 +37,6 @@ import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_timer.domain.EventType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -61,26 +60,29 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
-import com.oblutack.timenote.data.repository.SettingsRepository
 import com.oblutack.timenote.getCurrentTimeMillis
+import com.oblutack.timenote.di.historyViewModel
+import com.oblutack.timenote.di.LocalAppContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimenoteDetailScreen(
     timenoteId: String,
     onBackClick: () -> Unit,
-    viewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel { HistoryViewModel() },
+    viewModel: HistoryViewModel = historyViewModel(),
     onBranchClick: (parentId: String, waypointId: String) -> Unit = { _, _ -> },
     onTimenoteClick: (String) -> Unit = {}
 ) {
-    val allTimenotes by SessionRepository.timenotes.collectAsState()
+    val sessionRepository = LocalAppContainer.current.sessionRepository
+    val settingsRepository = LocalAppContainer.current.settingsRepository
+    val allTimenotes by sessionRepository.timenotes.collectAsState()
     val timenote = allTimenotes.find { it.id == timenoteId }
     val childTimenotes = allTimenotes.filter { it.parentTimenoteId == timenote?.id }
     val playingAudioPath by viewModel.playingAudioPath.collectAsState()
     val recordingTimenoteId by viewModel.recordingTimenoteId.collectAsState()
     val scope = rememberCoroutineScope()
 
-    val folders by SessionRepository.folders.collectAsState()
+    val folders by sessionRepository.folders.collectAsState()
     var isFolderDialogOpen by remember { mutableStateOf(false) }
     var isNotesOnlyView by remember { mutableStateOf(false) }
     var isVoiceNotesExpanded by remember { mutableStateOf(false) }
@@ -115,7 +117,7 @@ fun TimenoteDetailScreen(
         }
     }
     val scrollState = androidx.compose.foundation.rememberScrollState()
-    val useMonochromeNodes by SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
+    val useMonochromeNodes by settingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
 
     if (timenote == null) {
         Box(modifier = Modifier.fillMaxSize().background(BackgroundDark), contentAlignment = Alignment.Center) {
@@ -150,11 +152,11 @@ fun TimenoteDetailScreen(
     val workPercent = if (totalSeconds > 0) kotlin.math.round(workRatio * 100).toInt() else 100
     val pausePercent = if (totalSeconds > 0) 100 - workPercent else 0
 
-    val allTags by SessionRepository.tags.collectAsState()
+    val allTags by sessionRepository.tags.collectAsState()
     var isEditTagsSheetOpen by remember { mutableStateOf(false) }
     var tempSelectedTags by remember(timenote?.tags) { mutableStateOf(timenote?.tags ?: emptyList()) }
 
-    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     // Check if ANY popup is open on the Details screen
     val isPopupOpen = isFolderDialogOpen || isEditingDescription || isEditTagsSheetOpen
@@ -165,7 +167,7 @@ fun TimenoteDetailScreen(
         label = "DetailsBlur"
     )
 
-    val enableHaptics by SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
 
 
@@ -228,7 +230,7 @@ fun TimenoteDetailScreen(
                         }) { Text("Cancel", color = TextSecondary) }
 
                         TextButton(onClick = {
-                            SessionRepository.updateTimenoteTitle(timenote.id, titleText.text)
+                            sessionRepository.updateTimenoteTitle(timenote.id, titleText.text)
                             isEditingTitle = false
                         }) { Text("Save", color = DefaultAccentColor) }
                     }
@@ -359,7 +361,7 @@ fun TimenoteDetailScreen(
                                                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 val newLines = lines.toMutableList()
                                                 newLines[lineIndex] = if (isChecked) line.replaceFirst(Regex("\\[[xX]\\]"), "[ ]") else line.replaceFirst("[ ]", "[x]")
-                                                SessionRepository.updateTimenoteDescription(timenote.id, newLines.joinToString("\n"))
+                                                sessionRepository.updateTimenoteDescription(timenote.id, newLines.joinToString("\n"))
                                             }
                                     )
                                     Spacer(Modifier.width(8.dp))
@@ -636,7 +638,7 @@ fun TimenoteDetailScreen(
             folders = folders,
             currentFolderId = timenote.folderId,
             onAssign = {
-                SessionRepository.assignFolderToTimenote(timenote.id, it)
+                sessionRepository.assignFolderToTimenote(timenote.id, it)
                 isFolderDialogOpen = false
             },
             onDismiss = { isFolderDialogOpen = false }
@@ -654,7 +656,7 @@ fun TimenoteDetailScreen(
                 }
             },
             onSave = {
-                SessionRepository.updateTimenoteTags(timenote.id, tempSelectedTags)
+                sessionRepository.updateTimenoteTags(timenote.id, tempSelectedTags)
                 isEditTagsSheetOpen = false
             },
             onDismiss = { isEditTagsSheetOpen = false }
@@ -675,7 +677,7 @@ fun TimenoteDetailScreen(
                 )
             },
             onSave = {
-                SessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
+                sessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
                 optimisticDescription = descriptionText.text
                 isEditingDescription = false
             }

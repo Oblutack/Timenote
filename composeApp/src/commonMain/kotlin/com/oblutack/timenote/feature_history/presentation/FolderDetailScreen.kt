@@ -33,7 +33,6 @@ import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.data.repository.SessionRepository
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.graphicsLayer
@@ -42,6 +41,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
+import com.oblutack.timenote.di.LocalAppContainer
 
 @Composable
 fun FolderDetailScreen(
@@ -50,10 +50,11 @@ fun FolderDetailScreen(
     onTimenoteClick: (String) -> Unit,
     onStartSessionClick: () -> Unit
 ) {
-    val allTimenotes by SessionRepository.timenotes.collectAsState()
+    val sessionRepository = LocalAppContainer.current.sessionRepository
+    val allTimenotes by sessionRepository.timenotes.collectAsState()
     val folderTimenotes = allTimenotes.filter { it.folderId == folderId }
     val unassignedTimenotes = allTimenotes.filter { it.folderId == null }
-    val folder = SessionRepository.folders.value.find { it.id == folderId }
+    val folder = sessionRepository.folders.value.find { it.id == folderId }
 
     var isAddSessionDialogOpen by remember { mutableStateOf(false) }
 
@@ -246,7 +247,7 @@ fun FolderDetailScreen(
                                     // Premium ghost border
                                     .border(1.dp, TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                                     .clickable {
-                                        SessionRepository.assignFolderToTimenote(session.id, folder.id)
+                                        sessionRepository.assignFolderToTimenote(session.id, folder.id)
                                     }
                                     .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,

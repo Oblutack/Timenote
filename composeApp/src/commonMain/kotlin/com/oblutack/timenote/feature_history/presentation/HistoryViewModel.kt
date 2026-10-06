@@ -13,12 +13,13 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.datetime.toLocalDateTime
 import com.oblutack.timenote.feature_history.domain.DailySummary
 import com.oblutack.timenote.feature_history.domain.Timenote
-import com.oblutack.timenote.feature_timer.domain.AudioLocator
 import com.oblutack.timenote.getCurrentTimeMillis
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.datetime.Instant
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
+import com.oblutack.timenote.feature_timer.domain.AudioPlayer
+import com.oblutack.timenote.feature_timer.domain.AudioRecorder
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -27,15 +28,20 @@ enum class SortOption(val displayName: String) {
     SHORTEST("Shortest Duration")
 }
 
-class HistoryViewModel : ViewModel() {
-    val sessions = SessionRepository.timenotes
+class HistoryViewModel(
+    private val sessionRepository: SessionRepository,
+    private val audioPlayer: AudioPlayer,
+    private val audioRecorder: AudioRecorder,
+    private val now: () -> Long = ::getCurrentTimeMillis
+) : ViewModel() {
+    val sessions = sessionRepository.timenotes
 
     val heatmapData: StateFlow<Map<String, Int>> = sessions.map { allSessions ->
         val map = mutableMapOf<String, Int>()
         allSessions.forEach { session ->
             // Safely convert the timestamp to a local date string
             val instant = Instant.fromEpochMilliseconds(
-                if (session.createdAt > 0L) session.createdAt else getCurrentTimeMillis()
+                if (session.createdAt > 0L) session.createdAt else now()
             )
             val dateStr = instant.toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
 
@@ -50,7 +56,7 @@ class HistoryViewModel : ViewModel() {
         val activeDates = data.filter { it.value > 0 }.keys
             .map { LocalDate.parse(it) }
             .toSet()
-        val today = Instant.fromEpochMilliseconds(getCurrentTimeMillis())
+        val today = Instant.fromEpochMilliseconds(now())
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
         com.oblutack.timenote.core.calculateStreaks(activeDates, today)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), Pair(0, 0))
@@ -62,7 +68,7 @@ class HistoryViewModel : ViewModel() {
     fun selectDateForSummary(date: LocalDate) {
         val sessionsOnDate = sessions.value.filter { session ->
             val instant = Instant.fromEpochMilliseconds(
-                if (session.createdAt > 0L) session.createdAt else getCurrentTimeMillis()
+                if (session.createdAt > 0L) session.createdAt else now()
             )
             instant.toLocalDateTime(TimeZone.currentSystemDefault()).date == date
         }
@@ -88,8 +94,8 @@ class HistoryViewModel : ViewModel() {
         _selectedDailySummary.value = null
     }
 
-    val folders = SessionRepository.folders
-    val tags = SessionRepository.tags
+    val folders = sessionRepository.folders
+    val tags = sessionRepository.tags
 
     // --- FILTER & SORT STATE ---
     private val _selectedFilterTags = MutableStateFlow<Set<String>>(emptySet())
@@ -120,11 +126,11 @@ class HistoryViewModel : ViewModel() {
     }
     // NEW: Trigger the deletion!
     fun deleteTimenote(id: String) {
-        SessionRepository.deleteTimenote(id)
+        sessionRepository.deleteTimenote(id)
     }
 
     fun saveFolder(id: String? = null, name: String, description: String? = null, color: Color) { // <-- NEW PARAM
-        val currentTime = getCurrentTimeMillis()
+        val currentTime = now()
         val folderToSave = if (id == null) {
             ProjectFolder(
                 id = currentTime.toString(),
@@ -143,12 +149,12 @@ class HistoryViewModel : ViewModel() {
                 createdAt = existing?.createdAt ?: currentTime
             )
         }
-        SessionRepository.saveFolder(folderToSave)
+        sessionRepository.saveFolder(folderToSave)
     }
 
     fun deleteFolder(id: String) {
-        // We need to implement SessionRepository.deleteFolder first but let's assume it exists or will be added
-        SessionRepository.deleteFolder(id)
+        // We need to implement sessionRepository.deleteFolder first but let's assume it exists or will be added
+        sessionRepository.deleteFolder(id)
     }
 
     // --- AUDIO PLAYER STATE ---
@@ -157,7 +163,7 @@ class HistoryViewModel : ViewModel() {
     private val _recordingTimenoteId = MutableStateFlow<String?>(null)
     val recordingTimenoteId = _recordingTimenoteId.asStateFlow()
     fun playAudio(filePath: String) {
-        val player = AudioLocator.audioPlayer
+        val player = audioPlayer
 
         if (_playingAudioPath.value == filePath && player?.isPlaying() == true) {
             player.pause()
@@ -171,37 +177,37 @@ class HistoryViewModel : ViewModel() {
     }
 
     fun stopAudio() {
-        AudioLocator.audioPlayer?.stop()
+        audioPlayer.stop()
         _playingAudioPath.value = null
     }
 
     fun startRecordingForTimenote(timenoteId: String) {
         _recordingTimenoteId.value = timenoteId
         val fileName = "SessionMemo_$timenoteId"
-        AudioLocator.audioRecorder?.startRecording(fileName)
+        audioRecorder.startRecording(fileName)
     }
 
     fun stopRecordingForTimenote() {
         val timenoteId = _recordingTimenoteId.value ?: return
-        val savedPath = AudioLocator.audioRecorder?.stopRecording()
+        val savedPath = audioRecorder.stopRecording()
 
         _recordingTimenoteId.value = null
 
         if (savedPath != null) {
-            SessionRepository.addVoiceNote(timenoteId, savedPath)
+            sessionRepository.addVoiceNote(timenoteId, savedPath)
         }
     }
 
     fun deleteVoiceNote(timenoteId: String, pathToDelete: String) {
-        SessionRepository.removeVoiceNote(timenoteId, pathToDelete)
+        sessionRepository.removeVoiceNote(timenoteId, pathToDelete)
     }
 
     fun toggleFolderPin(id: String) {
-        SessionRepository.toggleFolderPin(id)
+        sessionRepository.toggleFolderPin(id)
     }
 
     fun toggleTimenotePin(id: String) {
-        SessionRepository.toggleTimenotePin(id)
+        sessionRepository.toggleTimenotePin(id)
     }
 
     // --- DELETE CASCADER STATE ---
@@ -212,23 +218,23 @@ class HistoryViewModel : ViewModel() {
     val descendantCount = _descendantCount.asStateFlow()
 
     fun requestDelete(session: Timenote) {
-        val descendants = SessionRepository.getDescendantIds(session.id)
+        val descendants = sessionRepository.getDescendantIds(session.id)
         if (descendants.isNotEmpty()) {
             // It has children! Pause and ask the user.
             _descendantCount.value = descendants.size
             _sessionPendingDelete.value = session
         } else {
             // No children. Delete instantly.
-            SessionRepository.deleteTimenote(session.id)
+            sessionRepository.deleteTimenote(session.id)
         }
     }
 
     fun confirmDelete(cascade: Boolean) {
         val session = _sessionPendingDelete.value ?: return
         if (cascade) {
-            SessionRepository.cascadeSoftDeleteTimenote(session.id)
+            sessionRepository.cascadeSoftDeleteTimenote(session.id)
         } else {
-            SessionRepository.deleteAndOrphanChildren(session.id)
+            sessionRepository.deleteAndOrphanChildren(session.id)
         }
         cancelDelete()
     }
@@ -249,7 +255,7 @@ class HistoryViewModel : ViewModel() {
     // Mathematically calculates the total time of a node + ALL descendants
     fun calculateFamilyTime(nodeId: String): String {
         val allNotes = sessions.value
-        val descendants = SessionRepository.getDescendantIds(nodeId)
+        val descendants = sessionRepository.getDescendantIds(nodeId)
 
         // Find the parent + all children
         val familyNodes = allNotes.filter { it.id == nodeId || descendants.contains(it.id) }

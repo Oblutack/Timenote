@@ -6,28 +6,28 @@ import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import com.oblutack.timenote.feature_history.domain.Timenote
 import kotlinx.coroutines.flow.StateFlow
 
-class TrashViewModel : ViewModel() {
-    val deletedTimenotes: StateFlow<List<Timenote>> = SessionRepository.deletedTimenotes
-    val deletedFolders: StateFlow<List<ProjectFolder>> = SessionRepository.deletedFolders
+class TrashViewModel(private val sessionRepository: SessionRepository) : ViewModel() {
+    val deletedTimenotes: StateFlow<List<Timenote>> = sessionRepository.deletedTimenotes
+    val deletedFolders: StateFlow<List<ProjectFolder>> = sessionRepository.deletedFolders
 
     fun restoreTimenote(id: String) {
-        SessionRepository.restoreTimenote(id)
+        sessionRepository.restoreTimenote(id)
     }
 
     fun hardDeleteTimenote(id: String) {
-        SessionRepository.hardDeleteTimenote(id)
+        sessionRepository.hardDeleteTimenote(id)
     }
 
     fun restoreFolder(id: String) {
-        SessionRepository.restoreFolder(id)
+        sessionRepository.restoreFolder(id)
     }
 
     fun hardDeleteFolder(id: String) {
-        SessionRepository.hardDeleteFolder(id)
+        sessionRepository.hardDeleteFolder(id)
     }
 
     fun emptyTrash() {
-        SessionRepository.emptyTrash()
+        sessionRepository.emptyTrash()
     }
 }
 

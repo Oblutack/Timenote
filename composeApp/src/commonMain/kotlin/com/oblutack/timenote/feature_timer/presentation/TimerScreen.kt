@@ -40,22 +40,24 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.di.timerViewModel
+import com.oblutack.timenote.di.LocalAppContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimerScreen(
-    viewModel: TimerViewModel = viewModel { TimerViewModel() }
+    viewModel: TimerViewModel = timerViewModel()
 ) {
+    val settingsRepository = LocalAppContainer.current.settingsRepository
     val state by viewModel.state.collectAsState()
 
-    val enableHaptics by SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
 
-    val useMonochromeNodes by SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
-    val customColors by SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
+    val useMonochromeNodes by settingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
+    val customColors by settingsRepository.customColorsFlow.collectAsState(initial = emptyList())
     // 1. Get the Setting
-    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     // 2. Check if ANY popup is open
     val isPopupOpen = state.isAddNoteDialogOpen || state.isCategoryPopupOpen || state.isCreateTagDialogOpen || state.isManageTagsSheetOpen

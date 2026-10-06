@@ -15,8 +15,6 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.oblutack.timenote.feature_history.presentation.HistoryScreen
 import com.oblutack.timenote.feature_timer.presentation.TimerScreen
-import com.oblutack.timenote.data.database.AppDatabase
-import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.presentation.FolderDetailScreen
 import com.oblutack.timenote.feature_history.presentation.GraphScreen
 import com.oblutack.timenote.feature_history.presentation.HistoryViewModel
@@ -25,6 +23,11 @@ import com.oblutack.timenote.feature_history.presentation.TrashScreen
 import com.oblutack.timenote.feature_settings.presentation.SettingsScreen
 import com.oblutack.timenote.feature_timer.presentation.TimerAction
 import com.oblutack.timenote.feature_timer.presentation.TimerViewModel
+import androidx.compose.runtime.CompositionLocalProvider
+import com.oblutack.timenote.di.AppContainer
+import com.oblutack.timenote.di.LocalAppContainer
+import com.oblutack.timenote.di.historyViewModel
+import com.oblutack.timenote.di.timerViewModel
 
 // ==========================================
 // 1. THEME DEFINITION
@@ -56,14 +59,14 @@ fun TimenoteTheme(content: @Composable () -> Unit) {
 // 2. MAIN APP ENTRY POINT (Using NavHost)
 // ==========================================
 @Composable
-fun App(database: AppDatabase? = null) {
-
-    LaunchedEffect(database) {
-        if (database != null) {
-            SessionRepository.initialize(database.timenoteDao())
-        }
+fun App(container: AppContainer) {
+    CompositionLocalProvider(LocalAppContainer provides container) {
+        AppContent()
     }
+}
 
+@Composable
+private fun AppContent() {
     TimenoteTheme {
         // --- NEW: Official Navigation Controller ---
         val navController = rememberNavController()
@@ -137,7 +140,7 @@ fun App(database: AppDatabase? = null) {
                     val parentId = backStackEntry.arguments?.getString("parentId")
                     val waypointId = backStackEntry.arguments?.getString("waypointId")
 
-                    val timerViewModel: TimerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                    val timerViewModel: TimerViewModel = timerViewModel()
 
                     LaunchedEffect(parentId, waypointId) {
                         if (parentId != null && waypointId != null) {
@@ -160,7 +163,7 @@ fun App(database: AppDatabase? = null) {
                 }
 
                 composable("graph") {
-                    val historyViewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                    val historyViewModel: HistoryViewModel = historyViewModel()
                     GraphScreen(
                         onBackClick = { navController.popBackStack() },
                         onTimenoteClick = { id -> navController.navigate("details/$id") },

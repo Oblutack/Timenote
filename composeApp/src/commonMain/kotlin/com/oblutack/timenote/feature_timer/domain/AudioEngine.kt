@@ -11,8 +11,3 @@ interface AudioPlayer {
     fun stop()
     fun isPlaying(): Boolean
 }
-
-object AudioLocator {
-    var audioRecorder: AudioRecorder? = null
-    var audioPlayer: AudioPlayer? = null
-}

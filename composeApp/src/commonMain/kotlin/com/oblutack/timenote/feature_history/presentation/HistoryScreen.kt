@@ -66,8 +66,9 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.style.TextOverflow
-import com.oblutack.timenote.data.repository.SettingsRepository
 import com.oblutack.timenote.getCurrentTimeMillis
+import com.oblutack.timenote.di.historyViewModel
+import com.oblutack.timenote.di.LocalAppContainer
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -87,8 +88,9 @@ fun HistoryScreen(
     onTrashClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onGraphClick: () -> Unit,
-    viewModel: HistoryViewModel = viewModel { HistoryViewModel() }
+    viewModel: HistoryViewModel = historyViewModel()
 ) {
+    val settingsRepository = LocalAppContainer.current.settingsRepository
     val recentSessions by viewModel.sessions.collectAsState()
     val folders by viewModel.folders.collectAsState(initial = emptyList())
 
@@ -158,11 +160,11 @@ fun HistoryScreen(
     var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
     var folderOptionsId by remember { mutableStateOf<String?>(null) }
 
-    val customColors by SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
+    val customColors by settingsRepository.customColorsFlow.collectAsState(initial = emptyList())
 
     val heatmapData by viewModel.heatmapData.collectAsState()
 
-    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
     val descendantCount by viewModel.descendantCount.collectAsState()
@@ -179,7 +181,7 @@ fun HistoryScreen(
         label = "HistoryBlur"
     )
 
-    val enableHaptics by SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
 
     Column(

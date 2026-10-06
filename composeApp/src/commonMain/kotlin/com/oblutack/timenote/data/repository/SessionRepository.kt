@@ -1,31 +1,37 @@
 package com.oblutack.timenote.data.repository
 
+import com.oblutack.timenote.core.descendantIds
 import com.oblutack.timenote.data.database.TimenoteDao
 import com.oblutack.timenote.data.database.toDomain
 import com.oblutack.timenote.data.database.toEntity
+import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.mockFolders
+import com.oblutack.timenote.getCurrentTimeMillis
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import com.oblutack.timenote.feature_history.domain.ProjectFolder
-import com.oblutack.timenote.getCurrentTimeMillis
 
-object SessionRepository {
-
-    private var dao: TimenoteDao? = null
-    private val coroutineScope = CoroutineScope(Dispatchers.Default)
+/**
+ * Single source of truth for timenotes, folders and tags.
+ *
+ * Keeps in-memory StateFlows fed by the DAO's Flows and exposes fire-and-forget write operations.
+ * Everything it needs (DAO, coroutine scope, clock) is passed in, so tests can use a fake DAO.
+ */
+class SessionRepository(
+    private val dao: TimenoteDao,
+    private val scope: CoroutineScope,
+    private val now: () -> Long = ::getCurrentTimeMillis
+) {
 
     private val _timenotes = MutableStateFlow<List<Timenote>>(emptyList())
     val timenotes: StateFlow<List<Timenote>> = _timenotes.asStateFlow()
 
-    // NEW: StateFlow for our Custom Tags!
     private val _tags = MutableStateFlow<List<TimenoteFolder>>(emptyList())
     val tags: StateFlow<List<TimenoteFolder>> = _tags.asStateFlow()
 
@@ -38,29 +44,21 @@ object SessionRepository {
     private val _deletedFolders = MutableStateFlow<List<ProjectFolder>>(emptyList())
     val deletedFolders: StateFlow<List<ProjectFolder>> = _deletedFolders.asStateFlow()
 
-    fun initialize(timenoteDao: TimenoteDao) {
-        dao = timenoteDao
-
-        // Listen to Timenotes
-        coroutineScope.launch {
-            timenoteDao.getAllActiveTimenotes().collect { entityList ->
-                _timenotes.value = entityList.map { it.toDomain() }
+    init {
+        scope.launch {
+            dao.getAllActiveTimenotes().collect { entities ->
+                _timenotes.value = entities.map { it.toDomain() }
             }
         }
-
-        // Listen to Folders
-        coroutineScope.launch {
-            timenoteDao.getAllActiveFolders().collect { entityList ->
-                _folders.value = entityList.map { it.toDomain() }
+        scope.launch {
+            dao.getAllActiveFolders().collect { entities ->
+                _folders.value = entities.map { it.toDomain() }
             }
         }
-
-        // NEW: Listen to Tags
-        coroutineScope.launch {
-            timenoteDao.getAllTags().collect { entityList ->
-                val loadedTags = entityList.map { it.toDomain() }
-
-                // Smart UX: If the database has no tags, inject the default ones!
+        scope.launch {
+            dao.getAllTags().collect { entities ->
+                val loadedTags = entities.map { it.toDomain() }
+                // First launch: seed the default tags
                 if (loadedTags.isEmpty()) {
                     mockFolders.forEach { saveTag(it) }
                 } else {
@@ -68,142 +66,130 @@ object SessionRepository {
                 }
             }
         }
-
-        coroutineScope.launch {
-            timenoteDao.getDeletedTimenotes().collect { entityList ->
-                _deletedTimenotes.value = entityList.map { it.toDomain() }
+        scope.launch {
+            dao.getDeletedTimenotes().collect { entities ->
+                _deletedTimenotes.value = entities.map { it.toDomain() }
             }
         }
-        coroutineScope.launch {
-            timenoteDao.getDeletedFolders().collect { entityList ->
-                _deletedFolders.value = entityList.map { it.toDomain() }
+        scope.launch {
+            dao.getDeletedFolders().collect { entities ->
+                _deletedFolders.value = entities.map { it.toDomain() }
             }
         }
     }
 
+    // --- TIMENOTES ---
+
     fun saveTimenote(timenote: Timenote) {
-        coroutineScope.launch {
-            dao?.insertTimenote(timenote.toEntity())
-        }
+        scope.launch { dao.insertTimenote(timenote.toEntity()) }
     }
 
     fun deleteTimenote(id: String) {
-        coroutineScope.launch { dao?.softDeleteTimenote(id, getCurrentTimeMillis()) }
+        scope.launch { dao.softDeleteTimenote(id, now()) }
     }
 
-    // Find all children and sub-children (cycle-safe, see core/TimenoteTree.kt)
-    fun getDescendantIds(parentId: String): List<String> =
-        com.oblutack.timenote.core.descendantIds(_timenotes.value, parentId)
+    fun getTimenoteById(id: String): Timenote? = _timenotes.value.find { it.id == id }
 
-    // 2. Cascade Delete: Deletes the parent and ALL descendants
+    /** All children and sub-children (cycle-safe, see core/TimenoteTree.kt). */
+    fun getDescendantIds(parentId: String): List<String> = descendantIds(_timenotes.value, parentId)
+
+    /** Deletes the timenote and ALL its descendants (to the trash). */
     fun cascadeSoftDeleteTimenote(id: String) {
-        coroutineScope.launch {
+        scope.launch {
             val descendants = getDescendantIds(id)
-            val now = getCurrentTimeMillis()
-            dao?.softDeleteTimenote(id, now)
-            descendants.forEach { childId -> dao?.softDeleteTimenote(childId, now) }
+            val timestamp = now()
+            dao.softDeleteTimenote(id, timestamp)
+            descendants.forEach { childId -> dao.softDeleteTimenote(childId, timestamp) }
         }
     }
 
-    // 3. Orphan Children: Deletes the parent, and turns children into Roots
+    /** Deletes the timenote (to the trash) and turns its direct children into roots. */
     fun deleteAndOrphanChildren(id: String) {
-        coroutineScope.launch {
-            val directChildren = _timenotes.value.filter { it.parentTimenoteId == id }
-            directChildren.forEach { child -> dao?.orphanTimenote(child.id) }
-            dao?.softDeleteTimenote(id, getCurrentTimeMillis())
-        }
-    }
-    fun getTimenoteById(id: String): Timenote? {
-        return _timenotes.value.find { it.id == id }
-    }
-
-    // (If you don't have getFolderById yet, add this quick helper right next to getTimenoteById):
-    fun getFolderById(id: String): ProjectFolder? {
-        return _folders.value.find { it.id == id }
-    }
-
-    // NEW: Save a Custom Tag to the Database
-    fun saveTag(tag: TimenoteFolder) {
-        coroutineScope.launch {
-            dao?.insertTag(tag.toEntity())
+        scope.launch {
+            _timenotes.value.filter { it.parentTimenoteId == id }.forEach { child -> dao.orphanTimenote(child.id) }
+            dao.softDeleteTimenote(id, now())
         }
     }
 
-    // NEW: Delete a Custom Tag
-    fun deleteTag(id: String) {
-        coroutineScope.launch {
-            dao?.deleteTag(id)
-        }
-    }
-
-    fun saveFolder(folder: ProjectFolder) {
-        coroutineScope.launch {
-            dao?.insertFolder(folder.toEntity())
-        }
-    }
-
-    fun deleteFolder(id: String) {
-        coroutineScope.launch { dao?.softDeleteFolder(id, getCurrentTimeMillis()) }
-    }
-
-    // NEW: Update a Timenote's Folder
     fun assignFolderToTimenote(timenoteId: String, folderId: String?) {
-        coroutineScope.launch { dao?.updateTimenoteFolder(timenoteId, folderId) }
+        scope.launch { dao.updateTimenoteFolder(timenoteId, folderId) }
     }
 
     fun updateTimenoteDescription(timenoteId: String, newDescription: String) {
-        coroutineScope.launch { dao?.updateTimenoteDescription(timenoteId, newDescription) }
+        scope.launch { dao.updateTimenoteDescription(timenoteId, newDescription) }
     }
 
     fun updateTimenoteTitle(timenoteId: String, newTitle: String) {
-        coroutineScope.launch { dao?.updateTimenoteTitle(timenoteId, newTitle) }
+        scope.launch { dao.updateTimenoteTitle(timenoteId, newTitle) }
     }
 
     fun updateTimenoteTags(timenoteId: String, newTags: List<TimenoteFolder>) {
-        coroutineScope.launch { dao?.updateTimenoteTags(timenoteId, Json.encodeToString(newTags)) }
+        scope.launch { dao.updateTimenoteTags(timenoteId, Json.encodeToString(newTags)) }
     }
 
-    // Voice notes are a JSON list, so append/remove still read the current list, but only touch that column
+    // Voice notes are a JSON list, so append/remove read the current list but only write that column
     fun addVoiceNote(timenoteId: String, path: String) {
-        coroutineScope.launch {
+        scope.launch {
             val note = getTimenoteById(timenoteId) ?: return@launch
-            dao?.updateTimenoteVoiceNotes(timenoteId, Json.encodeToString(note.voiceNotes + path))
+            dao.updateTimenoteVoiceNotes(timenoteId, Json.encodeToString(note.voiceNotes + path))
         }
     }
 
     fun removeVoiceNote(timenoteId: String, path: String) {
-        coroutineScope.launch {
+        scope.launch {
             val note = getTimenoteById(timenoteId) ?: return@launch
-            dao?.updateTimenoteVoiceNotes(timenoteId, Json.encodeToString(note.voiceNotes - path))
-        }
-    }
-
-    // --- TRASH BIN ACTIONS ---
-    fun restoreTimenote(id: String) { coroutineScope.launch { dao?.restoreTimenote(id) } }
-    fun hardDeleteTimenote(id: String) { coroutineScope.launch { dao?.hardDeleteTimenote(id) } }
-
-    fun restoreFolder(id: String) { coroutineScope.launch { dao?.restoreFolder(id) } }
-    fun hardDeleteFolder(id: String) { coroutineScope.launch { dao?.hardDeleteFolder(id) } }
-
-    fun emptyTrash() {
-        coroutineScope.launch {
-            _deletedTimenotes.value.forEach { dao?.hardDeleteTimenote(it.id) }
-            _deletedFolders.value.forEach { dao?.hardDeleteFolder(it.id) }
-        }
-    }
-
-    fun toggleFolderPin(id: String) {
-        coroutineScope.launch {
-            val folder = getFolderById(id) // You might need to add getFolderById similar to getTimenoteById
-            if (folder != null) dao?.updateFolderPin(id, !folder.isPinned)
+            dao.updateTimenoteVoiceNotes(timenoteId, Json.encodeToString(note.voiceNotes - path))
         }
     }
 
     fun toggleTimenotePin(id: String) {
-        coroutineScope.launch {
-            val note = getTimenoteById(id)
-            if (note != null) dao?.updateTimenotePin(id, !note.isPinned)
+        scope.launch {
+            val note = getTimenoteById(id) ?: return@launch
+            dao.updateTimenotePin(id, !note.isPinned)
         }
     }
 
+    // --- TAGS (deleted permanently, no trash) ---
+
+    fun saveTag(tag: TimenoteFolder) {
+        scope.launch { dao.insertTag(tag.toEntity()) }
+    }
+
+    fun deleteTag(id: String) {
+        scope.launch { dao.deleteTag(id) }
+    }
+
+    // --- FOLDERS ---
+
+    fun getFolderById(id: String): ProjectFolder? = _folders.value.find { it.id == id }
+
+    fun saveFolder(folder: ProjectFolder) {
+        scope.launch { dao.insertFolder(folder.toEntity()) }
+    }
+
+    fun deleteFolder(id: String) {
+        scope.launch { dao.softDeleteFolder(id, now()) }
+    }
+
+    fun toggleFolderPin(id: String) {
+        scope.launch {
+            val folder = getFolderById(id) ?: return@launch
+            dao.updateFolderPin(id, !folder.isPinned)
+        }
+    }
+
+    // --- TRASH ---
+
+    fun restoreTimenote(id: String) { scope.launch { dao.restoreTimenote(id) } }
+    fun hardDeleteTimenote(id: String) { scope.launch { dao.hardDeleteTimenote(id) } }
+
+    fun restoreFolder(id: String) { scope.launch { dao.restoreFolder(id) } }
+    fun hardDeleteFolder(id: String) { scope.launch { dao.hardDeleteFolder(id) } }
+
+    fun emptyTrash() {
+        scope.launch {
+            _deletedTimenotes.value.forEach { dao.hardDeleteTimenote(it.id) }
+            _deletedFolders.value.forEach { dao.hardDeleteFolder(it.id) }
+        }
+    }
 }

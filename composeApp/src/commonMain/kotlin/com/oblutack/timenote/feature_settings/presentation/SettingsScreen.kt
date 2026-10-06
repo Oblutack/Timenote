@@ -36,14 +36,16 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
-import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.di.settingsViewModel
+import com.oblutack.timenote.di.LocalAppContainer
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
-    viewModel: SettingsViewModel = viewModel { SettingsViewModel() }
+    viewModel: SettingsViewModel = settingsViewModel()
 ) {
+    val settingsRepository = LocalAppContainer.current.settingsRepository
     val useMonochromeNodes by viewModel.useMonochromeNodes.collectAsState()
     val enableBackgroundBlur by viewModel.enableBackgroundBlur.collectAsState()
     val enableHaptics by viewModel.enableHaptics.collectAsState()
@@ -52,7 +54,7 @@ fun SettingsScreen(
     var isColorPickerOpen by remember { mutableStateOf(false) }
     var tempPickedColor by remember { mutableStateOf(DefaultAccentColor) }
 
-    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     val uriHandler = LocalUriHandler.current
     var isHelpSheetOpen by remember { mutableStateOf(false) }
