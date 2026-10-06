@@ -426,114 +426,18 @@ fun TimenoteDetailScreen(
             }
         }
 
-        // --- VOICE NOTE SECTION ---
-        Spacer(modifier = Modifier.height(8.dp))
-        // --- VOICE NOTE SECTION ---
-        Spacer(modifier = Modifier.height(8.dp))
-        Column(
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            // 1. Determine what to show
-            val hasManyNotes = timenote.voiceNotes.size > 3
-            val displayedNotes = if (isVoiceNotesExpanded) timenote.voiceNotes else timenote.voiceNotes.take(3)
-
-            // 2. Render the visible notes
-            displayedNotes.forEachIndexed { index, path ->
-                val absoluteIndex = timenote.voiceNotes.indexOf(path).takeIf { it != -1 }?.plus(1) ?: (index + 1)
-                val isPlaying = playingAudioPath == path
-
-                Row(
-                    modifier = Modifier
-                        // REMOVED: .fillMaxWidth()
-                        .clip(RoundedCornerShape(50))
-                        .background(SurfaceDark)
-                        .border(1.dp, DefaultAccentColor.copy(alpha = 0.5f), RoundedCornerShape(50))
-                        .clickable { viewModel.playAudio(path) }
-                        .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), // Tighter padding for a sleek pill
-                    verticalAlignment = Alignment.CenterVertically
-                    // REMOVED: horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) androidx.compose.material.icons.Icons.Default.Pause else androidx.compose.material.icons.Icons.Default.PlayArrow,
-                        contentDescription = "Play/Pause",
-                        tint = DefaultAccentColor,
-                        modifier = Modifier.size(20.dp) // Slightly smaller icon
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Voice Note $absoluteIndex",
-                        color = DefaultAccentColor,
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Spacer(modifier = Modifier.width(12.dp))
-
-                    // The Trash Can directly attached to the pill
-                    IconButton(
-                        onClick = {
-                            if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            viewModel.deleteVoiceNote(timenote.id, path)
-                        },
-                        modifier = Modifier.size(28.dp)
-                    ) {
-                        Icon(
-                            imageVector = androidx.compose.material.icons.Icons.Default.Delete,
-                            contentDescription = "Delete",
-                            tint = Color(0xFFE53935),
-                            modifier = Modifier.size(16.dp) // Tiny trash icon
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // 3. The "Show More" Button
-            if (hasManyNotes) {
-                Text(
-                    text = if (isVoiceNotesExpanded) "Show Less" else "+ ${timenote.voiceNotes.size - 3} More",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { isVoiceNotesExpanded = !isVoiceNotesExpanded }
-                        .padding(vertical = 8.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            // 4. The Record / Add Button
-            if (recordingTimenoteId == timenote.id) {
-                Button(
-                    onClick = { viewModel.stopRecordingForTimenote() },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE53935).copy(alpha = 0.2f),
-                        contentColor = Color(0xFFE53935)
-                    ),
-                    border = BorderStroke(1.dp, Color(0xFFE53935)),
-                    shape = RoundedCornerShape(50)
-                    // REMOVED: modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Recording...")
-                }
-            } else {
-                OutlinedButton(
-                    onClick = { viewModel.startRecordingForTimenote(timenote.id) },
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
-                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
-                    shape = RoundedCornerShape(50)
-                    // REMOVED: modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Mic, contentDescription = "Mic", modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("+ Add Voice Note")
-                }
-            }
-        }
-        // --- END VOICE NOTE SECTION ---
+        VoiceNotesSection(
+            voiceNotes = timenote.voiceNotes,
+            isExpanded = isVoiceNotesExpanded,
+            onToggleExpanded = { isVoiceNotesExpanded = !isVoiceNotesExpanded },
+            playingAudioPath = playingAudioPath,
+            isRecording = recordingTimenoteId == timenote.id,
+            enableHaptics = enableHaptics,
+            onPlay = { viewModel.playAudio(it) },
+            onDelete = { viewModel.deleteVoiceNote(timenote.id, it) },
+            onStartRecording = { viewModel.startRecordingForTimenote(timenote.id) },
+            onStopRecording = { viewModel.stopRecordingForTimenote() }
+        )
 
         Spacer(modifier = Modifier.height(24.dp))
 
@@ -734,438 +638,53 @@ fun TimenoteDetailScreen(
     }
 
     if (isFolderDialogOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { isFolderDialogOpen = false },
-            containerColor = SurfaceDark
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
-            ) {
-                Text("Move to Folder", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                if (timenote.folderId != null) {
-                    OutlinedButton(
-                        onClick = {
-                            com.oblutack.timenote.data.repository.SessionRepository.assignFolderToTimenote(timenote.id, null)
-                            isFolderDialogOpen = false
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, Color(0xFFE53935)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
-                    ) {
-                        Text("Remove from Folder")
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
-                LazyColumn(
-                    modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(folders) { folder ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    SessionRepository.assignFolderToTimenote(timenote.id, folder.id)
-                                    isFolderDialogOpen = false
-                                }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Box(modifier = Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(folder.color))
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(folder.name, color = TextPrimary, fontSize = 16.sp)
-                        }
-                    }
-                }
-            }
-        }
+        FolderPickerSheet(
+            folders = folders,
+            currentFolderId = timenote.folderId,
+            onAssign = {
+                SessionRepository.assignFolderToTimenote(timenote.id, it)
+                isFolderDialogOpen = false
+            },
+            onDismiss = { isFolderDialogOpen = false }
+        )
     }
     if (isEditTagsSheetOpen) {
-        ModalBottomSheet(
-            onDismissRequest = { isEditTagsSheetOpen = false },
-            containerColor = SurfaceDark
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp)) {
-                Text("Edit Tags", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.height(16.dp))
-
-                LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
-                    items(allTags) { tag ->
-                        val isSelected = tempSelectedTags.any { it.id == tag.id }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .clickable {
-                                    tempSelectedTags = if (isSelected) {
-                                        tempSelectedTags.filter { it.id != tag.id }
-                                    } else {
-                                        tempSelectedTags + tag
-                                    }
-                                }
-                                .padding(vertical = 12.dp, horizontal = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(modifier = Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape).background(tag.color))
-                                Spacer(modifier = Modifier.width(12.dp))
-                                Text(tag.name, color = TextPrimary, fontSize = 16.sp)
-                            }
-                            if (isSelected) {
-                                Icon(androidx.compose.material.icons.Icons.Default.CheckCircle, contentDescription = "Selected", tint = tag.color)
-                            }
-                        }
-                    }
+        EditTagsSheet(
+            allTags = allTags,
+            selected = tempSelectedTags,
+            onToggle = { tag ->
+                tempSelectedTags = if (tempSelectedTags.any { it.id == tag.id }) {
+                    tempSelectedTags.filter { it.id != tag.id }
+                } else {
+                    tempSelectedTags + tag
                 }
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        SessionRepository.updateTimenoteTags(timenote.id, tempSelectedTags)
-                        isEditTagsSheetOpen = false
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor)
-                ) {
-                    Text("Save Tags", color = Color.White)
-                }
-            }
-        }
+            },
+            onSave = {
+                SessionRepository.updateTimenoteTags(timenote.id, tempSelectedTags)
+                isEditTagsSheetOpen = false
+            },
+            onDismiss = { isEditTagsSheetOpen = false }
+        )
     }
     if (isEditingDescription) {
-        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-        ModalBottomSheet(
-            onDismissRequest = { isEditingDescription = false },
-            sheetState = sheetState,
-            containerColor = SurfaceDark,
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().fillMaxHeight(0.95f).padding(horizontal = 16.dp, vertical = 8.dp)) {
-
-                // --- TOP BAR ---
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    TextButton(onClick = {
-                        isEditingDescription = false
-                        descriptionText = androidx.compose.ui.text.input.TextFieldValue(
-                            text = cleanDescription,
-                            selection = TextRange(cleanDescription.length)
-                        )
-                    }) {
-                        Text("Cancel", color = TextSecondary)
-                    }
-                    Text("Edit Note", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    TextButton(onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                        if (timenote != null) {
-                            com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
-                            optimisticDescription = descriptionText.text
-                        }
-                        isEditingDescription = false
-                    }) {
-                        Text("Save", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // --- PREMIUM MARKDOWN TOOLBAR ---
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                    horizontalArrangement = Arrangement.Center, // Centers the buttons!
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val btnModifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(BackgroundDark).border(1.dp, TextSecondary.copy(alpha=0.15f), RoundedCornerShape(12.dp))
-
-                    Box(
-                        modifier = btnModifier.clickable {
-                            val s = descriptionText.selection.start
-                            val e = descriptionText.selection.end
-                            val t = descriptionText.text
-                            val newText = t.substring(0, s) + "**" + t.substring(s, e) + "**" + t.substring(e)
-                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 4))
-                        },
-                        contentAlignment = Alignment.Center
-                    ) { Text("B", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
-
-                    Spacer(modifier = Modifier.width(16.dp)) // Nice gap between buttons
-
-                    Box(
-                        modifier = btnModifier.clickable {
-                            val s = descriptionText.selection.start
-                            val e = descriptionText.selection.end
-                            val t = descriptionText.text
-                            val newText = t.substring(0, s) + "_" + t.substring(s, e) + "_" + t.substring(e)
-                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(e + 2))
-                        },
-                        contentAlignment = Alignment.Center
-                    ) { Text("I", color = TextPrimary, fontStyle = androidx.compose.ui.text.font.FontStyle.Italic, fontSize = 18.sp) }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Box(
-                        modifier = btnModifier.clickable {
-                            val s = descriptionText.selection.start
-                            val t = descriptionText.text
-                            val newText = t.substring(0, s) + "# " + t.substring(s)
-                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 2))
-                        },
-                        contentAlignment = Alignment.Center
-                    ) { Text("H1", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Checklist Button
-                    Box(
-                        modifier = btnModifier.clickable {
-                            val s = descriptionText.selection.start
-                            val t = descriptionText.text
-                            val newText = t.substring(0, s) + "- [ ] " + t.substring(s)
-                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 6))
-                        },
-                        contentAlignment = Alignment.Center
-                    ) { Text("[ ]", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    // Bullet List Button
-                    Box(
-                        modifier = btnModifier.clickable {
-                            val s = descriptionText.selection.start
-                            val t = descriptionText.text
-                            val newText = t.substring(0, s) + "- " + t.substring(s)
-                            descriptionText = descriptionText.copy(text = newText, selection = TextRange(s + 2))
-                        },
-                        contentAlignment = Alignment.Center
-                    ) { Text("•", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-                // Subtle divider line under the toolbar
-                Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(TextSecondary.copy(alpha=0.1f)))
-
-                // --- AUTO SUGGEST LOGIC ---
-                val cursorPosition = descriptionText.selection.start
-                val textUntilCursor = descriptionText.text.substring(0, cursorPosition.coerceAtMost(descriptionText.text.length))
-                val lastAtIndex = textUntilCursor.lastIndexOf('@')
-
-                var mentionQuery: String? = null
-                if (lastAtIndex != -1) {
-                    val queryPart = textUntilCursor.substring(lastAtIndex + 1)
-                    // If there are no newlines or closing brackets, and it's less than 30 chars, trigger search!
-                    if (!queryPart.contains("\n") && !queryPart.contains("]") && queryPart.length < 30) {
-                        mentionQuery = queryPart
-                    }
-                }
-
-                androidx.compose.animation.AnimatedVisibility(visible = mentionQuery != null) {
-                    val suggestions = allTimenotes.filter {
-                        it.title.contains(mentionQuery ?: "", ignoreCase = true) && it.id != timenote?.id
-                    }.take(4) // Show top 4 suggestions
-
-                    if (suggestions.isNotEmpty()) {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(BackgroundDark)
-                                .border(1.dp, DefaultAccentColor.copy(alpha=0.5f), RoundedCornerShape(8.dp))
-                        ) {
-                            items(suggestions) { suggestion ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            // INJECT THE SMART LINK!
-                                            val t = descriptionText.text
-                                            val insertText = "@[${suggestion.title}](${suggestion.id}) "
-                                            val newText = t.substring(0, lastAtIndex) + insertText + t.substring(cursorPosition)
-                                            descriptionText = descriptionText.copy(
-                                                text = newText,
-                                                selection = TextRange(lastAtIndex + insertText.length)
-                                            )
-                                        }
-                                        .padding(12.dp)
-                                ) {
-                                    Text(suggestion.title, color = TextPrimary, fontSize = 14.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // --- THE TEXT EDITOR ---
-                // Automatically request focus to pop up the keyboard
-                androidx.compose.runtime.LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
-                }
-
-                OutlinedTextField(
-                    value = descriptionText,
-                    onValueChange = { descriptionText = it },
-                    modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp).focusRequester(focusRequester),
-                    placeholder = { Text("Start typing...", color = TextSecondary) },
-                    textStyle = androidx.compose.ui.text.TextStyle(fontSize = 18.sp, color = TextPrimary, lineHeight = 28.sp),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent,
-                        unfocusedContainerColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent, // Completely invisible borders
-                        unfocusedBorderColor = Color.Transparent,
-                    )
+        DescriptionEditorSheet(
+            text = descriptionText,
+            onTextChange = { descriptionText = it },
+            otherTimenotes = allTimenotes.filter { it.id != timenote.id },
+            focusRequester = focusRequester,
+            enableHaptics = enableHaptics,
+            onCancel = {
+                isEditingDescription = false
+                descriptionText = TextFieldValue(
+                    text = cleanDescription,
+                    selection = TextRange(cleanDescription.length)
                 )
+            },
+            onSave = {
+                SessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
+                optimisticDescription = descriptionText.text
+                isEditingDescription = false
             }
-        }
-    }
-}
-
-@Composable
-fun TimenoteTimelineItem(
-    event: com.oblutack.timenote.feature_timer.domain.TimelineEvent,
-    isLastItem: Boolean,
-    useMonochrome: Boolean,
-    playingAudioPath: String?,
-    onPlayAudioClick: (String) -> Unit,
-    onBranchClick: () -> Unit,
-    childNotes: List<com.oblutack.timenote.feature_history.domain.Timenote> = emptyList(),
-    onChildClick: (String) -> Unit = {}
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(IntrinsicSize.Min)
-            .padding(bottom = 8.dp),
-        verticalAlignment = Alignment.Top
-    ) {
-        Box(
-            modifier = Modifier
-                .width(24.dp)
-                .fillMaxHeight(),
-        ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                // 1. Determine size and color based on EventType
-                val isStartOrEnd = event.type == EventType.START || event.type == EventType.END
-                val circleRadius = if (isStartOrEnd) 7.dp.toPx() else 5.dp.toPx()
-                val circleCenterY = 10.dp.toPx()
-
-                val nodeColor = when (event.type) {
-                    com.oblutack.timenote.feature_timer.domain.EventType.START -> if (useMonochrome) TextPrimary else Color(0xFF4CAF50)
-                    com.oblutack.timenote.feature_timer.domain.EventType.END -> if (useMonochrome) TextSecondary else Color(0xFFE53935)
-                    else -> event.color ?: DefaultAccentColor
-                }
-
-                drawCircle(
-                    color = nodeColor,
-                    radius = circleRadius,
-                    center = Offset(size.width / 2, circleCenterY),
-                    style = Stroke(width = if (isStartOrEnd) 2.dp.toPx() else 1.5.dp.toPx())
-                )
-
-                drawCircle(
-                    color = nodeColor,
-                    radius = circleRadius * 0.5f,
-                    center = Offset(size.width / 2, circleCenterY)
-                )
-
-                if (!isLastItem) {
-                    val lineStartY = circleCenterY + circleRadius + 4.dp.toPx()
-                    drawLine(
-                        color = SurfaceDark,
-                        start = Offset(size.width / 2, lineStartY),
-                        end = Offset(size.width / 2, size.height + 8.dp.toPx()),
-                        strokeWidth = 2.dp.toPx()
-                    )
-                }
-            }
-        }
-        Spacer(modifier = Modifier.width(16.dp))
-
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .padding(bottom = 16.dp, end = 8.dp)
-        ) {
-            Text(
-                text = event.title,
-                color = TextPrimary,
-                fontSize = 16.sp
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = event.timestamp,
-                color = TextSecondary,
-                fontSize = 14.sp
-            )
-
-            if (event.audioPath != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                val isPlaying = playingAudioPath == event.audioPath
-                Row(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .background(SurfaceDark)
-                        .border(1.dp, DefaultAccentColor, RoundedCornerShape(50))
-                        .clickable { onPlayAudioClick(event.audioPath!!) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isPlaying) "Pause" else "Play Voice Memo",
-                        tint = DefaultAccentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = if (isPlaying) "Pause" else "Play Voice Memo",
-                        color = DefaultAccentColor,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium
-                    )
-                }
-            }
-
-            val waypointChildren = childNotes.filter { it.parentWaypointId == event.id }
-            if (waypointChildren.isNotEmpty()) {
-                waypointChildren.forEach { child ->
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(DefaultAccentColor.copy(alpha = 0.1f))
-                            .border(1.dp, DefaultAccentColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
-                            .clickable { onChildClick(child.id) }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "↳ Branched: ${child.title}",
-                            color = DefaultAccentColor,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium
-                        )
-                    }
-                }
-            }
-        }
-
-        if (event.type == EventType.NOTE) {
-            IconButton(onClick = onBranchClick) {
-                Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.Add,
-                    contentDescription = "Branch Timer",
-                    tint = TextSecondary
-                )
-            }
-        }
+        )
     }
 }
