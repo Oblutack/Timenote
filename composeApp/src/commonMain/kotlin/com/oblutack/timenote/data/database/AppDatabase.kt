@@ -10,9 +10,15 @@ import androidx.room.RoomDatabaseConstructor
 
 // Bump this together with adding a MIGRATION_n_m below and listing it in ALL_MIGRATIONS.
 // MigrationsTest fails if the chain from version 2 to DATABASE_VERSION has a gap.
-const val DATABASE_VERSION = 7
+const val DATABASE_VERSION = 8
 
-@Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = DATABASE_VERSION)
+@Database(
+    entities = [
+        TimenoteEntity::class, TagEntity::class, FolderEntity::class,
+        FieldVersionEntity::class, SyncStateEntity::class, PendingRemoteDeleteEntity::class
+    ],
+    version = DATABASE_VERSION
+)
 @ConstructedBy(AppDatabaseConstructor::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun timenoteDao(): TimenoteDao
@@ -59,6 +65,42 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
     }
 }
 
+/**
+ * Prepares the data for cloud sync. Purely additive: nothing existing is changed or removed.
+ *  - every note, folder and tag gets an updatedAt (existing rows: when they were created, or trashed)
+ *  - tags can now be soft-deleted, like notes and folders
+ *  - three new bookkeeping tables (see SyncEntities.kt)
+ */
+val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(connection: SQLiteConnection) {
+        connection.execSQL("ALTER TABLE timenotes ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("UPDATE timenotes SET updatedAt = COALESCE(deletedAt, createdAt)")
+
+        connection.execSQL("ALTER TABLE project_folders ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("UPDATE project_folders SET updatedAt = COALESCE(deletedAt, createdAt)")
+
+        // Tags have no creation time, so they start at 0 ("older than any real edit")
+        connection.execSQL("ALTER TABLE tags ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE tags ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0")
+        connection.execSQL("ALTER TABLE tags ADD COLUMN deletedAt INTEGER DEFAULT NULL")
+
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `field_versions` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +
+                "`field` TEXT NOT NULL, `updatedAt` INTEGER NOT NULL, `deviceId` TEXT NOT NULL, " +
+                "`present` INTEGER NOT NULL, PRIMARY KEY(`entityKind`, `entityId`, `field`))"
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `sync_state` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +
+                "`remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, " +
+                "PRIMARY KEY(`entityKind`, `entityId`))"
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `pending_remote_deletes` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +
+                "`remoteFileId` TEXT, `createdAt` INTEGER NOT NULL, PRIMARY KEY(`entityKind`, `entityId`))"
+        )
+    }
+}
+
 /** Every migration, registered in one place so a new one can't be forgotten in MainActivity. */
 val ALL_MIGRATIONS: Array<Migration> = arrayOf(
     MIGRATION_2_3,
@@ -66,4 +108,5 @@ val ALL_MIGRATIONS: Array<Migration> = arrayOf(
     MIGRATION_4_5,
     MIGRATION_5_6,
     MIGRATION_6_7,
+    MIGRATION_7_8,
 )

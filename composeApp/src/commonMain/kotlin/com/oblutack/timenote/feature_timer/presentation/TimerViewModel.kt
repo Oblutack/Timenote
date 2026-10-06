@@ -26,6 +26,8 @@ import com.oblutack.timenote.feature_timer.domain.AudioRecorder
 import com.oblutack.timenote.feature_timer.domain.TimerServiceCommand
 import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
 import kotlinx.coroutines.flow.Flow
+import com.oblutack.timenote.core.newId
+import com.oblutack.timenote.core.AudioFiles
 
 data class TimerState(
     val displayTime: String = "00:00:00",
@@ -75,6 +77,7 @@ class TimerViewModel(
     private val settingsRepository: SettingsRepository,
     private val timerServiceManager: TimerServiceManager,
     private val audioRecorder: AudioRecorder,
+    private val audioFiles: AudioFiles,
     private val serviceCommands: Flow<TimerServiceCommand>,
     private val now: () -> Long = ::getCurrentTimeMillis
 ) : ViewModel() {
@@ -284,7 +287,7 @@ class TimerViewModel(
             is TimerAction.SaveNewTag -> {
                 val name = _state.value.newTagName
                 if (name.isNotBlank()) {
-                    val tagIdToSave = _state.value.tagBeingEditedId ?: platformSpecificId()
+                    val tagIdToSave = _state.value.tagBeingEditedId ?: newId()
                     val newTag = TimenoteFolder(
                         id = tagIdToSave,
                         name = name,
@@ -321,7 +324,7 @@ class TimerViewModel(
             }
             is TimerAction.StartVoiceMemo -> {
                 if (_state.value.isRunning) {
-                    val fileName = "VoiceMemo_${platformSpecificId()}"
+                    val fileName = "VoiceMemo_${newId()}"
                     val started = audioRecorder.startRecording(fileName)
                     _state.update { it.copy(
                         isRecordingVoiceMemo = started,
@@ -342,7 +345,7 @@ class TimerViewModel(
                 _state.update { it.copy(isRecordingVoiceMemo = false) }
 
                 if (savedPath != null && _state.value.isRunning) {
-                    addEventToTimeline("Voice Memo attached", EventType.NOTE, null, savedPath)
+                    addEventToTimeline("Voice Memo attached", EventType.NOTE, null, audioFiles.toRef(savedPath))
                 }
             }
             is TimerAction.SetParentLinks -> {
@@ -465,7 +468,7 @@ class TimerViewModel(
     private fun executeSave(categories: List<TimenoteFolder>) {
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
 
-        val timestampId = platformSpecificId()
+        val timestampId = newId()
         lastSessionId = timestampId
         lastSessionSeen = false
 
@@ -576,7 +579,7 @@ class TimerViewModel(
         val totalElapsedSeconds = clock.elapsedSeconds(now)
 
         val newEvent = TimelineEvent(
-            id = platformSpecificId(),
+            id = newId(),
             title = title,
             timestamp = formatTime(totalElapsedSeconds),
             type = type,
@@ -618,14 +621,6 @@ class TimerViewModel(
 
     private fun formatTime(totalSeconds: Int): String = com.oblutack.timenote.core.formatDuration(totalSeconds)
 
-    companion object {
-        private var idCounter = 0
-    }
-
-    private fun platformSpecificId(): String {
-        idCounter++
-        return "${now()}_$idCounter"
-    }
 }
 
 sealed class TimerAction {

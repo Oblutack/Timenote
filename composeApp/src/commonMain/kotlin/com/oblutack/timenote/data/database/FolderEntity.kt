@@ -12,5 +12,6 @@ data class FolderEntity(
     val createdAt: Long,
     val isPinned: Boolean,
     val isDeleted: Boolean,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    val updatedAt: Long = 0L
 )

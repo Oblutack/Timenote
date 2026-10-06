@@ -8,6 +8,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
 import com.oblutack.timenote.data.database.ALL_MIGRATIONS
 import com.oblutack.timenote.data.database.AppDatabase
+import com.oblutack.timenote.data.database.DATABASE_VERSION
 import com.oblutack.timenote.data.database.instantiateDatabase
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.data.repository.SettingsRepository
@@ -16,6 +17,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import com.oblutack.timenote.core.DirectoryAudioFiles
+import java.io.File
 
 // DataStore must be a process-wide singleton, hence the top-level delegate
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
@@ -26,24 +29,35 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
  */
 class TimenoteApplication : Application() {
 
+    private companion object {
+        const val DATABASE_NAME = "timenotes.db"
+    }
+
     lateinit var container: AppContainer
         private set
 
     override fun onCreate() {
         super.onCreate()
 
+        backupDatabaseBeforeUpgrade(this, DATABASE_NAME, DATABASE_VERSION)
         val database = instantiateDatabase(
-            Room.databaseBuilder(applicationContext, AppDatabase::class.java, "timenotes.db")
+            Room.databaseBuilder(applicationContext, AppDatabase::class.java, DATABASE_NAME)
                 .addMigrations(*ALL_MIGRATIONS)
         )
         val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+        val settingsRepository = SettingsRepository(dataStore)
+
         container = AppContainer(
-            sessionRepository = SessionRepository(database.timenoteDao(), appScope),
-            settingsRepository = SettingsRepository(dataStore),
+            sessionRepository = SessionRepository(database.timenoteDao(), appScope, settingsRepository, settingsRepository),
+            settingsRepository = settingsRepository,
             timerServiceManager = AndroidTimerServiceManager(this),
             audioRecorder = AndroidAudioRecorder(this),
-            audioPlayer = AndroidAudioPlayer(this)
+            audioPlayer = AndroidAudioPlayer(this),
+            audioFiles = DirectoryAudioFiles(
+                directory = File(filesDir, "voice_memos").absolutePath,
+                exists = { File(it).exists() }
+            )
         )
 
         // Move memos recorded by older versions out of the OS-clearable cache directory

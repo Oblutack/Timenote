@@ -30,21 +30,25 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.oblutack.timenote.core.DirectoryAudioFiles
+import com.oblutack.timenote.testutil.FakeDefaultTagsState
+import com.oblutack.timenote.testutil.FakeDeviceId
 
 private const val BASE = 1_000_000L
 
 /** Everything a TimerViewModel needs, wired to fakes and to the test scheduler's virtual clock. */
 private class Env(private val scope: TestScope) {
     val clock: () -> Long = { BASE + scope.currentTime }
-    val sessions = SessionRepository(FakeTimenoteDao(), scope.backgroundScope, clock)
+    val sessions = SessionRepository(FakeTimenoteDao(), scope.backgroundScope, FakeDefaultTagsState(), FakeDeviceId(), clock)
     val settings = SettingsRepository(FakeDataStore())
     val service = FakeTimerServiceManager()
     val recorder = FakeAudioRecorder()
+    val audioFiles = DirectoryAudioFiles("/fake")
     val commands = MutableSharedFlow<TimerServiceCommand>(extraBufferCapacity = 1)
 
     private var created: TimerViewModel? = null
     val vm: TimerViewModel
-        get() = created ?: TimerViewModel(sessions, settings, service, recorder, commands, clock).also { created = it }
+        get() = created ?: TimerViewModel(sessions, settings, service, recorder, audioFiles, commands, clock).also { created = it }
 
     val state get() = vm.state.value
 
@@ -265,7 +269,7 @@ class TimerViewModelTest {
 
             vm.onAction(TimerAction.StopVoiceMemo)
             assertFalse(state.isRecordingVoiceMemo)
-            assertEquals("/fake/${recorder.lastFileName}.m4a", state.timelineEvents.first().audioPath)
+            assertEquals("${recorder.lastFileName}.m4a", state.timelineEvents.first().audioPath, "a file name is stored, not a path")
         }
     }
 

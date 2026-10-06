@@ -20,6 +20,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.oblutack.timenote.core.DirectoryAudioFiles
+import com.oblutack.timenote.testutil.FakeDefaultTagsState
+import com.oblutack.timenote.testutil.FakeDeviceId
 
 private const val NOW = 1_700_000_100_000L   // 2023-11-14 22:15 UTC
 private const val DAY = 86_400_000L
@@ -28,10 +31,11 @@ private fun dayKey(millis: Long) =
     Instant.fromEpochMilliseconds(millis).toLocalDateTime(TimeZone.currentSystemDefault()).date.toString()
 
 private class HistoryEnv(scope: TestScope) {
-    val sessions = SessionRepository(FakeTimenoteDao(), scope.backgroundScope, now = { NOW })
+    val sessions = SessionRepository(FakeTimenoteDao(), scope.backgroundScope, FakeDefaultTagsState(), FakeDeviceId(), now = { NOW })
     val player = FakeAudioPlayer()
     val recorder = FakeAudioRecorder()
-    val vm = HistoryViewModel(sessions, player, recorder, now = { NOW })
+    val audioFiles = DirectoryAudioFiles("/fake")
+    val vm = HistoryViewModel(sessions, player, recorder, audioFiles, now = { NOW })
 }
 
 class HistoryViewModelTest {
@@ -170,17 +174,33 @@ class HistoryViewModelTest {
 
     // --- folders ---
 
-    @Test fun newFolderGetsATimestampIdAndEditKeepsCreationDate() = runAppTest {
+    @Test fun newFolderGetsAUniqueIdAndEditKeepsCreationDate() = runAppTest {
         val env = HistoryEnv(this)
         env.vm.saveFolder(name = "Writing", description = "Novel", color = Color.Red)
         val created = env.sessions.folders.value.single()
-        assertEquals(NOW.toString(), created.id)
+        assertEquals(36, created.id.length, "new folders get a UUID")
         assertEquals("Novel", created.description)
 
         env.vm.saveFolder(id = created.id, name = "Writing 2", color = Color.Blue)
         val edited = env.sessions.folders.value.single()
         assertEquals("Writing 2", edited.name)
         assertEquals(created.createdAt, edited.createdAt)
+    }
+
+    @Test fun editingAFolderDoesNotUnpinItOrTouchOtherFields() = runAppTest {
+        val env = HistoryEnv(this)
+        env.vm.saveFolder(name = "Writing", color = Color.Red)
+        val id = env.sessions.folders.value.single().id
+        env.vm.toggleFolderPin(id)
+        assertTrue(env.sessions.getFolderById(id)!!.isPinned)
+
+        env.vm.saveFolder(id = id, name = "Writing 2", description = "Novel", color = Color.Blue)
+
+        val edited = env.sessions.getFolderById(id)!!
+        assertEquals("Writing 2", edited.name)
+        assertEquals("Novel", edited.description)
+        assertEquals(Color.Blue, edited.color)
+        assertTrue(edited.isPinned, "a rename must not unpin the folder")
     }
 
     // --- audio ---
@@ -194,6 +214,19 @@ class HistoryViewModelTest {
         env.vm.playAudio("/m/1.m4a")
         assertNull(env.vm.playingAudioPath.value)
         assertTrue(!env.player.playing)
+    }
+
+    @Test fun playbackResolvesAStoredNameToTheLocalFolder() = runAppTest {
+        val env = HistoryEnv(this)
+        env.vm.playAudio("SessionMemo_1.m4a")
+        assertEquals("/fake/SessionMemo_1.m4a", env.player.lastPlayed)
+        assertEquals("SessionMemo_1.m4a", env.vm.playingAudioPath.value, "the UI keeps working with the stored reference")
+    }
+
+    @Test fun playbackStillWorksForLegacyAbsolutePaths() = runAppTest {
+        val env = HistoryEnv(this)
+        env.vm.playAudio("/data/user/0/old/app/files/voice_memos/legacy.m4a")
+        assertEquals("/fake/legacy.m4a", env.player.lastPlayed)
     }
 
     @Test fun finishedPlaybackResetsTheButton() = runAppTest {
@@ -210,9 +243,9 @@ class HistoryViewModelTest {
         assertEquals("a", env.vm.recordingTimenoteId.value)
         env.vm.stopRecordingForTimenote()
         assertNull(env.vm.recordingTimenoteId.value)
-        assertEquals(listOf("/fake/SessionMemo_a.m4a"), env.sessions.getTimenoteById("a")?.voiceNotes)
+        assertEquals(listOf("SessionMemo_a.m4a"), env.sessions.getTimenoteById("a")?.voiceNotes)
 
-        env.vm.deleteVoiceNote("a", "/fake/SessionMemo_a.m4a")
+        env.vm.deleteVoiceNote("a", "SessionMemo_a.m4a")
         assertTrue(env.sessions.getTimenoteById("a")!!.voiceNotes.isEmpty())
     }
 
@@ -231,7 +264,7 @@ class HistoryViewModelTest {
     // --- trash ---
 
     @Test fun trashViewModelRestoresAndEmpties() = runAppTest {
-        val sessions = SessionRepository(FakeTimenoteDao(), backgroundScope, now = { NOW })
+        val sessions = SessionRepository(FakeTimenoteDao(), backgroundScope, FakeDefaultTagsState(), FakeDeviceId(), now = { NOW })
         val trash = TrashViewModel(sessions)
         sessions.saveTimenote(testNote("a")); sessions.saveTimenote(testNote("b"))
         sessions.saveFolder(testFolder("f"))

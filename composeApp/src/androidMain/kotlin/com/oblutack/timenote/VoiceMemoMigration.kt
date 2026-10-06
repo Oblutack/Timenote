@@ -30,14 +30,14 @@ class VoiceMemoMigration(private val context: Context, private val dao: Timenote
                 val target = File(newPath)
                 if (!target.exists()) source.copyTo(target)
                 copiedOriginals += source
-                return newPath
+                return target.name // store the file name, not a path (see AudioFiles)
             }
 
             for (note in dao.getAllTimenotesOnce()) {
                 val voiceNotes = Json.decodeFromString<List<String>>(note.voiceNotesJson)
                 val newVoiceNotes = voiceNotes.map(::move)
                 if (newVoiceNotes != voiceNotes) {
-                    dao.updateTimenoteVoiceNotes(note.id, Json.encodeToString(newVoiceNotes))
+                    dao.updateTimenoteVoiceNotes(note.id, Json.encodeToString(newVoiceNotes), note.updatedAt)
                 }
 
                 val events = Json.decodeFromString<List<TimelineEvent>>(note.timelineEventsJson)

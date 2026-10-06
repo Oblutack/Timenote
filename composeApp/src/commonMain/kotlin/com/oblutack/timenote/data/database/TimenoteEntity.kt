@@ -22,5 +22,7 @@ data class TimenoteEntity(
     val parentWaypointId: String?,
     val isPinned: Boolean,
     val isDeleted: Boolean,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    /** Last time any field of this note changed (epoch millis). Used by sync to find what needs uploading. */
+    val updatedAt: Long = 0L
 )

@@ -22,33 +22,36 @@ interface TimenoteDao {
     fun getDeletedTimenotes(): Flow<List<TimenoteEntity>>
 
     // 3. "Soft Delete" (Hides it)
-    @Query("UPDATE timenotes SET isDeleted = 1, deletedAt = :timestamp WHERE id = :id")
+    @Query("UPDATE timenotes SET isDeleted = 1, deletedAt = :timestamp, updatedAt = :timestamp WHERE id = :id")
     suspend fun softDeleteTimenote(id: String, timestamp: Long)
 
     // 4. Restore (Pulls it out of trash)
-    @Query("UPDATE timenotes SET isDeleted = 0, deletedAt = NULL WHERE id = :id")
-    suspend fun restoreTimenote(id: String)
+    @Query("UPDATE timenotes SET isDeleted = 0, deletedAt = NULL, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun restoreTimenote(id: String, updatedAt: Long)
 
     // 5. Hard Delete (For emptying the trash)
     @Query("DELETE FROM timenotes WHERE id = :id")
     suspend fun hardDeleteTimenote(id: String)
 
-    // Targeted column updates: avoid rewriting the whole row from a possibly stale in-memory copy
-    @Query("UPDATE timenotes SET title = :title WHERE id = :id")
-    suspend fun updateTimenoteTitle(id: String, title: String)
+    // Targeted column updates: avoid rewriting the whole row from a possibly stale in-memory copy.
+    // Every write also stamps updatedAt, which is how sync finds what changed.
+    @Query("UPDATE timenotes SET title = :title, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateTimenoteTitle(id: String, title: String, updatedAt: Long)
 
-    @Query("UPDATE timenotes SET description = :description WHERE id = :id")
-    suspend fun updateTimenoteDescription(id: String, description: String)
+    @Query("UPDATE timenotes SET description = :description, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateTimenoteDescription(id: String, description: String, updatedAt: Long)
 
-    @Query("UPDATE timenotes SET folderId = :folderId WHERE id = :id")
-    suspend fun updateTimenoteFolder(id: String, folderId: String?)
+    @Query("UPDATE timenotes SET folderId = :folderId, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateTimenoteFolder(id: String, folderId: String?, updatedAt: Long)
 
-    @Query("UPDATE timenotes SET tagsJson = :tagsJson WHERE id = :id")
-    suspend fun updateTimenoteTags(id: String, tagsJson: String)
+    @Query("UPDATE timenotes SET tagsJson = :tagsJson, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateTimenoteTags(id: String, tagsJson: String, updatedAt: Long)
 
-    @Query("UPDATE timenotes SET voiceNotesJson = :voiceNotesJson WHERE id = :id")
-    suspend fun updateTimenoteVoiceNotes(id: String, voiceNotesJson: String)
+    @Query("UPDATE timenotes SET voiceNotesJson = :voiceNotesJson, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateTimenoteVoiceNotes(id: String, voiceNotesJson: String, updatedAt: Long)
 
+    // Only used by the one-off voice memo migration, which rewrites references without a user edit,
+    // so it deliberately leaves updatedAt alone.
     @Query("UPDATE timenotes SET timelineEventsJson = :timelineEventsJson WHERE id = :id")
     suspend fun updateTimenoteTimelineEvents(id: String, timelineEventsJson: String)
 
@@ -56,18 +59,18 @@ interface TimenoteDao {
     @Query("SELECT * FROM timenotes")
     suspend fun getAllTimenotesOnce(): List<TimenoteEntity>
 
-    @Query("UPDATE timenotes SET parentTimenoteId = NULL, parentWaypointId = NULL WHERE id = :id")
-    suspend fun orphanTimenote(id: String)
+    @Query("UPDATE timenotes SET parentTimenoteId = NULL, parentWaypointId = NULL, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun orphanTimenote(id: String, updatedAt: Long)
 
     // --- TAGS ---
-    // (We keep tag deletion permanent, no need for a trash bin for tags)
+    // There is no trash screen for tags, but deleting one is a soft delete so the deletion can reach other devices.
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertTag(tag: TagEntity)
 
-    @Query("DELETE FROM tags WHERE id = :id")
-    suspend fun deleteTag(id: String)
+    @Query("UPDATE tags SET isDeleted = 1, deletedAt = :timestamp, updatedAt = :timestamp WHERE id = :id")
+    suspend fun softDeleteTag(id: String, timestamp: Long)
 
-    @Query("SELECT * FROM tags ORDER BY name ASC")
+    @Query("SELECT * FROM tags WHERE isDeleted = 0 ORDER BY name ASC")
     fun getAllTags(): Flow<List<TagEntity>>
 
     // --- PROJECT FOLDERS ---
@@ -82,20 +85,37 @@ interface TimenoteDao {
     fun getDeletedFolders(): Flow<List<FolderEntity>>
 
     // 2. "Soft Delete" (Hides it)
-    @Query("UPDATE project_folders SET isDeleted = 1, deletedAt = :timestamp WHERE id = :id")
+    @Query("UPDATE project_folders SET isDeleted = 1, deletedAt = :timestamp, updatedAt = :timestamp WHERE id = :id")
     suspend fun softDeleteFolder(id: String, timestamp: Long)
 
     // 3. Restore
-    @Query("UPDATE project_folders SET isDeleted = 0, deletedAt = NULL WHERE id = :id")
-    suspend fun restoreFolder(id: String)
+    @Query("UPDATE project_folders SET isDeleted = 0, deletedAt = NULL, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun restoreFolder(id: String, updatedAt: Long)
 
     // 4. Hard Delete
     @Query("DELETE FROM project_folders WHERE id = :id")
     suspend fun hardDeleteFolder(id: String)
 
-    @Query("UPDATE project_folders SET isPinned = :isPinned WHERE id = :id")
-    suspend fun updateFolderPin(id: String, isPinned: Boolean)
+    @Query("UPDATE project_folders SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateFolderPin(id: String, isPinned: Boolean, updatedAt: Long)
 
-    @Query("UPDATE timenotes SET isPinned = :isPinned WHERE id = :id")
-    suspend fun updateTimenotePin(id: String, isPinned: Boolean)
+    @Query("UPDATE timenotes SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :id")
+    suspend fun updateTimenotePin(id: String, isPinned: Boolean, updatedAt: Long)
+
+    // --- SYNC BOOKKEEPING ---
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertFieldVersion(version: FieldVersionEntity)
+
+    @Query("SELECT * FROM field_versions WHERE entityKind = :kind AND entityId = :id")
+    suspend fun getFieldVersions(kind: String, id: String): List<FieldVersionEntity>
+
+    @Query("DELETE FROM field_versions WHERE entityKind = :kind AND entityId = :id")
+    suspend fun deleteFieldVersions(kind: String, id: String)
+
+    // Must be written BEFORE the local row is removed, so a permanent deletion is never forgotten
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertPendingRemoteDelete(pending: PendingRemoteDeleteEntity)
+
+    @Query("SELECT * FROM pending_remote_deletes ORDER BY createdAt")
+    suspend fun getPendingRemoteDeletes(): List<PendingRemoteDeleteEntity>
 }

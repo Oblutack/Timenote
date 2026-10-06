@@ -20,6 +20,8 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import com.oblutack.timenote.feature_timer.domain.AudioPlayer
 import com.oblutack.timenote.feature_timer.domain.AudioRecorder
+import com.oblutack.timenote.core.newId
+import com.oblutack.timenote.core.AudioFiles
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -32,6 +34,7 @@ class HistoryViewModel(
     private val sessionRepository: SessionRepository,
     private val audioPlayer: AudioPlayer,
     private val audioRecorder: AudioRecorder,
+    private val audioFiles: AudioFiles,
     private val now: () -> Long = ::getCurrentTimeMillis
 ) : ViewModel() {
     val sessions = sessionRepository.timenotes
@@ -133,21 +136,17 @@ class HistoryViewModel(
         val currentTime = now()
         val folderToSave = if (id == null) {
             ProjectFolder(
-                id = currentTime.toString(),
+                id = newId(),
                 name = name,
                 description = description, // <-- PASSED IN
                 color = color,
                 createdAt = currentTime
             )
         } else {
+            // Start from the stored folder so fields the editor does not show (pinned, ...) are kept
             val existing = folders.value.find { it.id == id }
-            ProjectFolder(
-                id = id,
-                name = name,
-                description = description, // <-- PASSED IN
-                color = color,
-                createdAt = existing?.createdAt ?: currentTime
-            )
+            existing?.copy(name = name, description = description, color = color)
+                ?: ProjectFolder(id = id, name = name, description = description, color = color, createdAt = currentTime)
         }
         sessionRepository.saveFolder(folderToSave)
     }
@@ -162,17 +161,18 @@ class HistoryViewModel(
     val playingAudioPath = _playingAudioPath.asStateFlow()
     private val _recordingTimenoteId = MutableStateFlow<String?>(null)
     val recordingTimenoteId = _recordingTimenoteId.asStateFlow()
-    fun playAudio(filePath: String) {
+    /** [audioRef] is what the database stores (a file name, or a legacy absolute path). */
+    fun playAudio(audioRef: String) {
         val player = audioPlayer
 
-        if (_playingAudioPath.value == filePath && player?.isPlaying() == true) {
+        if (_playingAudioPath.value == audioRef && player.isPlaying()) {
             player.pause()
             _playingAudioPath.value = null
         } else {
-            player?.play(filePath) {
+            player.play(audioFiles.resolve(audioRef)) {
                 _playingAudioPath.value = null // Resets the UI back to "Play" when finished!
             }
-            _playingAudioPath.value = filePath
+            _playingAudioPath.value = audioRef
         }
     }
 
@@ -198,7 +198,7 @@ class HistoryViewModel(
         _recordingTimenoteId.value = null
 
         if (savedPath != null) {
-            sessionRepository.addVoiceNote(timenoteId, savedPath)
+            sessionRepository.addVoiceNote(timenoteId, audioFiles.toRef(savedPath))
         }
     }
 

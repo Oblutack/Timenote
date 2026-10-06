@@ -13,15 +13,45 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import com.oblutack.timenote.testutil.FakeDefaultTagsState
+import com.oblutack.timenote.testutil.FakeDeviceId
 
 class SessionRepositoryTest {
 
-    private fun TestScope.newRepository(dao: FakeTimenoteDao = FakeTimenoteDao()) =
-        SessionRepository(dao, backgroundScope, now = { 5_000L })
+    private fun TestScope.newRepository(
+        dao: FakeTimenoteDao = FakeTimenoteDao(),
+        defaultTags: FakeDefaultTagsState = FakeDefaultTagsState()
+    ) = SessionRepository(dao, backgroundScope, defaultTags, FakeDeviceId(), now = { 5_000L })
 
     @Test fun seedsDefaultTagsOnFirstLaunch() = runAppTest {
         val repo = newRepository()
         assertEquals(mockFolders.map { it.name }.sorted(), repo.tags.value.map { it.name }.sorted())
+    }
+
+    @Test fun seedingIsRememberedSoDefaultsAreNotRecreated() = runAppTest {
+        val flag = FakeDefaultTagsState()
+        val repo = newRepository(defaultTags = flag)
+        assertTrue(flag.seeded)
+
+        // the user deletes every tag
+        repo.tags.value.forEach { repo.deleteTag(it.id) }
+        assertTrue(repo.tags.value.isEmpty())
+
+        // ...and a new launch (a new repository over the same data and the same flag) must not bring them back
+        val afterRestart = newRepository(FakeTimenoteDao(), flag)
+        assertTrue(afterRestart.tags.value.isEmpty())
+    }
+
+    @Test fun anExistingUserWithTagsIsMarkedAsSeededWithoutAddingAnything() = runAppTest {
+        val dao = FakeTimenoteDao()
+        // tags created by an older version, before the flag existed
+        SessionRepository(dao, backgroundScope, FakeDefaultTagsState(seeded = true), FakeDeviceId(), now = { 5_000L }).saveTag(testTag("mine", "Mine"))
+        val flag = FakeDefaultTagsState(seeded = false)
+
+        val repo = newRepository(dao, flag)
+
+        assertTrue(flag.seeded)
+        assertEquals(listOf("Mine"), repo.tags.value.map { it.name }, "the defaults must not be added next to existing tags")
     }
 
     @Test fun keepsExistingTagsInsteadOfSeeding() = runAppTest {

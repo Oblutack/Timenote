@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
 
 // 1. Translates a Timenote into a Database Entity (Turns lists into JSON Strings)
-fun Timenote.toEntity(): TimenoteEntity {
+fun Timenote.toEntity(updatedAt: Long): TimenoteEntity {
     return TimenoteEntity(
         id = this.id,
         folderId = this.folderId,
@@ -27,7 +27,8 @@ fun Timenote.toEntity(): TimenoteEntity {
         parentWaypointId = this.parentWaypointId,
         isPinned = this.isPinned,
         isDeleted = this.isDeleted,
-        deletedAt = this.deletedAt
+        deletedAt = this.deletedAt,
+        updatedAt = updatedAt
     )
 }
 
@@ -53,7 +54,7 @@ fun TimenoteEntity.toDomain(): Timenote {
 }
 
 // --- NEW: Folder Mappers ---
-fun ProjectFolder.toEntity(): FolderEntity {
+fun ProjectFolder.toEntity(updatedAt: Long): FolderEntity {
     return FolderEntity(
         id = this.id,
         name = this.name,
@@ -62,7 +63,8 @@ fun ProjectFolder.toEntity(): FolderEntity {
         isDeleted = this.isDeleted,
         isPinned = this.isPinned,
         description = this.description,
-        deletedAt = this.deletedAt
+        deletedAt = this.deletedAt,
+        updatedAt = updatedAt
     )
 }
 

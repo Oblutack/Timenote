@@ -11,17 +11,22 @@ data class TagEntity(
     val name: String,
     val description: String?,
     val sessionCount: Int,
-    val colorLong: Long // SQLite can't store Colors, so we store the raw Long value!
+    val colorLong: Long, // SQLite can't store Colors, so we store the raw Long value!
+    val updatedAt: Long = 0L,
+    // Tags are soft-deleted (like notes and folders) so that a deletion can reach other devices
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )
 
 // Mappers to translate between DB and Domain
-fun TimenoteFolder.toEntity(): TagEntity {
+fun TimenoteFolder.toEntity(updatedAt: Long): TagEntity {
     return TagEntity(
         id = this.id,
         name = this.name,
         sessionCount = this.sessionCount,
         colorLong = this.color.value.toLong(),
-        description = this.description
+        description = this.description,
+        updatedAt = updatedAt
     )
 }
 

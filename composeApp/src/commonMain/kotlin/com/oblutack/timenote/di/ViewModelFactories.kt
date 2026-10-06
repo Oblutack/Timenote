@@ -19,6 +19,7 @@ fun timerViewModel(): TimerViewModel {
             settingsRepository = container.settingsRepository,
             timerServiceManager = container.timerServiceManager,
             audioRecorder = container.audioRecorder,
+            audioFiles = container.audioFiles,
             serviceCommands = container.serviceCommands
         )
     }
@@ -31,7 +32,8 @@ fun historyViewModel(): HistoryViewModel {
         HistoryViewModel(
             sessionRepository = container.sessionRepository,
             audioPlayer = container.audioPlayer,
-            audioRecorder = container.audioRecorder
+            audioRecorder = container.audioRecorder,
+            audioFiles = container.audioFiles
         )
     }
 }
