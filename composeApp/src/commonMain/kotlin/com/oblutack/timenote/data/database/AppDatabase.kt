@@ -9,7 +9,7 @@ import androidx.sqlite.execSQL
 import androidx.room.RoomDatabaseConstructor
 
 // Bump this together with adding a MIGRATION_n_m below and listing it in ALL_MIGRATIONS.
-// MigrationsTest fails if the chain from version 1 to DATABASE_VERSION has a gap.
+// MigrationsTest fails if the chain from version 2 to DATABASE_VERSION has a gap.
 const val DATABASE_VERSION = 7
 
 @Database(entities = [TimenoteEntity::class, TagEntity::class, FolderEntity::class], version = DATABASE_VERSION)
@@ -23,13 +23,7 @@ expect object AppDatabaseConstructor : RoomDatabaseConstructor<AppDatabase> {
     override fun initialize(): AppDatabase
 }
 
-// 2. NEW MIGRATION OBJECT
-val MIGRATION_1_2 = object : Migration(1, 2) {
-    override fun migrate(connection: SQLiteConnection) { // <--- CHANGE 'invoke' to 'migrate'
-        connection.execSQL("ALTER TABLE project_folders ADD COLUMN description TEXT DEFAULT NULL")
-        connection.execSQL("ALTER TABLE tags ADD COLUMN description TEXT DEFAULT NULL")
-    }
-}
+// Version 1 has no migration: see fallbackToDestructiveMigrationFrom in DatabaseBuilder.kt.
 
 // 2. NEW MIGRATION FOR AUDIO
 val MIGRATION_2_3 = object : Migration(2, 3) {
@@ -67,7 +61,6 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
 
 /** Every migration, registered in one place so a new one can't be forgotten in MainActivity. */
 val ALL_MIGRATIONS: Array<Migration> = arrayOf(
-    MIGRATION_1_2,
     MIGRATION_2_3,
     MIGRATION_3_4,
     MIGRATION_4_5,
