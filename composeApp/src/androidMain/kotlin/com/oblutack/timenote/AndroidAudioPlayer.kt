@@ -1,5 +1,6 @@
 package com.oblutack.timenote
 
+import com.oblutack.timenote.core.logError
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
@@ -10,6 +11,8 @@ import com.oblutack.timenote.feature_timer.domain.AudioPlayer
 
 class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
 
+    private companion object { const val TAG = "AudioPlayer" }
+
     private var player: MediaPlayer? = null
     private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     private var focusRequest: AudioFocusRequest? = null
@@ -17,7 +20,7 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
     // 1. REQUEST FOCUS
     private fun requestAudioFocus() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) // Pauses Spotify!
+            val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT) // Pauses Spotify!
                 .setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -27,7 +30,8 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
                 .setAcceptsDelayedFocusGain(true)
                 .setOnAudioFocusChangeListener { /* Handle focus changes if needed */ }
                 .build()
-            audioManager.requestAudioFocus(focusRequest!!)
+            focusRequest = request
+            audioManager.requestAudioFocus(request)
         } else {
             @Suppress("DEPRECATION")
             audioManager.requestAudioFocus(null, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
@@ -45,9 +49,10 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
     }
 
     override fun play(filePath: String, onComplete: () -> Unit) {
-        if (player != null) {
+        val existing = player
+        if (existing != null) {
             try {
-                if (!player!!.isPlaying) {
+                if (!existing.isPlaying) {
                     requestAudioFocus() // Re-grab focus if resuming
                     player?.start()
                     return
@@ -79,7 +84,7 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
                 }
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logError(TAG, "Could not play $filePath", e)
             safeRelease()
             abandonAudioFocus()
             onComplete()
@@ -93,7 +98,7 @@ class AndroidAudioPlayer(private val context: Context) : AudioPlayer {
                 abandonAudioFocus() // Let music play while we are paused
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            logError(TAG, "Could not pause playback", e)
         }
     }
 

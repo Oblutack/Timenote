@@ -1,5 +1,6 @@
 package com.oblutack.timenote
 
+import com.oblutack.timenote.core.logError
 import android.content.Context
 import android.media.MediaRecorder
 import android.os.Build
@@ -8,6 +9,8 @@ import java.io.File
 import java.io.FileOutputStream
 
 class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
+
+    private companion object { const val TAG = "AudioRecorder" }
 
     private var recorder: MediaRecorder? = null
     private var currentFilePath: String? = null
@@ -40,7 +43,7 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
                 prepare()
                 start()
             } catch (e: Exception) {
-                e.printStackTrace()
+                logError(TAG, "Could not start recording", e)
             }
         }
     }
@@ -53,7 +56,7 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
             currentFilePath = null
             savedPath
         } catch (e: Exception) {
-            e.printStackTrace()
+            logError(TAG, "Could not stop recording", e)
             null
         } finally {
             recorder?.release()

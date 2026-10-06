@@ -1,5 +1,6 @@
 package com.oblutack.timenote
 
+import com.oblutack.timenote.core.logError
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -14,7 +15,7 @@ class AndroidTimerServiceManager(private val context: Context) : TimerServiceMan
             } else {
                 context.startService(intent)
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) { logError(TAG, "Could not start timer service", e) }
     }
 
     override fun stopService() {
@@ -25,7 +26,7 @@ class AndroidTimerServiceManager(private val context: Context) : TimerServiceMan
             } else {
                 context.startService(intent)
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) { logError(TAG, "Could not stop timer service", e) }
     }
 
     override fun updateNotification(title: String, timeText: String, baseMillis: Long, isPaused: Boolean) {
@@ -41,6 +42,8 @@ class AndroidTimerServiceManager(private val context: Context) : TimerServiceMan
             } else {
                 context.startService(intent)
             }
-        } catch (e: Exception) { e.printStackTrace() }
+        } catch (e: Exception) { logError(TAG, "Could not update timer notification", e) }
     }
+
+    private companion object { const val TAG = "TimerService" }
 }
