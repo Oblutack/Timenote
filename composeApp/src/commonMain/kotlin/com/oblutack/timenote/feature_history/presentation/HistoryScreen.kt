@@ -105,7 +105,8 @@ fun HistoryScreen(
     var currentMonth by remember { mutableStateOf(today) }
 
     val searchQuery by viewModel.searchQuery.collectAsState()
-    var isSearchActive by remember { mutableStateOf(false) }
+    // The query lives in the ViewModel and survives navigation, so reopen the search bar if one is active
+    var isSearchActive by remember { mutableStateOf(searchQuery.isNotBlank()) }
 
     val sessionsByDate = remember(recentSessions) {
         recentSessions.groupBy {
