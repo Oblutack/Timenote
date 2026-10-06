@@ -2,6 +2,9 @@ package com.oblutack.timenote.core
 
 private const val BACKSLASH = '\\'
 
+/** The file name of a stored voice memo reference: a plain name stays as it is, a (legacy) path is cut to its name. */
+fun audioFileName(ref: String): String = ref.substringAfterLast('/').substringAfterLast(BACKSLASH)
+
 /**
  * Voice memos are stored in the database as a plain **file name** ("SessionMemo_x.m4a"), never as a path, because
  * a path only makes sense on the device that recorded it. Each device resolves the name to its own folder.
@@ -22,7 +25,7 @@ class DirectoryAudioFiles(
 ) : AudioFiles {
     private val directory = directory.trimEnd('/', BACKSLASH)
 
-    override fun toRef(path: String): String = path.substringAfterLast('/').substringAfterLast(BACKSLASH)
+    override fun toRef(path: String): String = audioFileName(path)
 
     override fun resolve(ref: String): String {
         val inDirectory = "$directory/${toRef(ref)}"
