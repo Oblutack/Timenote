@@ -11,11 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import androidx.lifecycle.viewModelScope
 import kotlinx.datetime.toLocalDateTime
-import kotlinx.coroutines.flow.map
-import kotlinx.datetime.plus
-import kotlinx.datetime.minus
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -46,51 +42,10 @@ class HistoryViewModel : ViewModel() {
     val streaks: StateFlow<Pair<Int, Int>> = heatmapData.map { data ->
         val activeDates = data.filter { it.value > 0 }.keys
             .map { kotlinx.datetime.LocalDate.parse(it) }
-            .sortedDescending()
-
-        if (activeDates.isEmpty()) return@map Pair(0, 0)
-
+            .toSet()
         val today = kotlinx.datetime.Instant.fromEpochMilliseconds(com.oblutack.timenote.getCurrentTimeMillis())
             .toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault()).date
-        val yesterday = today.minus(kotlinx.datetime.DatePeriod(days = 1))
-
-        // 1. Calculate Best Streak
-        var maxStreak = 0
-        var tempStreak = 0
-        var lastDateForMax: kotlinx.datetime.LocalDate? = null
-
-        activeDates.reversed().forEach { d ->
-            if (lastDateForMax == null) {
-                tempStreak = 1
-            } else if (lastDateForMax!!.plus(kotlinx.datetime.DatePeriod(days = 1)) == d) {
-                tempStreak++
-            } else {
-                tempStreak = 1
-            }
-            if (tempStreak > maxStreak) maxStreak = tempStreak
-            lastDateForMax = d
-        }
-
-        // 2. Calculate Current Streak (Must have worked today or yesterday to keep it alive)
-        var currentStreak = 0
-        var checkDate = today
-
-        if (activeDates.contains(today)) {
-            currentStreak = 1
-            checkDate = yesterday
-        } else if (activeDates.contains(yesterday)) {
-            currentStreak = 1
-            checkDate = yesterday.minus(1, kotlinx.datetime.DateTimeUnit.DAY)
-        } else {
-            return@map Pair(0, maxStreak) // Streak broken
-        }
-
-        while (activeDates.contains(checkDate)) {
-            currentStreak++
-            checkDate = checkDate.minus(kotlinx.datetime.DatePeriod(days = 1))
-        }
-
-        Pair(currentStreak, maxStreak)
+        com.oblutack.timenote.core.calculateStreaks(activeDates, today)
     }.stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), Pair(0, 0))
 
     // --- DAILY SUMMARY STATE ---
@@ -226,30 +181,12 @@ class HistoryViewModel : ViewModel() {
         _recordingTimenoteId.value = null
 
         if (savedPath != null) {
-            viewModelScope.launch {
-                // Fetch the existing note
-                val existingNote = com.oblutack.timenote.data.repository.SessionRepository.getTimenoteById(timenoteId)
-                if (existingNote != null) {
-                    // Append the new voice note to the list
-                    val updatedList = existingNote.voiceNotes + savedPath
-                    val updatedNote = existingNote.copy(voiceNotes = updatedList)
-                    // Overwrite the DB with the updated note
-                    com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(updatedNote)
-                }
-            }
+            SessionRepository.addVoiceNote(timenoteId, savedPath)
         }
     }
 
     fun deleteVoiceNote(timenoteId: String, pathToDelete: String) {
-        viewModelScope.launch {
-            val existingNote = com.oblutack.timenote.data.repository.SessionRepository.getTimenoteById(timenoteId)
-            if (existingNote != null) {
-                // Remove the target path from the list
-                val updatedList = existingNote.voiceNotes - pathToDelete
-                val updatedNote = existingNote.copy(voiceNotes = updatedList)
-                com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(updatedNote)
-            }
-        }
+        SessionRepository.removeVoiceNote(timenoteId, pathToDelete)
     }
 
     fun toggleFolderPin(id: String) {
@@ -310,11 +247,6 @@ class HistoryViewModel : ViewModel() {
         // Find the parent + all children
         val familyNodes = allNotes.filter { it.id == nodeId || descendants.contains(it.id) }
 
-        val totalActiveSeconds = familyNodes.sumOf { it.activeSeconds }
-
-        val hours = totalActiveSeconds / 3600
-        val minutes = (totalActiveSeconds % 3600) / 60
-        val seconds = totalActiveSeconds % 60
-        return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
+        return com.oblutack.timenote.core.formatDuration(familyNodes.sumOf { it.activeSeconds })
     }
 }

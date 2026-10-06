@@ -33,6 +33,25 @@ interface TimenoteDao {
     @Query("DELETE FROM timenotes WHERE id = :id")
     suspend fun hardDeleteTimenote(id: String)
 
+    // Targeted column updates: avoid rewriting the whole row from a possibly stale in-memory copy
+    @Query("UPDATE timenotes SET title = :title WHERE id = :id")
+    suspend fun updateTimenoteTitle(id: String, title: String)
+
+    @Query("UPDATE timenotes SET description = :description WHERE id = :id")
+    suspend fun updateTimenoteDescription(id: String, description: String)
+
+    @Query("UPDATE timenotes SET folderId = :folderId WHERE id = :id")
+    suspend fun updateTimenoteFolder(id: String, folderId: String?)
+
+    @Query("UPDATE timenotes SET tagsJson = :tagsJson WHERE id = :id")
+    suspend fun updateTimenoteTags(id: String, tagsJson: String)
+
+    @Query("UPDATE timenotes SET voiceNotesJson = :voiceNotesJson WHERE id = :id")
+    suspend fun updateTimenoteVoiceNotes(id: String, voiceNotesJson: String)
+
+    @Query("UPDATE timenotes SET parentTimenoteId = NULL, parentWaypointId = NULL WHERE id = :id")
+    suspend fun orphanTimenote(id: String)
+
     // --- TAGS ---
     // (We keep tag deletion permanent, no need for a trash bin for tags)
     @Insert(onConflict = OnConflictStrategy.REPLACE)

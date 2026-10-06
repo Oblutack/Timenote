@@ -255,15 +255,6 @@ fun SettingsScreen(
 
         // Fixed: Replaced weight with a standard height spacer!
         // Spacer(modifier = Modifier.height(48.dp))
-
-        // --- DEV TOOL (DELETE BEFORE UPLOAD) ---
-        /* Button(
-            onClick = { viewModel.triggerDummyData() },
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red),
-            modifier = Modifier.fillMaxWidth().padding(bottom = 32.dp)
-        ) {
-            Text("INJECT DUMMY DATA", color = Color.White, fontWeight = FontWeight.Bold)
-        } */
     }
 
     // --- THE COLOR WHEEL BOTTOM SHEET ---

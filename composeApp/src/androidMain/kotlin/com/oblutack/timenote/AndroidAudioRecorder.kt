@@ -13,8 +13,9 @@ class AndroidAudioRecorder(private val context: Context) : AudioRecorder {
     private var currentFilePath: String? = null
 
     override fun startRecording(fileName: String) {
-        // Create a hidden file in the app's internal cache directory
-        val file = File(context.cacheDir, "$fileName.m4a")
+        // filesDir (not cacheDir): the OS may clear the cache at any time, which would orphan saved voice memos
+        val dir = File(context.filesDir, "voice_memos").apply { mkdirs() }
+        val file = File(dir, "$fileName.m4a")
         currentFilePath = file.absolutePath
 
         // Create the recorder (Android 12+ requires context)
