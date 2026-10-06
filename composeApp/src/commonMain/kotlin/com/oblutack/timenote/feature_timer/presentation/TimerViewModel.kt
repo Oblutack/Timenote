@@ -16,6 +16,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.oblutack.timenote.core.SessionClock
+import com.oblutack.timenote.data.repository.SessionRepository
+import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.feature_history.domain.ProjectFolder
+import com.oblutack.timenote.feature_history.domain.Timenote
+import com.oblutack.timenote.feature_timer.domain.AudioLocator
+import com.oblutack.timenote.feature_timer.domain.ServiceLocator
+import com.oblutack.timenote.getCurrentTimeMillis
 
 data class TimerState(
     val displayTime: String = "00:00:00",
@@ -41,8 +49,8 @@ data class TimerState(
     val isTagMenuExpanded: Boolean = false,
     val isTagsRowVisible: Boolean = false,
 
-    val availableFolders: List<com.oblutack.timenote.feature_history.domain.ProjectFolder> = emptyList(),
-    val selectedFolder: com.oblutack.timenote.feature_history.domain.ProjectFolder? = null,
+    val availableFolders: List<ProjectFolder> = emptyList(),
+    val selectedFolder: ProjectFolder? = null,
 
     val isManageTagsSheetOpen: Boolean = false,
     val tagBeingEditedId: String? = null,
@@ -66,9 +74,7 @@ class TimerViewModel : ViewModel() {
     private var timerJob: Job? = null
 
     // --- ABSOLUTE TIME TRACKING ---
-    private var startTimeMillis = 0L
-    private var totalPauseMillis = 0L
-    private var currentPauseStartMillis = 0L
+    private val clock = SessionClock()
 
     // Prevents restoring the backup multiple times in a row
     private var hasRestoredBackup = false
@@ -94,7 +100,7 @@ class TimerViewModel : ViewModel() {
     init {
         // 1. Listen for past Timenotes (To show "Last Session")
         viewModelScope.launch {
-            com.oblutack.timenote.data.repository.SessionRepository.timenotes.collect { notes ->
+            SessionRepository.timenotes.collect { notes ->
                 if (!_state.value.isRunning && !_state.value.isPaused && _state.value.timelineEvents.isEmpty()) {
                     notes.firstOrNull()?.let { lastNote ->
                         _state.update { it.copy(
@@ -110,7 +116,7 @@ class TimerViewModel : ViewModel() {
 
         // 2. Load Tags
         viewModelScope.launch {
-            com.oblutack.timenote.data.repository.SessionRepository.tags.collect { dbTags ->
+            SessionRepository.tags.collect { dbTags ->
                 val restoredIds = pendingRestoreCategoryIds
                 if (restoredIds.isNotEmpty() && dbTags.isNotEmpty()) pendingRestoreCategoryIds = emptyList()
                 _state.update { currentState ->
@@ -124,7 +130,7 @@ class TimerViewModel : ViewModel() {
 
         // 3. Load Folders
         viewModelScope.launch {
-            com.oblutack.timenote.data.repository.SessionRepository.folders.collect { dbFolders ->
+            SessionRepository.folders.collect { dbFolders ->
                 val restoredId = pendingRestoreFolderId
                 if (restoredId != null && dbFolders.isNotEmpty()) pendingRestoreFolderId = null
                 _state.update { currentState ->
@@ -137,20 +143,23 @@ class TimerViewModel : ViewModel() {
 
         // 4. RESTORE BACKUP (The Swipe-To-Kill Savior)
         viewModelScope.launch {
-            com.oblutack.timenote.data.repository.SettingsRepository.activeSessionBackupFlow.collect { jsonString ->
+            SettingsRepository.activeSessionBackupFlow.collect { jsonString ->
                 if (jsonString != null && !hasRestoredBackup) {
                     hasRestoredBackup = true
                     try {
                         val backup = jsonParser.decodeFromString<ActiveSessionBackup>(jsonString) // <-- USES NEW PARSER
 
-                        startTimeMillis = backup.startTimeMillis
-                        totalPauseMillis = backup.totalPauseMillis
-                        currentPauseStartMillis = backup.lastPauseStartTimeMillis ?: 0L
+                        clock.restore(
+                            startMillis = backup.startTimeMillis,
+                            totalPauseMillis = backup.totalPauseMillis,
+                            pauseStartMillis = backup.lastPauseStartTimeMillis,
+                            isPaused = backup.isPaused
+                        )
 
                         // Resolve against what the repository already has; anything not loaded yet
                         // is picked up by the tag/folder collectors above.
-                        val knownTags = com.oblutack.timenote.data.repository.SessionRepository.tags.value
-                        val knownFolders = com.oblutack.timenote.data.repository.SessionRepository.folders.value
+                        val knownTags = SessionRepository.tags.value
+                        val knownFolders = SessionRepository.folders.value
                         val restoredTags = backup.selectedCategoryIds.mapNotNull { id -> knownTags.find { it.id == id } }
                         val restoredFolder = knownFolders.find { it.id == backup.selectedFolderId }
                         pendingRestoreCategoryIds = if (knownTags.isEmpty()) backup.selectedCategoryIds else emptyList()
@@ -167,12 +176,12 @@ class TimerViewModel : ViewModel() {
                             parentWaypointId = backup.parentWaypointId
                         )}
 
-                        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
+                        ServiceLocator.timerServiceManager?.startService()
                         startTicking()
                     } catch (e: Exception) {
                         // If anything goes wrong, safely clear the corrupted data without crashing!
-                        e.printStackTrace()
-                        com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null)
+                        com.oblutack.timenote.core.logError("TimerViewModel", "Discarding unreadable session backup", e)
+                        SettingsRepository.saveActiveSession(null)
                     }
                 }
             }
@@ -180,7 +189,7 @@ class TimerViewModel : ViewModel() {
 
         // 5. Listen for Android Notification Buttons
         viewModelScope.launch {
-            com.oblutack.timenote.feature_timer.domain.ServiceLocator.serviceCommands.collect { command ->
+            ServiceLocator.serviceCommands.collect { command ->
                 when (command) {
                     "PAUSE" -> onAction(TimerAction.Pause)
                     "RESUME" -> onAction(TimerAction.Resume)
@@ -242,7 +251,7 @@ class TimerViewModel : ViewModel() {
                         sessionCount = 0,
                         color = _state.value.newTagColor
                     )
-                    com.oblutack.timenote.data.repository.SessionRepository.saveTag(newTag)
+                    SessionRepository.saveTag(newTag)
                 }
                 _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "", newTagDescription = "", tagBeingEditedId = null) }
             }
@@ -258,7 +267,7 @@ class TimerViewModel : ViewModel() {
 
             is TimerAction.OpenManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = true) }
             is TimerAction.CloseManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = false) }
-            is TimerAction.DeleteTag -> com.oblutack.timenote.data.repository.SessionRepository.deleteTag(action.tagId)
+            is TimerAction.DeleteTag -> SessionRepository.deleteTag(action.tagId)
             is TimerAction.EditTag -> {
                 _state.update { it.copy(
                     isManageTagsSheetOpen = false,
@@ -273,11 +282,11 @@ class TimerViewModel : ViewModel() {
                 if (_state.value.isRunning) {
                     _state.update { it.copy(isRecordingVoiceMemo = true, voiceMemoDuration = "00:00") }
                     val fileName = "VoiceMemo_${platformSpecificId()}"
-                    com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.startRecording(fileName)
+                    AudioLocator.audioRecorder?.startRecording(fileName)
                 }
             }
             is TimerAction.StopVoiceMemo -> {
-                val savedPath = com.oblutack.timenote.feature_timer.domain.AudioLocator.audioRecorder?.stopRecording()
+                val savedPath = AudioLocator.audioRecorder?.stopRecording()
                 _state.update { it.copy(isRecordingVoiceMemo = false) }
 
                 if (savedPath != null && _state.value.isRunning) {
@@ -290,7 +299,7 @@ class TimerViewModel : ViewModel() {
                 // Fetch the parent data so the UI can display it!
                 if (action.parentId != null) {
                     viewModelScope.launch {
-                        val parentSession = com.oblutack.timenote.data.repository.SessionRepository.getTimenoteById(action.parentId)
+                        val parentSession = SessionRepository.getTimenoteById(action.parentId)
                         if (parentSession != null) {
                             val waypoint = parentSession.timelineEvents.find { it.id == action.waypointId }
                             _state.update { currentState ->
@@ -327,9 +336,7 @@ class TimerViewModel : ViewModel() {
             }
         }
 
-        startTimeMillis = com.oblutack.timenote.getCurrentTimeMillis()
-        totalPauseMillis = 0L
-        currentPauseStartMillis = 0L
+        clock.start(getCurrentTimeMillis())
         hasRestoredBackup = true
 
         addEventToTimeline("Session Started", EventType.START)
@@ -341,7 +348,7 @@ class TimerViewModel : ViewModel() {
 
         _state.update { it.copy(isRunning = true, isPaused = false) }
 
-        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.startService()
+        ServiceLocator.timerServiceManager?.startService()
         backupCurrentState()
         startTicking()
     }
@@ -349,7 +356,7 @@ class TimerViewModel : ViewModel() {
     private fun pauseTimer() {
         if (!_state.value.isRunning || _state.value.isPaused) return
 
-        currentPauseStartMillis = com.oblutack.timenote.getCurrentTimeMillis()
+        clock.pause(getCurrentTimeMillis())
         addEventToTimeline("Paused", EventType.PAUSE)
 
         _state.update { it.copy(isPaused = true) }
@@ -359,9 +366,7 @@ class TimerViewModel : ViewModel() {
     private fun resumeTimer() {
         if (!_state.value.isPaused) return
 
-        val pauseDurationMillis = com.oblutack.timenote.getCurrentTimeMillis() - currentPauseStartMillis
-        totalPauseMillis += pauseDurationMillis
-        currentPauseStartMillis = 0L
+        val pauseDurationMillis = clock.resume(getCurrentTimeMillis())
 
         val pauseDurationStr = formatTime((pauseDurationMillis / 1000).toInt())
         addEventToTimeline("Resumed (Break was $pauseDurationStr)", EventType.RESUME)
@@ -374,13 +379,12 @@ class TimerViewModel : ViewModel() {
         if (!_state.value.isRunning && !_state.value.isPaused) return
 
         timerJob?.cancel()
-        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.stopService()
+        ServiceLocator.timerServiceManager?.stopService()
 
         // --- THE FIX: Freeze the math right now, BEFORE we change the state! ---
-        val now = com.oblutack.timenote.getCurrentTimeMillis()
-        val finalActiveMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
-        frozenActiveSeconds = (finalActiveMillis / 1000).toInt()
-        frozenPauseSeconds = (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
+        val now = getCurrentTimeMillis()
+        frozenActiveSeconds = clock.activeSeconds(now)
+        frozenPauseSeconds = clock.pauseSeconds(now)
         // -----------------------------------------------------------------------
 
         // 1. SET TO FALSE IMMEDIATELY so backups are blocked!
@@ -391,7 +395,7 @@ class TimerViewModel : ViewModel() {
         addEventToTimeline("Session Ended: $title", EventType.END)
 
         // 3. Nuke the backup permanently
-        viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(null) }
+        viewModelScope.launch { SettingsRepository.saveActiveSession(null) }
 
         if (forceSave || _state.value.selectedCategories.isNotEmpty()) {
             executeSave(_state.value.selectedCategories)
@@ -405,7 +409,7 @@ class TimerViewModel : ViewModel() {
 
         val timestampId = platformSpecificId()
 
-        val newTimenote = com.oblutack.timenote.feature_history.domain.Timenote(
+        val newTimenote = Timenote(
             id = timestampId,
             folderId = _state.value.selectedFolder?.id,
             title = title,
@@ -414,7 +418,7 @@ class TimerViewModel : ViewModel() {
             duration = formatTime(frozenActiveSeconds + frozenPauseSeconds),
             activeSeconds = frozenActiveSeconds,
             pauseSeconds = frozenPauseSeconds,
-            createdAt = com.oblutack.timenote.getCurrentTimeMillis(),
+            createdAt = getCurrentTimeMillis(),
             // ----------------------------------------------------
             tags = categories,
             timelineEvents = _state.value.timelineEvents,
@@ -422,7 +426,7 @@ class TimerViewModel : ViewModel() {
             parentWaypointId = _state.value.parentWaypointId
         )
 
-        com.oblutack.timenote.data.repository.SessionRepository.saveTimenote(newTimenote)
+        SessionRepository.saveTimenote(newTimenote)
 
         _state.update { it.copy(
             isCategoryPopupOpen = false,
@@ -455,17 +459,15 @@ class TimerViewModel : ViewModel() {
             while (true) {
                 delay(250L)
 
-                val now = com.oblutack.timenote.getCurrentTimeMillis()
+                val now = getCurrentTimeMillis()
 
                 if (_state.value.isPaused) {
                     // 1. The Pause Timer (Ticking)
-                    val currentPauseMillis = now - currentPauseStartMillis
-                    val formattedPause = formatTime((currentPauseMillis / 1000).toInt())
+                    val formattedPause = formatTime((clock.currentPauseMillis(now) / 1000).toInt())
 
                     // 2. The Main Timer (FROZEN)
                     // We freeze it at the exact moment you hit the Pause button
-                    val frozenTotalMillis = currentPauseStartMillis - startTimeMillis
-                    val formattedFrozenTotal = formatTime((frozenTotalMillis / 1000).toInt())
+                    val formattedFrozenTotal = formatTime((clock.displayElapsedMillis(now) / 1000).toInt())
 
                     _state.update { it.copy(
                         currentPauseTime = formattedPause,
@@ -475,25 +477,25 @@ class TimerViewModel : ViewModel() {
                     val pausedKey = "paused|$formattedPause"
                     if (pausedKey != lastNotificationKey) {
                         lastNotificationKey = pausedKey
-                        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
+                        ServiceLocator.timerServiceManager?.updateNotification(
                             title = "Paused", timeText = formattedPause, baseMillis = 0L, isPaused = true
                         )
                     }
                 } else {
                     // 1. The Main Timer (Ticking Total Time)
-                    val totalElapsedMillis = now - startTimeMillis
+                    val totalElapsedMillis = clock.displayElapsedMillis(now)
                     val formattedTotal = formatTime((totalElapsedMillis / 1000).toInt())
 
                     _state.update { it.copy(displayTime = formattedTotal) }
 
                     // NATIVE MATH: Tell Android OS to count the Total Time too!
-                    val baseTimeForOS = com.oblutack.timenote.getCurrentTimeMillis() - totalElapsedMillis
+                    val baseTimeForOS = getCurrentTimeMillis() - totalElapsedMillis
                     val notificationTitle = _state.value.sessionTitle.ifBlank { "Timenote Active" }
 
                     val runningKey = "running|$notificationTitle|$formattedTotal"
                     if (runningKey != lastNotificationKey) {
                         lastNotificationKey = runningKey
-                        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
+                        ServiceLocator.timerServiceManager?.updateNotification(
                             title = notificationTitle,
                             timeText = formattedTotal,
                             baseMillis = baseTimeForOS,
@@ -506,9 +508,8 @@ class TimerViewModel : ViewModel() {
     }
 
     private fun addEventToTimeline(title: String, type: EventType, color: Color? = null, audioPath: String? = null) {
-        val now = com.oblutack.timenote.getCurrentTimeMillis()
-        val activeMillis = now - startTimeMillis - totalPauseMillis - (if (_state.value.isPaused) now - currentPauseStartMillis else 0L)
-        val totalElapsedSeconds = (activeMillis / 1000).toInt() + (totalPauseMillis / 1000).toInt() + (if (_state.value.isPaused) ((now - currentPauseStartMillis) / 1000).toInt() else 0)
+        val now = getCurrentTimeMillis()
+        val totalElapsedSeconds = clock.elapsedSeconds(now)
 
         val newEvent = TimelineEvent(
             id = platformSpecificId(),
@@ -537,9 +538,9 @@ class TimerViewModel : ViewModel() {
 
         val backup = ActiveSessionBackup(
             sessionTitle = _state.value.sessionTitle,
-            startTimeMillis = startTimeMillis,
-            totalPauseMillis = totalPauseMillis,
-            lastPauseStartTimeMillis = if (_state.value.isPaused) currentPauseStartMillis else null,
+            startTimeMillis = clock.startMillis,
+            totalPauseMillis = clock.totalPauseMillis,
+            lastPauseStartTimeMillis = if (clock.isPaused) clock.pauseStartMillis else null,
             isPaused = _state.value.isPaused,
             timelineEvents = _state.value.timelineEvents,
             selectedFolderId = _state.value.selectedFolder?.id,
@@ -548,7 +549,7 @@ class TimerViewModel : ViewModel() {
             parentWaypointId = _state.value.parentWaypointId
         )
         val json = jsonParser.encodeToString(backup) // <-- USES NEW PARSER
-        viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(json) }
+        viewModelScope.launch { SettingsRepository.saveActiveSession(json) }
     }
 
     private fun formatTime(totalSeconds: Int): String = com.oblutack.timenote.core.formatDuration(totalSeconds)
@@ -559,7 +560,7 @@ class TimerViewModel : ViewModel() {
 
     private fun platformSpecificId(): String {
         idCounter++
-        return "${com.oblutack.timenote.getCurrentTimeMillis()}_$idCounter"
+        return "${getCurrentTimeMillis()}_$idCounter"
     }
 }
 
@@ -586,7 +587,7 @@ sealed class TimerAction {
     data object SaveNewTag : TimerAction()
     data object ToggleTagMenu : TimerAction()
     data object ToggleTagsRowVisibility : TimerAction()
-    data class SelectFolder(val folder: com.oblutack.timenote.feature_history.domain.ProjectFolder?) : TimerAction()
+    data class SelectFolder(val folder: ProjectFolder?) : TimerAction()
     data object OpenManageTagsSheet : TimerAction()
     data object CloseManageTagsSheet : TimerAction()
     data class DeleteTag(val tagId: String) : TimerAction()
