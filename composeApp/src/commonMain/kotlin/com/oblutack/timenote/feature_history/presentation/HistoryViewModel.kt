@@ -181,10 +181,14 @@ class HistoryViewModel(
         _playingAudioPath.value = null
     }
 
+    // True after a recording could not start (e.g. no microphone permission); cleared on the next attempt
+    private val _micUnavailable = MutableStateFlow(false)
+    val micUnavailable = _micUnavailable.asStateFlow()
+
     fun startRecordingForTimenote(timenoteId: String) {
-        _recordingTimenoteId.value = timenoteId
-        val fileName = "SessionMemo_$timenoteId"
-        audioRecorder.startRecording(fileName)
+        val started = audioRecorder.startRecording("SessionMemo_$timenoteId")
+        _micUnavailable.value = !started
+        if (started) _recordingTimenoteId.value = timenoteId
     }
 
     fun stopRecordingForTimenote() {

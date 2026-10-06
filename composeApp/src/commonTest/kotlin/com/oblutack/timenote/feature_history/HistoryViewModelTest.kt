@@ -216,6 +216,18 @@ class HistoryViewModelTest {
         assertTrue(env.sessions.getTimenoteById("a")!!.voiceNotes.isEmpty())
     }
 
+    @Test fun recordingForATimenoteWithoutMicrophoneDoesNotStart() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a"))
+        env.recorder.canRecord = false
+
+        env.vm.startRecordingForTimenote("a")
+
+        assertNull(env.vm.recordingTimenoteId.value)
+        assertTrue(env.vm.micUnavailable.value)
+        assertTrue(env.sessions.getTimenoteById("a")!!.voiceNotes.isEmpty())
+    }
+
     // --- trash ---
 
     @Test fun trashViewModelRestoresAndEmpties() = runAppTest {

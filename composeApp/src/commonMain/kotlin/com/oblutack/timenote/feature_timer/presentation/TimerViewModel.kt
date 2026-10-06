@@ -65,6 +65,8 @@ data class TimerState(
 
     val isRecordingVoiceMemo: Boolean = false,
     val voiceMemoDuration: String = "00:00",
+    /** True briefly after a voice memo could not start (e.g. no microphone permission). */
+    val voiceMemoUnavailable: Boolean = false,
 
     )
 
@@ -100,6 +102,9 @@ class TimerViewModel(
     // lastSessionSeen guards against the short gap between saving and the list showing the new note.
     private var lastSessionId: String? = null
     private var lastSessionSeen = false
+
+    // Clears the "voice memo unavailable" hint after a few seconds
+    private var hintJob: Job? = null
 
     // Token of the last branch navigation that was applied (see SetParentLinks)
     private var lastBranchToken: String? = null
@@ -316,9 +321,20 @@ class TimerViewModel(
             }
             is TimerAction.StartVoiceMemo -> {
                 if (_state.value.isRunning) {
-                    _state.update { it.copy(isRecordingVoiceMemo = true, voiceMemoDuration = "00:00") }
                     val fileName = "VoiceMemo_${platformSpecificId()}"
-                    audioRecorder.startRecording(fileName)
+                    val started = audioRecorder.startRecording(fileName)
+                    _state.update { it.copy(
+                        isRecordingVoiceMemo = started,
+                        voiceMemoDuration = "00:00",
+                        voiceMemoUnavailable = !started
+                    ) }
+                    hintJob?.cancel()
+                    if (!started) {
+                        hintJob = viewModelScope.launch {
+                            delay(5_000L)
+                            _state.update { it.copy(voiceMemoUnavailable = false) }
+                        }
+                    }
                 }
             }
             is TimerAction.StopVoiceMemo -> {

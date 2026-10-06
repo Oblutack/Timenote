@@ -1,7 +1,8 @@
 package com.oblutack.timenote.feature_timer.domain
 
 interface AudioRecorder {
-    fun startRecording(fileName: String)
+    /** Returns false if recording could not start (for example the microphone permission was denied). */
+    fun startRecording(fileName: String): Boolean
     fun stopRecording(): String? // Returns the file path where it was saved
 }
 

@@ -116,10 +116,14 @@ class FakeTimerServiceManager : TimerServiceManager {
 class FakeAudioRecorder : AudioRecorder {
     var lastFileName: String? = null
     var recording = false
+    /** Set to false to simulate a missing microphone permission. */
+    var canRecord = true
 
-    override fun startRecording(fileName: String) {
+    override fun startRecording(fileName: String): Boolean {
+        if (!canRecord) return false
         lastFileName = fileName
         recording = true
+        return true
     }
     override fun stopRecording(): String? {
         recording = false

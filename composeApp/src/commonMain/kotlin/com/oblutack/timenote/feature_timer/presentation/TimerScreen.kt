@@ -444,6 +444,16 @@ fun TimerScreen(
             }
         }
 
+        if (state.voiceMemoUnavailable) {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = "Voice memos need microphone permission. Allow it in the app's system settings.",
+                color = Color(0xFFE53935),
+                fontSize = 12.sp,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+            )
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
 

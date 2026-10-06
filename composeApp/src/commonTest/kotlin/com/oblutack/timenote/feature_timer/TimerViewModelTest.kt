@@ -269,6 +269,23 @@ class TimerViewModelTest {
         }
     }
 
+    @Test fun voiceMemoWithoutMicrophoneDoesNotStartAndWarns() = runAppTest {
+        timerTest {
+            recorder.canRecord = false
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.StartVoiceMemo)
+
+            assertFalse(state.isRecordingVoiceMemo, "must not show a recording that is not happening")
+            assertTrue(state.voiceMemoUnavailable)
+
+            // once recording works again the warning goes away
+            recorder.canRecord = true
+            vm.onAction(TimerAction.StartVoiceMemo)
+            assertTrue(state.isRecordingVoiceMemo)
+            assertFalse(state.voiceMemoUnavailable)
+        }
+    }
+
     @Test fun branchedSessionRemembersItsParent() = runAppTest {
         timerTest {
             sessions.saveTimenote(

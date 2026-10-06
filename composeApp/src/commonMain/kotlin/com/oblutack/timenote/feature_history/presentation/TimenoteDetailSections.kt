@@ -66,7 +66,8 @@ fun VoiceNotesSection(
     onPlay: (String) -> Unit,
     onDelete: (String) -> Unit,
     onStartRecording: () -> Unit,
-    onStopRecording: () -> Unit
+    onStopRecording: () -> Unit,
+    micUnavailable: Boolean = false
 ) {
     val haptic = LocalHapticFeedback.current
     Column(
@@ -169,6 +170,14 @@ fun VoiceNotesSection(
                 Icon(Icons.Default.Mic, contentDescription = "Mic", modifier = Modifier.size(16.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("+ Add Voice Note")
+            }
+            if (micUnavailable) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Voice notes need microphone permission. Allow it in the app's system settings.",
+                    color = Color(0xFFE53935),
+                    fontSize = 12.sp
+                )
             }
         }
     }
