@@ -32,6 +32,11 @@ import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalUriHandler
+import com.oblutack.timenote.data.repository.SettingsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,18 +52,18 @@ fun SettingsScreen(
     var isColorPickerOpen by remember { mutableStateOf(false) }
     var tempPickedColor by remember { mutableStateOf(DefaultAccentColor) }
 
-    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
-    val uriHandler = androidx.compose.ui.platform.LocalUriHandler.current
+    val uriHandler = LocalUriHandler.current
     var isHelpSheetOpen by remember { mutableStateOf(false) }
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && (isColorPickerOpen || isHelpSheetOpen)) 16.dp else 0.dp, // <-- ADDED isHelpSheetOpen
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "SettingsBlur"
     )
 
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val haptic = LocalHapticFeedback.current
 
     val scrollState = androidx.compose.foundation.rememberScrollState()
 
@@ -291,7 +296,7 @@ fun SettingsScreen(
                         if (enableHaptics) {
                             val diff = kotlin.math.abs(newColor.value.toLong() - lastHapticColorValue.toLong())
                             if (diff > 5000000L) { // A math threshold for "significant color change"
-                                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 lastHapticColorValue = newColor.value
                             }
                         }
@@ -302,7 +307,7 @@ fun SettingsScreen(
 
                 Button(
                     onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.addPickedColor(tempPickedColor)
                         isColorPickerOpen = false
                     },

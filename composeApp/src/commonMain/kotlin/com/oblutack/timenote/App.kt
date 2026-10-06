@@ -16,6 +16,15 @@ import androidx.navigation.compose.rememberNavController
 import com.oblutack.timenote.feature_history.presentation.HistoryScreen
 import com.oblutack.timenote.feature_timer.presentation.TimerScreen
 import com.oblutack.timenote.data.database.AppDatabase
+import com.oblutack.timenote.data.repository.SessionRepository
+import com.oblutack.timenote.feature_history.presentation.FolderDetailScreen
+import com.oblutack.timenote.feature_history.presentation.GraphScreen
+import com.oblutack.timenote.feature_history.presentation.HistoryViewModel
+import com.oblutack.timenote.feature_history.presentation.TimenoteDetailScreen
+import com.oblutack.timenote.feature_history.presentation.TrashScreen
+import com.oblutack.timenote.feature_settings.presentation.SettingsScreen
+import com.oblutack.timenote.feature_timer.presentation.TimerAction
+import com.oblutack.timenote.feature_timer.presentation.TimerViewModel
 
 // ==========================================
 // 1. THEME DEFINITION
@@ -51,7 +60,7 @@ fun App(database: AppDatabase? = null) {
 
     LaunchedEffect(database) {
         if (database != null) {
-            com.oblutack.timenote.data.repository.SessionRepository.initialize(database.timenoteDao())
+            SessionRepository.initialize(database.timenoteDao())
         }
     }
 
@@ -77,7 +86,7 @@ fun App(database: AppDatabase? = null) {
                         onClick = {
                             navController.navigate("timer") {
                                 // Prevents building up a massive backstack if you click the tab 10 times
-                                popUpTo(navController.graph.startDestinationRoute!!) { saveState = true }
+                                navController.graph.startDestinationRoute?.let { startRoute -> popUpTo(startRoute) { saveState = true } }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -96,7 +105,7 @@ fun App(database: AppDatabase? = null) {
                         selected = currentRoute?.startsWith("history") == true, // Highlight if on history OR its sub-screens
                         onClick = {
                             navController.navigate("history") {
-                                popUpTo(navController.graph.startDestinationRoute!!) { saveState = true }
+                                navController.graph.startDestinationRoute?.let { startRoute -> popUpTo(startRoute) { saveState = true } }
                                 launchSingleTop = true
                                 restoreState = true
                             }
@@ -128,11 +137,11 @@ fun App(database: AppDatabase? = null) {
                     val parentId = backStackEntry.arguments?.getString("parentId")
                     val waypointId = backStackEntry.arguments?.getString("waypointId")
 
-                    val timerViewModel: com.oblutack.timenote.feature_timer.presentation.TimerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                    val timerViewModel: TimerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
-                    androidx.compose.runtime.LaunchedEffect(parentId, waypointId) {
+                    LaunchedEffect(parentId, waypointId) {
                         if (parentId != null && waypointId != null) {
-                            timerViewModel.onAction(com.oblutack.timenote.feature_timer.presentation.TimerAction.SetParentLinks(parentId, waypointId))
+                            timerViewModel.onAction(TimerAction.SetParentLinks(parentId, waypointId))
                         }
                     }
 
@@ -151,8 +160,8 @@ fun App(database: AppDatabase? = null) {
                 }
 
                 composable("graph") {
-                    val historyViewModel: com.oblutack.timenote.feature_history.presentation.HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-                    com.oblutack.timenote.feature_history.presentation.GraphScreen(
+                    val historyViewModel: HistoryViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+                    GraphScreen(
                         onBackClick = { navController.popBackStack() },
                         onTimenoteClick = { id -> navController.navigate("details/$id") },
                         viewModel = historyViewModel // <-- NEW
@@ -162,7 +171,7 @@ fun App(database: AppDatabase? = null) {
                 composable("details/{id}") { backStackEntry ->
                     val id = backStackEntry.arguments?.getString("id")
                     if (id != null) {
-                        com.oblutack.timenote.feature_history.presentation.TimenoteDetailScreen(
+                        TimenoteDetailScreen(
                             timenoteId = id,
                             onBackClick = { navController.popBackStack() },
                             // --- NEW: Allow jumping to child timenotes ---
@@ -179,7 +188,7 @@ fun App(database: AppDatabase? = null) {
                 composable("folder_details/{id}") { backStackEntry ->
                     val id = backStackEntry.arguments?.getString("id")
                     if (id != null) {
-                        com.oblutack.timenote.feature_history.presentation.FolderDetailScreen(
+                        FolderDetailScreen(
                             folderId = id,
                             onBackClick = { navController.popBackStack() },
                             onTimenoteClick = { noteId -> navController.navigate("details/$noteId") },
@@ -193,12 +202,12 @@ fun App(database: AppDatabase? = null) {
                 }
                 composable("trash") {
                     // Assuming you have TrashScreen imported or using full package path:
-                    com.oblutack.timenote.feature_history.presentation.TrashScreen(
+                    TrashScreen(
                         onBackClick = { navController.popBackStack() }
                     )
                 }
                 composable("settings") {
-                    com.oblutack.timenote.feature_settings.presentation.SettingsScreen(
+                    SettingsScreen(
                         onBackClick = { navController.popBackStack() }
                     )
                 }

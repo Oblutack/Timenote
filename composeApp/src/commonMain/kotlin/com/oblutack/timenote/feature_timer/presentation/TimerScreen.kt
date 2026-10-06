@@ -1,27 +1,21 @@
 package com.oblutack.timenote.feature_timer.presentation
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,7 +25,6 @@ import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -39,14 +32,15 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import com.oblutack.timenote.feature_history.domain.mockFolders
-import com.oblutack.timenote.feature_timer.domain.EventType
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.blur
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import com.oblutack.timenote.data.repository.SettingsRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,13 +49,13 @@ fun TimerScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val enableHaptics by SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val haptic = LocalHapticFeedback.current
 
-    val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
-    val customColors by com.oblutack.timenote.data.repository.SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
+    val useMonochromeNodes by SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
+    val customColors by SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
     // 1. Get the Setting
-    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     // 2. Check if ANY popup is open
     val isPopupOpen = state.isAddNoteDialogOpen || state.isCategoryPopupOpen || state.isCreateTagDialogOpen || state.isManageTagsSheetOpen
@@ -69,7 +63,7 @@ fun TimerScreen(
     // 3. The Premium Physics Animation
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "BlurAnimation"
     )
 
@@ -84,7 +78,8 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        if (state.parentSessionTitle != null) {
+        val parentTitle = state.parentSessionTitle
+        if (parentTitle != null) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "BRANCHED FROM:",
@@ -95,7 +90,7 @@ fun TimerScreen(
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = state.parentSessionTitle!!.uppercase(),
+                    text = parentTitle.uppercase(),
                     color = TextSecondary,
                     fontSize = 14.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -212,7 +207,7 @@ fun TimerScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         // --- WRAPPED IN ANIMATED VISIBILITY ---
-        androidx.compose.animation.AnimatedVisibility(
+        AnimatedVisibility(
             visible = state.isTagsRowVisible
         ) {
             @OptIn(ExperimentalLayoutApi::class)
@@ -269,7 +264,7 @@ fun TimerScreen(
                             Box(
                                 modifier = Modifier
                                     .size(8.dp)
-                                    .background(folder.color, androidx.compose.foundation.shape.CircleShape)
+                                    .background(folder.color, CircleShape)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
@@ -311,7 +306,7 @@ fun TimerScreen(
             if (!state.isRunning) {
                 Button(
                     onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.onAction(TimerAction.Start)
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -328,7 +323,7 @@ fun TimerScreen(
             } else if (!state.isPaused) {
                 Button(
                     onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // A lighter tap for pause
+                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // A lighter tap for pause
                         viewModel.onAction(TimerAction.Pause)
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -360,7 +355,7 @@ fun TimerScreen(
 
             OutlinedButton(
                 onClick = {
-                    if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     viewModel.onAction(TimerAction.End)
                 },
                 colors = ButtonDefaults.outlinedButtonColors(
@@ -416,7 +411,7 @@ fun TimerScreen(
                     targetValue = 1f,
                     animationSpec = androidx.compose.animation.core.infiniteRepeatable(
                         animation = androidx.compose.animation.core.tween(800),
-                        repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+                        repeatMode = RepeatMode.Reverse
                     ),
                     label = "PulseAlpha"
                 )
@@ -433,7 +428,7 @@ fun TimerScreen(
                         modifier = Modifier
                             .size(10.dp)
                             .alpha(pulseAlpha)
-                            .background(Color(0xFFE53935), androidx.compose.foundation.shape.CircleShape)
+                            .background(Color(0xFFE53935), CircleShape)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Recording...", fontWeight = FontWeight.Medium)
@@ -468,7 +463,7 @@ fun TimerScreen(
             val eventCount = state.timelineEvents.size
 
             // Whenever the number of events changes, smoothly snap back to the top!
-            androidx.compose.runtime.LaunchedEffect(eventCount) {
+            LaunchedEffect(eventCount) {
                 if (eventCount > 0) {
                     listState.animateScrollToItem(0)
                 }

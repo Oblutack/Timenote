@@ -5,6 +5,8 @@ import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import androidx.compose.ui.graphics.Color
+import com.oblutack.timenote.feature_history.domain.ProjectFolder
 
 // 1. Translates a Timenote into a Database Entity (Turns lists into JSON Strings)
 fun Timenote.toEntity(): TimenoteEntity {
@@ -51,7 +53,7 @@ fun TimenoteEntity.toDomain(): Timenote {
 }
 
 // --- NEW: Folder Mappers ---
-fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): FolderEntity {
+fun ProjectFolder.toEntity(): FolderEntity {
     return FolderEntity(
         id = this.id,
         name = this.name,
@@ -64,12 +66,12 @@ fun com.oblutack.timenote.feature_history.domain.ProjectFolder.toEntity(): Folde
     )
 }
 
-fun FolderEntity.toDomain(): com.oblutack.timenote.feature_history.domain.ProjectFolder {
-    return com.oblutack.timenote.feature_history.domain.ProjectFolder(
+fun FolderEntity.toDomain(): ProjectFolder {
+    return ProjectFolder(
         id = this.id,
         name = this.name,
         description = this.description,
-        color = androidx.compose.ui.graphics.Color(this.colorLong.toULong()),
+        color = Color(this.colorLong.toULong()),
         isPinned = this.isPinned,
         createdAt = this.createdAt,
         deletedAt = this.deletedAt

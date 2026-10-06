@@ -10,7 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +40,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.CircleShape
 
 @Composable
 fun FolderDetailScreen(
@@ -102,10 +103,11 @@ fun FolderDetailScreen(
                     fontSize = 32.sp,
                     fontWeight = FontWeight.Bold
                 )
-                if (!folder.description.isNullOrBlank()) {
+                val folderDescription = folder.description
+                if (!folderDescription.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = folder.description!!,
+                        text = folderDescription,
                         color = TextSecondary,
                         fontSize = 14.sp,
                         lineHeight = 20.sp
@@ -125,7 +127,7 @@ fun FolderDetailScreen(
                     OutlinedButton(
                         onClick = onStartSessionClick,
                         shape = RoundedCornerShape(24.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                     ) {
                         Icon(
@@ -140,7 +142,7 @@ fun FolderDetailScreen(
                     OutlinedButton(
                         onClick = { isAddSessionDialogOpen = true },
                         shape = RoundedCornerShape(24.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+                        border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                     ) {
                         Text("+ Add Sessions")
@@ -244,7 +246,7 @@ fun FolderDetailScreen(
                                     // Premium ghost border
                                     .border(1.dp, TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                                     .clickable {
-                                        com.oblutack.timenote.data.repository.SessionRepository.assignFolderToTimenote(session.id, folder.id)
+                                        SessionRepository.assignFolderToTimenote(session.id, folder.id)
                                     }
                                     .padding(16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
@@ -269,12 +271,12 @@ fun FolderDetailScreen(
                                 Box(
                                     modifier = Modifier
                                         .size(32.dp)
-                                        .clip(androidx.compose.foundation.shape.CircleShape)
+                                        .clip(CircleShape)
                                         .background(folder.color.copy(alpha = 0.2f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Default.Add,
+                                        imageVector = Icons.Default.Add,
                                         contentDescription = "Add",
                                         tint = folder.color,
                                         modifier = Modifier.size(20.dp)

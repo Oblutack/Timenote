@@ -4,17 +4,12 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,13 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
@@ -37,53 +27,29 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Dialog
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import kotlinx.datetime.*
-import kotlinx.coroutines.launch
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Label
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.GridOn
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.EmojiEvents
 import com.oblutack.timenote.feature_history.domain.DailySummary
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.ui.text.style.TextAlign
 
 // Bottom sheets used by HistoryScreen. State lives in HistoryScreen/HistoryViewModel;
 // these composables only render and report user intent through callbacks.
@@ -273,7 +239,7 @@ fun SortSheet(
             containerColor = SurfaceDark
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(bottom = 48.dp)) {
-                Text("Sort By", color = TextPrimary, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp))
+                Text("Sort By", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 24.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 SortOption.entries.forEach { option ->
                     val isSelected = option == current
@@ -309,8 +275,8 @@ fun TagFilterSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Filter by Tags", color = TextPrimary, style = androidx.compose.material3.MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    androidx.compose.material3.TextButton(onClick = { onClear() }) { Text("Clear All", color = TextSecondary) }
+                    Text("Filter by Tags", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    TextButton(onClick = { onClear() }) { Text("Clear All", color = TextSecondary) }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 LazyColumn(modifier = Modifier.heightIn(max = 400.dp)) {
@@ -323,9 +289,9 @@ fun TagFilterSheet(
                             Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(tag.color))
                             Spacer(modifier = Modifier.width(16.dp))
                             Text(tag.name, color = TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                            androidx.compose.material3.Checkbox(
+                            Checkbox(
                                 checked = isSelected, onCheckedChange = { onToggle(tag.id) },
-                                colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = DefaultAccentColor, uncheckedColor = TextSecondary)
+                                colors = CheckboxDefaults.colors(checkedColor = DefaultAccentColor, uncheckedColor = TextSecondary)
                             )
                         }
                     }
@@ -347,11 +313,11 @@ fun DeleteBranchSheet(
             containerColor = SurfaceDark
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(androidx.compose.material.icons.Icons.Default.Warning, contentDescription = "Warning", tint = Color(0xFFE53935), modifier = Modifier.size(48.dp))
+                Icon(Icons.Default.Warning, contentDescription = "Warning", tint = Color(0xFFE53935), modifier = Modifier.size(48.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Delete Branch?", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("This session has $descendantCount connected child sessions.", color = TextSecondary, fontSize = 14.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                Text("This session has $descendantCount connected child sessions.", color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
@@ -365,7 +331,7 @@ fun DeleteBranchSheet(
                 OutlinedButton(
                     onClick = { onDeleteOnly() },
                     modifier = Modifier.fillMaxWidth(),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE53935)),
+                    border = BorderStroke(1.dp, Color(0xFFE53935)),
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
                 ) { Text("Delete just this session") }
 

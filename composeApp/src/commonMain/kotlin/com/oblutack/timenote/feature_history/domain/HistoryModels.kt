@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.core.ColorSerializer
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import kotlinx.serialization.Serializable
+import kotlinx.datetime.LocalDate
 
 @Serializable
 data class ProjectFolder(
@@ -55,7 +56,7 @@ val mockFolders = listOf(
 )
 
 data class DailySummary(
-    val date: kotlinx.datetime.LocalDate,
+    val date: LocalDate,
     val totalSeconds: Int,
     val sessionCount: Int,
     val topTag: TimenoteFolder?

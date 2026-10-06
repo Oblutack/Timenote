@@ -6,10 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.LocalFireDepartment
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,8 +21,10 @@ import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import kotlinx.datetime.*
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.TextStyle
+import com.oblutack.timenote.getCurrentTimeMillis
 
 @Composable
 fun FlowHeatmap(
@@ -35,12 +33,12 @@ fun FlowHeatmap(
     streaks: Pair<Int, Int>,
     onDateSelected: (LocalDate) -> Unit
 ) {
-    val alpha = remember { androidx.compose.animation.core.Animatable(0f) }
+    val alpha = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         alpha.animateTo(1f, animationSpec = androidx.compose.animation.core.tween(600))
     }
 
-    val today = Instant.fromEpochMilliseconds(com.oblutack.timenote.getCurrentTimeMillis())
+    val today = Instant.fromEpochMilliseconds(getCurrentTimeMillis())
         .toLocalDateTime(TimeZone.currentSystemDefault()).date
     val todayIso = today.dayOfWeek.isoDayNumber
 
@@ -90,14 +88,14 @@ fun FlowHeatmap(
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Minimalist Blue Circle for Current Streak
-                Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(DefaultAccentColor))
+                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(DefaultAccentColor))
                 Spacer(Modifier.width(6.dp))
                 Text("Current: ${streaks.first}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 // Minimalist Orange Circle for Best Streak
-                Box(modifier = Modifier.size(10.dp).clip(androidx.compose.foundation.shape.CircleShape).background(Color(0xFFFF9800)))
+                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFFF9800)))
                 Spacer(Modifier.width(6.dp))
                 Text("Best: ${streaks.second}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
@@ -111,7 +109,7 @@ fun FlowHeatmap(
                 modifier = Modifier.padding(top = 22.dp, end = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                val dayStyle = androidx.compose.ui.text.TextStyle(color = TextSecondary.copy(alpha=0.5f), fontSize = 10.sp)
+                val dayStyle = TextStyle(color = TextSecondary.copy(alpha=0.5f), fontSize = 10.sp)
                 Text("M", style = dayStyle, modifier = Modifier.height(16.dp))
                 Text("", style = dayStyle, modifier = Modifier.height(16.dp))
                 Text("W", style = dayStyle, modifier = Modifier.height(16.dp))
@@ -129,8 +127,8 @@ fun FlowHeatmap(
                 items(weeks.size) { weekIndex ->
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(modifier = Modifier.height(16.dp), contentAlignment = Alignment.BottomStart) {
-                            if (monthLabels.containsKey(weekIndex)) {
-                                Text(monthLabels[weekIndex]!!, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                            monthLabels[weekIndex]?.let { label ->
+                                Text(label, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
                             }
                         }
 

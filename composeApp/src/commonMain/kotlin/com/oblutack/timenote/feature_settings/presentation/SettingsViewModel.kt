@@ -7,17 +7,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import androidx.compose.ui.graphics.Color
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
 
 class SettingsViewModel : ViewModel() {
 
-    val enableBackgroundBlur = com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow
-        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), true)
+    val enableBackgroundBlur = SettingsRepository.enableBackgroundBlurFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun toggleBackgroundBlur(enabled: Boolean) {
         viewModelScope.launch {
-            com.oblutack.timenote.data.repository.SettingsRepository.setBackgroundBlur(enabled)
+            SettingsRepository.setBackgroundBlur(enabled)
         }
     }
 
@@ -33,12 +31,12 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
-    val enableHaptics = com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow
-        .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000), true)
+    val enableHaptics = SettingsRepository.enableHapticsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     fun toggleHaptics(enabled: Boolean) {
         viewModelScope.launch {
-            com.oblutack.timenote.data.repository.SettingsRepository.setHaptics(enabled)
+            SettingsRepository.setHaptics(enabled)
         }
     }
 
@@ -67,10 +65,10 @@ class SettingsViewModel : ViewModel() {
         }
     }
 
-    fun addPickedColor(color: androidx.compose.ui.graphics.Color) {
+    fun addPickedColor(color: Color) {
         viewModelScope.launch { // <-- Cleaned up!
             // Extracts the raw ULong and saves it to DataStore
-            com.oblutack.timenote.data.repository.SettingsRepository.addCustomColor(color.value.toLong())
+            SettingsRepository.addCustomColor(color.value.toLong())
         }
     }
     fun deleteCustomColor(colorLong: Long) {

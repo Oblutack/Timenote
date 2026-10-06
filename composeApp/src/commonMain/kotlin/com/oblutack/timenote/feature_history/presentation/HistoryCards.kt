@@ -3,18 +3,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,68 +14,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.rememberSwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Dialog
-import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.feature_history.domain.Timenote
-import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
-import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import kotlinx.datetime.*
-import kotlinx.coroutines.launch
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Label
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.ui.text.style.TextOverflow
+import com.oblutack.timenote.getCurrentTimeMillis
 @Composable
 fun FolderCard(
-    folder: com.oblutack.timenote.feature_history.domain.ProjectFolder,
+    folder: ProjectFolder,
     onClick: () -> Unit,
     onOptionsClick: () -> Unit
 ) {
@@ -112,7 +59,7 @@ fun FolderCard(
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                overflow = TextOverflow.Ellipsis
             )
             Spacer(modifier = Modifier.height(4.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -130,7 +77,7 @@ fun FolderCard(
                     color = TextSecondary,
                     fontSize = 12.sp,
                     maxLines = 1,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
         }
@@ -156,18 +103,18 @@ fun FolderCard(
 
 @Composable
 fun SessionCard(
-    session: com.oblutack.timenote.feature_history.domain.Timenote,
-    allSessions: List<com.oblutack.timenote.feature_history.domain.Timenote>,
+    session: Timenote,
+    allSessions: List<Timenote>,
     onClick: () -> Unit
 ) {
     val childCount = allSessions.count { it.parentTimenoteId == session.id }
     val isChild = session.parentTimenoteId != null
 
     // 1. Calculate Date and Year strings
-    val instant = kotlinx.datetime.Instant.fromEpochMilliseconds(
-        if (session.createdAt > 0L) session.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
+    val instant = Instant.fromEpochMilliseconds(
+        if (session.createdAt > 0L) session.createdAt else getCurrentTimeMillis()
     )
-    val dateTime = instant.toLocalDateTime(kotlinx.datetime.TimeZone.currentSystemDefault())
+    val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
     val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
     val dateString = "$month ${dateTime.dayOfMonth}"
     val yearString = "${dateTime.year}"
@@ -206,7 +153,7 @@ fun SessionCard(
                     color = TextSecondary,
                     fontSize = 14.sp,
                     maxLines = 2,
-                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis
                 )
             }
 

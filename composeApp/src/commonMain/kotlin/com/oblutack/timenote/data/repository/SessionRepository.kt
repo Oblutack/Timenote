@@ -14,6 +14,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import com.oblutack.timenote.feature_history.domain.ProjectFolder
+import com.oblutack.timenote.getCurrentTimeMillis
 
 object SessionRepository {
 
@@ -27,14 +29,14 @@ object SessionRepository {
     private val _tags = MutableStateFlow<List<TimenoteFolder>>(emptyList())
     val tags: StateFlow<List<TimenoteFolder>> = _tags.asStateFlow()
 
-    private val _folders = MutableStateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>>(emptyList())
-    val folders: StateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>> = _folders.asStateFlow()
+    private val _folders = MutableStateFlow<List<ProjectFolder>>(emptyList())
+    val folders: StateFlow<List<ProjectFolder>> = _folders.asStateFlow()
 
     private val _deletedTimenotes = MutableStateFlow<List<Timenote>>(emptyList())
     val deletedTimenotes: StateFlow<List<Timenote>> = _deletedTimenotes.asStateFlow()
 
-    private val _deletedFolders = MutableStateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>>(emptyList())
-    val deletedFolders: StateFlow<List<com.oblutack.timenote.feature_history.domain.ProjectFolder>> = _deletedFolders.asStateFlow()
+    private val _deletedFolders = MutableStateFlow<List<ProjectFolder>>(emptyList())
+    val deletedFolders: StateFlow<List<ProjectFolder>> = _deletedFolders.asStateFlow()
 
     fun initialize(timenoteDao: TimenoteDao) {
         dao = timenoteDao
@@ -86,7 +88,7 @@ object SessionRepository {
     }
 
     fun deleteTimenote(id: String) {
-        coroutineScope.launch { dao?.softDeleteTimenote(id, com.oblutack.timenote.getCurrentTimeMillis()) }
+        coroutineScope.launch { dao?.softDeleteTimenote(id, getCurrentTimeMillis()) }
     }
 
     // Find all children and sub-children (cycle-safe, see core/TimenoteTree.kt)
@@ -97,7 +99,7 @@ object SessionRepository {
     fun cascadeSoftDeleteTimenote(id: String) {
         coroutineScope.launch {
             val descendants = getDescendantIds(id)
-            val now = com.oblutack.timenote.getCurrentTimeMillis()
+            val now = getCurrentTimeMillis()
             dao?.softDeleteTimenote(id, now)
             descendants.forEach { childId -> dao?.softDeleteTimenote(childId, now) }
         }
@@ -108,7 +110,7 @@ object SessionRepository {
         coroutineScope.launch {
             val directChildren = _timenotes.value.filter { it.parentTimenoteId == id }
             directChildren.forEach { child -> dao?.orphanTimenote(child.id) }
-            dao?.softDeleteTimenote(id, com.oblutack.timenote.getCurrentTimeMillis())
+            dao?.softDeleteTimenote(id, getCurrentTimeMillis())
         }
     }
     fun getTimenoteById(id: String): Timenote? {
@@ -116,7 +118,7 @@ object SessionRepository {
     }
 
     // (If you don't have getFolderById yet, add this quick helper right next to getTimenoteById):
-    fun getFolderById(id: String): com.oblutack.timenote.feature_history.domain.ProjectFolder? {
+    fun getFolderById(id: String): ProjectFolder? {
         return _folders.value.find { it.id == id }
     }
 
@@ -134,14 +136,14 @@ object SessionRepository {
         }
     }
 
-    fun saveFolder(folder: com.oblutack.timenote.feature_history.domain.ProjectFolder) {
+    fun saveFolder(folder: ProjectFolder) {
         coroutineScope.launch {
             dao?.insertFolder(folder.toEntity())
         }
     }
 
     fun deleteFolder(id: String) {
-        coroutineScope.launch { dao?.softDeleteFolder(id, com.oblutack.timenote.getCurrentTimeMillis()) }
+        coroutineScope.launch { dao?.softDeleteFolder(id, getCurrentTimeMillis()) }
     }
 
     // NEW: Update a Timenote's Folder

@@ -2,27 +2,19 @@ package com.oblutack.timenote.feature_history.presentation
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Stop
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -37,11 +29,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
@@ -49,26 +39,30 @@ import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_timer.domain.EventType
-import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
-import androidx.compose.ui.draw.rotate
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.TextRange
-import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.animation.togetherWith
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.draw.blur
-import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.TextStyle
+import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.getCurrentTimeMillis
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -93,10 +87,10 @@ fun TimenoteDetailScreen(
     var isEditingTitle by remember { mutableStateOf(false) }
     var titleText by remember(timenote?.title) {
         val text = timenote?.title ?: ""
-        mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(text, TextRange(text.length)))
+        mutableStateOf(TextFieldValue(text, TextRange(text.length)))
     }
     val titleFocusRequester = remember { FocusRequester() }
-    androidx.compose.runtime.LaunchedEffect(isEditingTitle) {
+    LaunchedEffect(isEditingTitle) {
         if (isEditingTitle) titleFocusRequester.requestFocus()
     }
     var isTimelineExpanded by remember { mutableStateOf(false) }
@@ -115,13 +109,13 @@ fun TimenoteDetailScreen(
     }
 
     val focusRequester = remember { FocusRequester() }
-    androidx.compose.runtime.LaunchedEffect(isEditingDescription) {
+    LaunchedEffect(isEditingDescription) {
         if (isEditingDescription) {
             focusRequester.requestFocus()
         }
     }
     val scrollState = androidx.compose.foundation.rememberScrollState()
-    val useMonochromeNodes by com.oblutack.timenote.data.repository.SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
+    val useMonochromeNodes by SettingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
 
     if (timenote == null) {
         Box(modifier = Modifier.fillMaxSize().background(BackgroundDark), contentAlignment = Alignment.Center) {
@@ -134,7 +128,7 @@ fun TimenoteDetailScreen(
 
     // --- 1. Date & Time Formatting ---
     // Safely parse the timestamp. If it's 0 (from old mock data), fallback to current time
-    val validTimestamp = if (timenote.createdAt > 0L) timenote.createdAt else com.oblutack.timenote.getCurrentTimeMillis()
+    val validTimestamp = if (timenote.createdAt > 0L) timenote.createdAt else getCurrentTimeMillis()
     val instant = Instant.fromEpochMilliseconds(validTimestamp)
     val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
 
@@ -160,19 +154,19 @@ fun TimenoteDetailScreen(
     var isEditTagsSheetOpen by remember { mutableStateOf(false) }
     var tempSelectedTags by remember(timenote?.tags) { mutableStateOf(timenote?.tags ?: emptyList()) }
 
-    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     // Check if ANY popup is open on the Details screen
     val isPopupOpen = isFolderDialogOpen || isEditingDescription || isEditTagsSheetOpen
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "DetailsBlur"
     )
 
-    val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val enableHaptics by SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val haptic = LocalHapticFeedback.current
 
 
     Column(
@@ -201,7 +195,7 @@ fun TimenoteDetailScreen(
             }
         }
 
-        androidx.compose.animation.AnimatedContent(
+        AnimatedContent(
             targetState = isEditingTitle,
             label = "TitleEditAnimation"
         ) { isEditing ->
@@ -220,7 +214,7 @@ fun TimenoteDetailScreen(
                         value = titleText,
                         onValueChange = { titleText = it },
                         modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextPrimary),
+                        textStyle = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextPrimary),
                         shape = RoundedCornerShape(12.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = SurfaceDark, unfocusedContainerColor = SurfaceDark,
@@ -230,7 +224,7 @@ fun TimenoteDetailScreen(
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                         TextButton(onClick = {
                             isEditingTitle = false
-                            titleText = androidx.compose.ui.text.input.TextFieldValue(timenote.title, TextRange(timenote.title.length))
+                            titleText = TextFieldValue(timenote.title, TextRange(timenote.title.length))
                         }) { Text("Cancel", color = TextSecondary) }
 
                         TextButton(onClick = {
@@ -308,14 +302,14 @@ fun TimenoteDetailScreen(
         // --- 2. The Legend (Text & Dots) ---
         Row(verticalAlignment = Alignment.CenterVertically) {
             // Work Legend
-            Box(modifier = Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(workColor))
+            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(workColor))
             Spacer(modifier = Modifier.width(6.dp))
             Text("$workPercent% Work", color = TextSecondary, fontSize = 12.sp)
 
             Spacer(modifier = Modifier.width(12.dp))
 
             // Pause Legend
-            Box(modifier = Modifier.size(8.dp).clip(androidx.compose.foundation.shape.CircleShape).background(pauseColor)) // <-- Make sure this uses pauseColor!
+            Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(pauseColor)) // <-- Make sure this uses pauseColor!
             Spacer(modifier = Modifier.width(6.dp))
             Text("$pausePercent% Pause", color = TextSecondary, fontSize = 12.sp)
         }
@@ -328,7 +322,7 @@ fun TimenoteDetailScreen(
                 .fillMaxWidth()
                 .defaultMinSize(minHeight = 80.dp)
                 .clickable(
-                    interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                    interactionSource = remember { MutableInteractionSource() },
                     indication = null
                 ) { isEditingDescription = true }
                 .padding(vertical = 16.dp)
@@ -353,19 +347,19 @@ fun TimenoteDetailScreen(
                                 val content = line.substringAfter("] ")
                                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 4.dp)) {
                                     Icon(
-                                        imageVector = if (isChecked) androidx.compose.material.icons.Icons.Default.CheckCircle else androidx.compose.material.icons.Icons.Default.RadioButtonUnchecked,
+                                        imageVector = if (isChecked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
                                         contentDescription = "Checkbox",
                                         tint = if (isChecked) dynamicAccentColor else TextSecondary,
                                         modifier = Modifier
                                             .size(22.dp)
                                             .clickable(
-                                                interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
+                                                interactionSource = remember { MutableInteractionSource() },
                                                 indication = null
                                             ) {
-                                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                                 val newLines = lines.toMutableList()
                                                 newLines[lineIndex] = if (isChecked) line.replaceFirst(Regex("\\[[xX]\\]"), "[ ]") else line.replaceFirst("[ ]", "[x]")
-                                                com.oblutack.timenote.data.repository.SessionRepository.updateTimenoteDescription(timenote!!.id, newLines.joinToString("\n"))
+                                                SessionRepository.updateTimenoteDescription(timenote.id, newLines.joinToString("\n"))
                                             }
                                     )
                                     Spacer(Modifier.width(8.dp))
@@ -374,10 +368,10 @@ fun TimenoteDetailScreen(
                                     val textToParse = if (isChecked) "~~$content~~" else content
                                     val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(textToParse, dynamicAccentColor)
 
-                                    androidx.compose.foundation.text.ClickableText(
+                                    ClickableText(
                                         text = annotatedText,
                                         modifier = Modifier.fillMaxWidth(),
-                                        style = androidx.compose.ui.text.TextStyle(color = if (isChecked) TextSecondary else TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                        style = TextStyle(color = if (isChecked) TextSecondary else TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
                                         onClick = { offset ->
                                             val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
                                             if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
@@ -393,10 +387,10 @@ fun TimenoteDetailScreen(
                                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
                                     Text("•", color = TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(end = 8.dp))
                                     val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(content, dynamicAccentColor)
-                                    androidx.compose.foundation.text.ClickableText(
+                                    ClickableText(
                                         text = annotatedText,
                                         modifier = Modifier.fillMaxWidth(),
-                                        style = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                        style = TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
                                         onClick = { offset ->
                                             val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
                                             if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
@@ -409,10 +403,10 @@ fun TimenoteDetailScreen(
                             // 3. RENDER NORMAL TEXT
                             else -> {
                                 val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(line, dynamicAccentColor)
-                                androidx.compose.foundation.text.ClickableText(
+                                ClickableText(
                                     text = annotatedText,
                                     modifier = Modifier.fillMaxWidth(),
-                                    style = androidx.compose.ui.text.TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                    style = TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
                                     onClick = { offset ->
                                         val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
                                         if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
@@ -461,7 +455,7 @@ fun TimenoteDetailScreen(
             item {
                 Box(
                     modifier = Modifier
-                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .clip(CircleShape)
                         .background(SurfaceDark)
                         .clickable {
                             tempSelectedTags = timenote.tags // Reset temp state
@@ -470,7 +464,7 @@ fun TimenoteDetailScreen(
                         .padding(8.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(androidx.compose.material.icons.Icons.Default.Edit, contentDescription = "Edit Tags", tint = TextSecondary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.Edit, contentDescription = "Edit Tags", tint = TextSecondary, modifier = Modifier.size(16.dp))
                 }
             }
         }
@@ -508,7 +502,7 @@ fun TimenoteDetailScreen(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    imageVector = androidx.compose.material.icons.Icons.Default.KeyboardArrowDown,
+                    imageVector = Icons.Default.KeyboardArrowDown,
                     contentDescription = "Toggle Timeline",
                     tint = TextSecondary,
                     modifier = Modifier.rotate(if (isTimelineExpanded) 180f else 0f)
@@ -540,7 +534,7 @@ fun TimenoteDetailScreen(
                             .clip(RoundedCornerShape(50))
                             .background(if (!isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 isNotesOnlyView = false
                             }
                             .padding(vertical = 10.dp),
@@ -559,7 +553,7 @@ fun TimenoteDetailScreen(
                             .clip(RoundedCornerShape(50))
                             .background(if (isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                                 isNotesOnlyView = true
                             }
                             .padding(vertical = 10.dp),
@@ -616,8 +610,8 @@ fun TimenoteDetailScreen(
                                             val strokeWidth = 4.dp.toPx()
                                             drawLine(
                                                 color = note.color ?: DefaultAccentColor,
-                                                start = androidx.compose.ui.geometry.Offset(x = 0f, y = 0f),
-                                                end = androidx.compose.ui.geometry.Offset(x = 0f, y = size.height),
+                                                start = Offset(x = 0f, y = 0f),
+                                                end = Offset(x = 0f, y = size.height),
                                                 strokeWidth = strokeWidth
                                             )
                                         }

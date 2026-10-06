@@ -1,7 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -9,11 +8,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -30,59 +26,48 @@ import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.window.Dialog
 import com.oblutack.timenote.BackgroundDark
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.feature_history.domain.Timenote
-import com.oblutack.timenote.feature_history.domain.TimenoteFolder
-import com.oblutack.timenote.feature_history.domain.ProjectFolder
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedButton
 import kotlinx.datetime.*
 import kotlinx.coroutines.launch
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.GridOn
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.EmojiEvents
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.style.TextOverflow
+import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.getCurrentTimeMillis
 
 fun getDaysInMonth(month: Int, year: Int): Int {
     return when (month) {
@@ -111,7 +96,7 @@ fun HistoryScreen(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
     val today = remember {
-        Instant.fromEpochMilliseconds(com.oblutack.timenote.getCurrentTimeMillis())
+        Instant.fromEpochMilliseconds(getCurrentTimeMillis())
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
     }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
@@ -122,7 +107,7 @@ fun HistoryScreen(
 
     val sessionsByDate = remember(recentSessions) {
         recentSessions.groupBy {
-            Instant.fromEpochMilliseconds(if (it.createdAt > 0L) it.createdAt else com.oblutack.timenote.getCurrentTimeMillis())
+            Instant.fromEpochMilliseconds(if (it.createdAt > 0L) it.createdAt else getCurrentTimeMillis())
                 .toLocalDateTime(TimeZone.currentSystemDefault()).date
         }
     }
@@ -173,11 +158,11 @@ fun HistoryScreen(
     var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
     var folderOptionsId by remember { mutableStateOf<String?>(null) }
 
-    val customColors by com.oblutack.timenote.data.repository.SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
+    val customColors by SettingsRepository.customColorsFlow.collectAsState(initial = emptyList())
 
     val heatmapData by viewModel.heatmapData.collectAsState()
 
-    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
     val descendantCount by viewModel.descendantCount.collectAsState()
@@ -190,12 +175,12 @@ fun HistoryScreen(
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "HistoryBlur"
     )
 
-    val enableHaptics by com.oblutack.timenote.data.repository.SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
-    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val enableHaptics by SettingsRepository.enableHapticsFlow.collectAsState(initial = true)
+    val haptic = LocalHapticFeedback.current
 
     Column(
         modifier = Modifier
@@ -207,7 +192,7 @@ fun HistoryScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        androidx.compose.animation.AnimatedContent(
+        AnimatedContent(
             targetState = isSearchActive,
             label = "SearchBarAnimation"
         ) { targetIsSearchActive ->
@@ -232,7 +217,7 @@ fun HistoryScreen(
                         isSearchActive = false
                         viewModel.updateSearchQuery("")
                     }) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Close, contentDescription = "Close Search", tint = TextSecondary)
+                        Icon(Icons.Default.Close, contentDescription = "Close Search", tint = TextSecondary)
                     }
                 },
                 singleLine = true
@@ -260,7 +245,7 @@ fun HistoryScreen(
                             .clip(RoundedCornerShape(50))
                             .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // <-- ADD THIS
                                 onTabSelected(0)
                             },
 
@@ -280,7 +265,7 @@ fun HistoryScreen(
                             .clip(RoundedCornerShape(50))
                             .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // <-- ADD THIS
                                 onTabSelected(1)
                             },
 
@@ -310,7 +295,7 @@ fun HistoryScreen(
                         onClick = { isSearchActive = true },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(androidx.compose.material.icons.Icons.Default.Search, contentDescription = "Search", tint = TextSecondary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Search, contentDescription = "Search", tint = TextSecondary, modifier = Modifier.size(18.dp))
                     }
 
                     Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
@@ -386,7 +371,7 @@ fun HistoryScreen(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -418,7 +403,7 @@ fun HistoryScreen(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
 
@@ -448,7 +433,7 @@ fun HistoryScreen(
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
-                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
@@ -464,7 +449,7 @@ fun HistoryScreen(
                     )
                 }
 
-                androidx.compose.runtime.LaunchedEffect(sortOption, selectedFilterTags, isCalendarView) {
+                LaunchedEffect(sortOption, selectedFilterTags, isCalendarView) {
                     if (finalDisplaySessions.isNotEmpty()) {
                         listState.animateScrollToItem(0)
                     }
@@ -484,7 +469,7 @@ fun HistoryScreen(
                         }
                 ) {
                             item {
-                                androidx.compose.animation.AnimatedVisibility(
+                                AnimatedVisibility(
                                     visible = isCalendarView,
                                     enter = androidx.compose.animation.expandVertically() + androidx.compose.animation.fadeIn(),
                                     exit = androidx.compose.animation.shrinkVertically() + androidx.compose.animation.fadeOut()
@@ -520,8 +505,8 @@ fun HistoryScreen(
                     items(finalDisplaySessions, key = { it.id }) { session ->
                         val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
-                                if (value == androidx.compose.material3.SwipeToDismissBoxValue.EndToStart) {
-                                    if (enableHaptics) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                                if (value == SwipeToDismissBoxValue.EndToStart) {
+                                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     viewModel.requestDelete(session) // <-- THE NEW INTERCEPTOR
                                     false // Bounce back
                                 } else false
@@ -576,7 +561,7 @@ fun HistoryScreen(
                                     width = 2.dp.toPx(),
                                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
                                 ),
-                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(16.dp.toPx())
+                                cornerRadius = CornerRadius(16.dp.toPx())
                             )
                         },
                     contentAlignment = Alignment.Center

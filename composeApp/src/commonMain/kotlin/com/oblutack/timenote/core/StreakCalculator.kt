@@ -18,7 +18,8 @@ fun calculateStreaks(activeDates: Set<LocalDate>, today: LocalDate): Pair<Int, I
     var run = 0
     var previous: LocalDate? = null
     activeDates.sorted().forEach { date ->
-        run = if (previous != null && previous!!.plus(oneDay) == date) run + 1 else 1
+        val prev = previous
+        run = if (prev != null && prev.plus(oneDay) == date) run + 1 else 1
         if (run > best) best = run
         previous = date
     }

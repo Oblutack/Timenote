@@ -38,6 +38,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.PathEffect
+import com.oblutack.timenote.data.repository.SettingsRepository
 
 
 // Holds the calculated X,Y positions for the Canvas to draw
@@ -68,8 +73,8 @@ fun GraphScreen(
         initialValue = 40f,
         targetValue = 55f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+            animation = androidx.compose.animation.core.tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "RadiusPulse"
     )
@@ -78,17 +83,17 @@ fun GraphScreen(
         initialValue = 0.1f,
         targetValue = 0.3f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(1500, easing = androidx.compose.animation.core.FastOutSlowInEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+            animation = androidx.compose.animation.core.tween(1500, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
         ),
         label = "AlphaPulse"
     )
 
-    val enableBlur by com.oblutack.timenote.data.repository.SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
+    val enableBlur by SettingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && selectedGraphNodeId != null) 16.dp else 0.dp,
-        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        animationSpec = androidx.compose.animation.core.tween(durationMillis = 300, easing = FastOutSlowInEasing),
         label = "GraphBlur"
     )
 
@@ -98,8 +103,8 @@ fun GraphScreen(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(3000, easing = androidx.compose.animation.core.LinearEasing),
-            repeatMode = androidx.compose.animation.core.RepeatMode.Restart
+            animation = androidx.compose.animation.core.tween(3000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
         ),
         label = "ParticleProgress"
     )
@@ -273,7 +278,7 @@ fun GraphScreen(
                                     color = Color(0xFF9C27B0).copy(alpha = 0.5f),
                                     style = Stroke(
                                         width = 3f,
-                                        pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(15f, 15f))
+                                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f))
                                     )
                                 )
                             }
@@ -332,7 +337,7 @@ fun GraphScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
-                                .background(firstTag.color.copy(alpha = 0.2f), shape = androidx.compose.foundation.shape.RoundedCornerShape(50))
+                                .background(firstTag.color.copy(alpha = 0.2f), shape = RoundedCornerShape(50))
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
                             Text(firstTag.name, color = firstTag.color, fontSize = 12.sp)
@@ -343,8 +348,8 @@ fun GraphScreen(
 
                     Card(
                         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, TextSecondary.copy(alpha = 0.3f)),
-                        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.3f)),
+                        shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Box(
