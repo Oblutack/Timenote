@@ -55,6 +55,7 @@ kotlin {
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
         }
     }
 }
@@ -89,6 +90,10 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+    testOptions {
+        // Android framework calls (e.g. android.util.Log) return defaults instead of throwing in unit tests
+        unitTests.isReturnDefaultValues = true
     }
 }
 
