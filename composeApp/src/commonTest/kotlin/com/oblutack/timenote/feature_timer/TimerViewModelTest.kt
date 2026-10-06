@@ -334,6 +334,43 @@ class TimerViewModelTest {
         }
     }
 
+    @Test fun lastTimenoteLabelFollowsDeletions() = runAppTest {
+        timerTest {
+            // real sessions always have timeline events, which is what froze the old label
+            val startEvent = com.oblutack.timenote.feature_timer.domain.TimelineEvent("e", "Session Started", "00:00:00", EventType.START)
+            sessions.saveTimenote(
+                com.oblutack.timenote.testutil.testNote("older", createdAt = 1_000).copy(title = "Older", duration = "00:01:00", timelineEvents = listOf(startEvent))
+            )
+            sessions.saveTimenote(
+                com.oblutack.timenote.testutil.testNote("newer", createdAt = 2_000).copy(title = "Newer", duration = "00:02:00", timelineEvents = listOf(startEvent))
+            )
+            assertEquals("Newer", state.lastSessionTitle)
+
+            sessions.deleteTimenote("newer")
+            assertEquals("Older", state.lastSessionTitle)
+            assertEquals("00:01:00", state.displayTime)
+
+            sessions.deleteTimenote("older")
+            assertEquals("", state.lastSessionTitle)
+            assertEquals("00:00:00", state.displayTime)
+            assertTrue(state.timelineEvents.isEmpty())
+        }
+    }
+
+    @Test fun deletingTheJustFinishedSessionClearsTheLabel() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            assertEquals("Untitled Session", state.lastSessionTitle)
+
+            sessions.deleteTimenote(sessions.timenotes.value.single().id)
+            assertEquals("", state.lastSessionTitle)
+            assertTrue(state.timelineEvents.isEmpty())
+        }
+    }
+
     // --- restoring a session after the app was killed ---
 
     private fun backup(

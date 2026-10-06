@@ -96,6 +96,11 @@ class TimerViewModel(
     private var pendingRestoreFolderId: String? = null
     private var pendingRestoreCategoryIds: List<String> = emptyList()
 
+    // The session currently shown as "your last timenote", so the label can follow its deletion.
+    // lastSessionSeen guards against the short gap between saving and the list showing the new note.
+    private var lastSessionId: String? = null
+    private var lastSessionSeen = false
+
     // Token of the last branch navigation that was applied (see SetParentLinks)
     private var lastBranchToken: String? = null
 
@@ -113,13 +118,30 @@ class TimerViewModel(
         // 1. Listen for past Timenotes (To show "Last Session")
         viewModelScope.launch {
             sessionRepository.timenotes.collect { notes ->
-                if (!_state.value.isRunning && !_state.value.isPaused && _state.value.timelineEvents.isEmpty()) {
-                    notes.firstOrNull()?.let { lastNote ->
+                if (_state.value.isRunning || _state.value.isPaused) return@collect
+
+                if (lastSessionId != null && notes.any { it.id == lastSessionId }) lastSessionSeen = true
+                // The session shown as "last timenote" was deleted (it had been in the list before)
+                val shownSessionGone = lastSessionSeen && notes.none { it.id == lastSessionId }
+
+                if (_state.value.timelineEvents.isEmpty() || shownSessionGone) {
+                    val latest = notes.firstOrNull()
+                    if (latest != null) {
+                        lastSessionId = latest.id
+                        lastSessionSeen = true
                         _state.update { it.copy(
-                            displayTime = lastNote.duration,
-                            lastSessionTitle = lastNote.title,
+                            displayTime = latest.duration,
+                            lastSessionTitle = latest.title,
                             sessionTitle = "",
-                            timelineEvents = lastNote.timelineEvents
+                            timelineEvents = latest.timelineEvents
+                        )}
+                    } else if (shownSessionGone) {
+                        lastSessionId = null
+                        lastSessionSeen = false
+                        _state.update { it.copy(
+                            displayTime = "00:00:00",
+                            lastSessionTitle = "",
+                            timelineEvents = emptyList()
                         )}
                     }
                 }
@@ -428,6 +450,8 @@ class TimerViewModel(
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
 
         val timestampId = platformSpecificId()
+        lastSessionId = timestampId
+        lastSessionSeen = false
 
         val newTimenote = Timenote(
             id = timestampId,
