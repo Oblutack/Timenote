@@ -76,6 +76,14 @@ class TimerViewModel : ViewModel() {
     private var frozenActiveSeconds = 0
     private var frozenPauseSeconds = 0
 
+    // Folder/tag ids from a restored backup. The repository flows may not have emitted yet
+    // when the backup is read, so these are resolved whenever the flows deliver data.
+    private var pendingRestoreFolderId: String? = null
+    private var pendingRestoreCategoryIds: List<String> = emptyList()
+
+    // Skips redundant notification updates (the loop ticks 4x/sec, the text changes 1x/sec)
+    private var lastNotificationKey: String? = null
+
     // NATIVE JSON PARSER: Ignores unknown data and prevents crashes!
     private val jsonParser = Json {
         ignoreUnknownKeys = true
@@ -103,11 +111,12 @@ class TimerViewModel : ViewModel() {
         // 2. Load Tags
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.tags.collect { dbTags ->
+                val restoredIds = pendingRestoreCategoryIds
+                if (restoredIds.isNotEmpty() && dbTags.isNotEmpty()) pendingRestoreCategoryIds = emptyList()
                 _state.update { currentState ->
-                    // Re-link selected categories to the fresh DB data
-                    val updatedSelected = currentState.selectedCategories.mapNotNull { selected ->
-                        dbTags.find { it.id == selected.id }
-                    }
+                    // Re-link selected categories to the fresh DB data (plus any ids awaiting restore)
+                    val selectedIds = (currentState.selectedCategories.map { it.id } + restoredIds).distinct()
+                    val updatedSelected = selectedIds.mapNotNull { id -> dbTags.find { it.id == id } }
                     currentState.copy(availableTags = dbTags, selectedCategories = updatedSelected)
                 }
             }
@@ -116,8 +125,11 @@ class TimerViewModel : ViewModel() {
         // 3. Load Folders
         viewModelScope.launch {
             com.oblutack.timenote.data.repository.SessionRepository.folders.collect { dbFolders ->
+                val restoredId = pendingRestoreFolderId
+                if (restoredId != null && dbFolders.isNotEmpty()) pendingRestoreFolderId = null
                 _state.update { currentState ->
-                    val updatedSelectedFolder = dbFolders.find { it.id == currentState.selectedFolder?.id }
+                    val folderId = currentState.selectedFolder?.id ?: restoredId
+                    val updatedSelectedFolder = dbFolders.find { it.id == folderId }
                     currentState.copy(availableFolders = dbFolders, selectedFolder = updatedSelectedFolder)
                 }
             }
@@ -135,11 +147,22 @@ class TimerViewModel : ViewModel() {
                         totalPauseMillis = backup.totalPauseMillis
                         currentPauseStartMillis = backup.lastPauseStartTimeMillis ?: 0L
 
+                        // Resolve against what the repository already has; anything not loaded yet
+                        // is picked up by the tag/folder collectors above.
+                        val knownTags = com.oblutack.timenote.data.repository.SessionRepository.tags.value
+                        val knownFolders = com.oblutack.timenote.data.repository.SessionRepository.folders.value
+                        val restoredTags = backup.selectedCategoryIds.mapNotNull { id -> knownTags.find { it.id == id } }
+                        val restoredFolder = knownFolders.find { it.id == backup.selectedFolderId }
+                        pendingRestoreCategoryIds = if (knownTags.isEmpty()) backup.selectedCategoryIds else emptyList()
+                        pendingRestoreFolderId = if (knownFolders.isEmpty()) backup.selectedFolderId else null
+
                         _state.update { it.copy(
                             isRunning = true,
                             isPaused = backup.isPaused,
                             sessionTitle = backup.sessionTitle,
                             timelineEvents = backup.timelineEvents,
+                            selectedCategories = restoredTags,
+                            selectedFolder = restoredFolder,
                             parentTimenoteId = backup.parentTimenoteId,
                             parentWaypointId = backup.parentWaypointId
                         )}
@@ -188,6 +211,7 @@ class TimerViewModel : ViewModel() {
             is TimerAction.SaveNote -> saveNote()
 
             is TimerAction.ToggleCategory -> {
+                pendingRestoreCategoryIds = emptyList()
                 _state.update { currentState ->
                     val currentList = currentState.selectedCategories
                     val newList = if (currentList.any { it.id == action.category.id }) {
@@ -226,6 +250,7 @@ class TimerViewModel : ViewModel() {
             is TimerAction.ToggleTagsRowVisibility -> _state.update { it.copy(isTagsRowVisible = !it.isTagsRowVisible) }
 
             is TimerAction.SelectFolder -> {
+                pendingRestoreFolderId = null
                 val newSelection = if (_state.value.selectedFolder?.id == action.folder?.id) null else action.folder
                 _state.update { it.copy(selectedFolder = newSelection) }
                 if (_state.value.isRunning) backupCurrentState()
@@ -425,6 +450,7 @@ class TimerViewModel : ViewModel() {
 
     private fun startTicking() {
         timerJob?.cancel()
+        lastNotificationKey = null
         timerJob = viewModelScope.launch {
             while (true) {
                 delay(250L)
@@ -446,9 +472,13 @@ class TimerViewModel : ViewModel() {
                         displayTime = formattedFrozenTotal // <-- Now it stops moving!
                     ) }
 
-                    com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
-                        title = "Paused", timeText = formattedPause, baseMillis = 0L, isPaused = true
-                    )
+                    val pausedKey = "paused|$formattedPause"
+                    if (pausedKey != lastNotificationKey) {
+                        lastNotificationKey = pausedKey
+                        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
+                            title = "Paused", timeText = formattedPause, baseMillis = 0L, isPaused = true
+                        )
+                    }
                 } else {
                     // 1. The Main Timer (Ticking Total Time)
                     val totalElapsedMillis = now - startTimeMillis
@@ -458,13 +488,18 @@ class TimerViewModel : ViewModel() {
 
                     // NATIVE MATH: Tell Android OS to count the Total Time too!
                     val baseTimeForOS = com.oblutack.timenote.getCurrentTimeMillis() - totalElapsedMillis
+                    val notificationTitle = _state.value.sessionTitle.ifBlank { "Timenote Active" }
 
-                    com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
-                        title = _state.value.sessionTitle.ifBlank { "Timenote Active" },
-                        timeText = formattedTotal,
-                        baseMillis = baseTimeForOS,
-                        isPaused = false
-                    )
+                    val runningKey = "running|$notificationTitle|$formattedTotal"
+                    if (runningKey != lastNotificationKey) {
+                        lastNotificationKey = runningKey
+                        com.oblutack.timenote.feature_timer.domain.ServiceLocator.timerServiceManager?.updateNotification(
+                            title = notificationTitle,
+                            timeText = formattedTotal,
+                            baseMillis = baseTimeForOS,
+                            isPaused = false
+                        )
+                    }
                 }
             }
         }
@@ -516,12 +551,7 @@ class TimerViewModel : ViewModel() {
         viewModelScope.launch { com.oblutack.timenote.data.repository.SettingsRepository.saveActiveSession(json) }
     }
 
-    private fun formatTime(totalSeconds: Int): String {
-        val hours = totalSeconds / 3600
-        val minutes = (totalSeconds % 3600) / 60
-        val seconds = totalSeconds % 60
-        return "${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}"
-    }
+    private fun formatTime(totalSeconds: Int): String = com.oblutack.timenote.core.formatDuration(totalSeconds)
 
     companion object {
         private var idCounter = 0
