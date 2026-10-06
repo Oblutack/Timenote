@@ -96,6 +96,9 @@ class TimerViewModel(
     private var pendingRestoreFolderId: String? = null
     private var pendingRestoreCategoryIds: List<String> = emptyList()
 
+    // Token of the last branch navigation that was applied (see SetParentLinks)
+    private var lastBranchToken: String? = null
+
     // Skips redundant notification updates (the loop ticks 4x/sec, the text changes 1x/sec)
     private var lastNotificationKey: String? = null
 
@@ -305,6 +308,12 @@ class TimerViewModel(
                 }
             }
             is TimerAction.SetParentLinks -> {
+                // The same navigation can deliver these arguments again (tab re-entry, rotation).
+                // Apply each branch navigation once, identified by its token.
+                if (action.token != null) {
+                    if (action.token == lastBranchToken) return
+                    lastBranchToken = action.token
+                }
                 _state.update { it.copy(parentTimenoteId = action.parentId, parentWaypointId = action.waypointId) }
 
                 // Fetch the parent data so the UI can display it!
@@ -607,7 +616,7 @@ sealed class TimerAction {
     data object CloseManageTagsSheet : TimerAction()
     data class DeleteTag(val tagId: String) : TimerAction()
     data class EditTag(val tag: TimenoteFolder) : TimerAction()
-    data class SetParentLinks(val parentId: String?, val waypointId: String?) : TimerAction()
+    data class SetParentLinks(val parentId: String?, val waypointId: String?, val token: String? = null) : TimerAction()
     data object StartVoiceMemo : TimerAction()
     data object StopVoiceMemo : TimerAction()
 }

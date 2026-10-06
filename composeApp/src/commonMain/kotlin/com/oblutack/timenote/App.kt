@@ -28,6 +28,7 @@ import com.oblutack.timenote.di.AppContainer
 import com.oblutack.timenote.di.LocalAppContainer
 import com.oblutack.timenote.di.historyViewModel
 import com.oblutack.timenote.di.timerViewModel
+import com.oblutack.timenote.getCurrentTimeMillis
 
 // ==========================================
 // 1. THEME DEFINITION
@@ -131,20 +132,24 @@ private fun AppContent() {
                 modifier = Modifier.padding(innerPadding).fillMaxSize().background(BackgroundDark)
             ) {
                 composable(
-                    route = "timer?parentId={parentId}&waypointId={waypointId}",
+                    route = "timer?parentId={parentId}&waypointId={waypointId}&token={token}",
                     arguments = listOf(
                         androidx.navigation.navArgument("parentId") { nullable = true; defaultValue = null },
-                        androidx.navigation.navArgument("waypointId") { nullable = true; defaultValue = null }
+                        androidx.navigation.navArgument("waypointId") { nullable = true; defaultValue = null },
+                        // Unique per "branch" navigation. The arguments stay on the back stack entry, so without
+                        // it the old branch would be re-applied every time this screen is re-entered.
+                        androidx.navigation.navArgument("token") { nullable = true; defaultValue = null }
                     )
                 ) { backStackEntry ->
                     val parentId = backStackEntry.arguments?.getString("parentId")
                     val waypointId = backStackEntry.arguments?.getString("waypointId")
+                    val branchToken = backStackEntry.arguments?.getString("token")
 
                     val timerViewModel: TimerViewModel = timerViewModel()
 
-                    LaunchedEffect(parentId, waypointId) {
+                    LaunchedEffect(parentId, waypointId, branchToken) {
                         if (parentId != null && waypointId != null) {
-                            timerViewModel.onAction(TimerAction.SetParentLinks(parentId, waypointId))
+                            timerViewModel.onAction(TimerAction.SetParentLinks(parentId, waypointId, branchToken))
                         }
                     }
 
@@ -181,7 +186,7 @@ private fun AppContent() {
                             onTimenoteClick = { childId -> navController.navigate("details/$childId") },
                             // ---------------------------------------------
                             onBranchClick = { parentId, waypointId ->
-                                navController.navigate("timer?parentId=$parentId&waypointId=$waypointId") {
+                                navController.navigate("timer?parentId=$parentId&waypointId=$waypointId&token=${getCurrentTimeMillis()}") {
                                     popUpTo("timer") { inclusive = false }
                                 }
                             }

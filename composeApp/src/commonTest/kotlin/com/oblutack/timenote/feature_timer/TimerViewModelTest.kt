@@ -311,6 +311,29 @@ class TimerViewModelTest {
         }
     }
 
+    @Test fun reEnteringTheTimerScreenDoesNotReapplyAnOldBranch() = runAppTest {
+        timerTest {
+            sessions.saveTimenote(com.oblutack.timenote.testutil.testNote("parent", title = "Parent session"))
+
+            // user taps "branch": the nav entry carries parentId/waypointId plus a unique token
+            vm.onAction(TimerAction.SetParentLinks("parent", "wp1", "token-1"))
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            assertNull(state.parentTimenoteId)
+
+            // the Timer tab is re-entered (saved state restores the same arguments): must be ignored
+            vm.onAction(TimerAction.SetParentLinks("parent", "wp1", "token-1"))
+            assertNull(state.parentTimenoteId, "an old branch must not be re-applied")
+            assertNull(state.parentSessionTitle)
+
+            // a genuinely new branch navigation carries a new token and does apply
+            vm.onAction(TimerAction.SetParentLinks("parent", "wp1", "token-2"))
+            assertEquals("parent", state.parentTimenoteId)
+        }
+    }
+
     // --- restoring a session after the app was killed ---
 
     private fun backup(
