@@ -243,6 +243,8 @@ fun EditTagsSheet(
 ) {
         ModalBottomSheet(
             onDismissRequest = onDismiss,
+            // fully expanded, so the Save button below the list is always visible
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
             containerColor = SurfaceDark
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp)) {
