@@ -444,8 +444,12 @@ class TimerViewModel(
             selectedCategories = categories,
             lastSessionTitle = title,
             sessionTitle = "",
+            // The branch is finished; clear the display titles too, or the banner stays up and the
+            // next unrelated session would get a bogus "Branched from" waypoint.
             parentTimenoteId = null,
-            parentWaypointId = null
+            parentWaypointId = null,
+            parentSessionTitle = null,
+            parentWaypointTitle = null
         ) }
     }
 

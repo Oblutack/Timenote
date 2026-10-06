@@ -286,6 +286,31 @@ class TimerViewModelTest {
         }
     }
 
+    @Test fun branchBannerAndEventDoNotLeakIntoTheNextSession() = runAppTest {
+        timerTest {
+            sessions.saveTimenote(
+                com.oblutack.timenote.testutil.testNote("parent", title = "Parent session")
+                    .copy(timelineEvents = listOf(
+                        com.oblutack.timenote.feature_timer.domain.TimelineEvent("wp1", "Waypoint", "00:00:05", EventType.NOTE)
+                    ))
+            )
+            vm.onAction(TimerAction.SetParentLinks("parent", "wp1"))
+            assertEquals("Parent session", state.parentSessionTitle)
+
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SkipCategoriesAndSave)
+
+            // the branch is finished: no banner, and a fresh session must not claim to be a branch
+            assertNull(state.parentSessionTitle)
+            assertNull(state.parentWaypointTitle)
+
+            vm.onAction(TimerAction.Start)
+            assertEquals(listOf("Session Started"), state.timelineEvents.map { it.title })
+        }
+    }
+
     // --- restoring a session after the app was killed ---
 
     private fun backup(
