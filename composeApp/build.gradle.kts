@@ -34,6 +34,11 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.androidx.activity.compose)
             implementation("androidx.datastore:datastore-preferences:1.1.1")
+            implementation(libs.ktor.client.okhttp)
+            implementation(libs.play.services.auth)
+        }
+        iosMain.dependencies {
+            implementation(libs.ktor.client.darwin)
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -52,10 +57,12 @@ kotlin {
             implementation(libs.kotlinx.datetime)
             implementation(libs.navigation.compose)
             implementation(libs.datastore.preferences)
+            implementation(libs.ktor.client.core)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.ktor.client.mock)
         }
     }
 }
