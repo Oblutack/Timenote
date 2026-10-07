@@ -34,6 +34,8 @@ import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import com.oblutack.timenote.getCurrentTimeMillis
 import kotlinx.coroutines.launch
+import com.oblutack.timenote.di.LocalAppContainer
+import com.oblutack.timenote.sync.describeSyncResult
 
 /**
  * Developer-only panel (shown in debug builds only) to try Google Drive for real: connect, then run the round trip
@@ -87,6 +89,22 @@ fun DriveDebugPanel(session: DriveSession) {
             colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
         ) { Text(if (running) "Running..." else "Run round-trip test") }
 
+        val engine = LocalAppContainer.current.syncEngine
+        if (engine != null) {
+            Button(
+                onClick = {
+                    running = true
+                    log.clear()
+                    scope.launch {
+                        log += describeSyncResult(engine.sync())
+                        running = false
+                    }
+                },
+                enabled = status == DriveStatus.Connected && !running,
+                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+            ) { Text("Sync now (notes and voice memos)") }
+        }
+
         Text("Cross-app check", color = TextSecondary, fontSize = 13.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
@@ -124,6 +142,16 @@ fun DriveDebugPanel(session: DriveSession) {
                 }
             ) { Text("Clean up") }
         }
+        OutlinedButton(
+            enabled = status == DriveStatus.Connected && !running,
+            onClick = {
+                scope.launch {
+                    log.clear()
+                    try { log += "WIPED ${deleteEverythingInAppFolder(session.store)} file(s) from the cloud folder" }
+                    catch (e: RemoteException) { log += "FAIL: ${e.message}" }
+                }
+            }
+        ) { Text("Wipe ALL cloud data (test account only)") }
 
         if (log.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))

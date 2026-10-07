@@ -7,6 +7,9 @@ object SyncKind {
     const val NOTE = "note"
     const val FOLDER = "folder"
     const val TAG = "tag"
+
+    /** Voice memo files: the id is the file name. Only used in sync_state. */
+    const val AUDIO = "audio"
 }
 
 /**

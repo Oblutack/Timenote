@@ -22,6 +22,10 @@ import java.io.File
 import com.oblutack.timenote.backup.AndroidBackupRunner
 import com.oblutack.timenote.backup.BackupService
 import com.oblutack.timenote.drive.AndroidDriveSession
+import com.oblutack.timenote.sync.AndroidAudioNetworkPolicy
+import com.oblutack.timenote.sync.AndroidAudioStorage
+import com.oblutack.timenote.sync.AudioSync
+import com.oblutack.timenote.sync.SyncEngine
 
 // DataStore must be a process-wide singleton, hence the top-level delegate
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
@@ -52,9 +56,24 @@ class TimenoteApplication : Application() {
         val settingsRepository = SettingsRepository(dataStore)
 
         val audioDir = File(filesDir, "voice_memos")
+        val dao = database.timenoteDao()
+        val sessionRepository = SessionRepository(dao, appScope, settingsRepository, settingsRepository)
+
+        // Google Drive sync: built here, started by nothing yet (the debug panel can run it; the settings screen comes later)
+        val drive = AndroidDriveSession(this)
+        val audioSync = AudioSync(dao, drive.store, AndroidAudioStorage(audioDir), AndroidAudioNetworkPolicy(this, settingsRepository))
+        val syncEngine = SyncEngine(
+            dao = dao,
+            remote = drive.store,
+            checkpoint = settingsRepository,
+            deviceIdSource = settingsRepository,
+            writeLock = sessionRepository.writeLock,
+            accountId = { drive.accountId() },
+            audio = audioSync
+        )
 
         container = AppContainer(
-            sessionRepository = SessionRepository(database.timenoteDao(), appScope, settingsRepository, settingsRepository),
+            sessionRepository = sessionRepository,
             settingsRepository = settingsRepository,
             timerServiceManager = AndroidTimerServiceManager(this),
             audioRecorder = AndroidAudioRecorder(this),
@@ -69,7 +88,9 @@ class TimenoteApplication : Application() {
                 scope = appScope,
                 audioDir = audioDir
             ),
-            driveSession = AndroidDriveSession(this)
+            driveSession = drive,
+            syncEngine = syncEngine,
+            audioFetcher = audioSync
         )
 
         // Move memos recorded by older versions out of the OS-clearable cache directory

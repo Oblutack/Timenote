@@ -19,6 +19,12 @@ data class SyncStats(
     val deletedRemotely: Int = 0,
     /** Old deletion records that were cleaned up (see [TOMBSTONE_TTL_MS]). */
     val compacted: Int = 0,
+    val audioUploaded: Int = 0,
+    /** Voice memos that could not be uploaded this time (they are tried again next run). */
+    val audioFailed: Int = 0,
+    val audioRemovedFromCloud: Int = 0,
+    /** Why the first voice memo upload failed, if one did. */
+    val audioError: String? = null,
     /** Cloud files that were left alone: written by a newer app version, or damaged. */
     val skipped: Int = 0
 )
@@ -63,7 +69,9 @@ class SyncEngine(
     writeLock: WriteLock = WriteLock(),
     private val now: () -> Long = ::getCurrentTimeMillis,
     /** Identifies the signed-in Google account; null when the platform cannot tell (the guard is then off). */
-    private val accountId: suspend () -> String? = { null }
+    private val accountId: suspend () -> String? = { null },
+    /** Voice memos; null when audio is not synced. */
+    private val audio: AudioSync? = null
 ) {
     private val writeLock = writeLock
     private val applier = SyncApplier(dao, deviceIdSource, writeLock, now)
@@ -127,6 +135,7 @@ class SyncEngine(
             deleteRemotelyWhatWasDeletedHere()
             val uploaded = pushLocalChanges()
             if (uploaded > 0) token = pullChanges(token) // sees other devices' writes made meanwhile
+            syncVoiceMemos()
             removeDuplicateFiles()
             compactOldDeletionRecords()
             checkpoint.savePageToken(token) // only now: the run is complete
@@ -140,6 +149,8 @@ class SyncEngine(
         private suspend fun pullEverything() {
             val byName = remote.list().groupBy { it.name }
             for ((name, files) in byName) {
+                val memo = SyncPaths.parseAudio(name)
+                if (memo != null) { noteVoiceMemo(memo, files.first()); continue }
                 val (kind, id) = SyncPaths.parse(name) ?: continue
                 // The same name twice (two devices created it at once): merge both, keep one file, delete the rest
                 val ordered = files.sortedWith(compareBy({ it.modifiedTime ?: "" }, { it.id }))
@@ -166,7 +177,25 @@ class SyncEngine(
             return newStart ?: startToken
         }
 
+        /** Voice memos are only noted here (which cloud file holds which memo); they are downloaded when played. */
+        private suspend fun noteVoiceMemo(name: String, file: RemoteFile) {
+            val known = states[SyncKind.AUDIO to name]
+            if (known != null && known.remoteFileId == file.id) return
+            putState(SyncStateEntity(SyncKind.AUDIO, name, file.id, now(), null, file.md5))
+        }
+
+        private suspend fun syncVoiceMemos() {
+            val result = audio?.run() ?: return
+            stats = stats.copy(
+                audioUploaded = stats.audioUploaded + result.uploaded,
+                audioFailed = stats.audioFailed + result.failed,
+                audioRemovedFromCloud = stats.audioRemovedFromCloud + result.removedFromCloud,
+                audioError = stats.audioError ?: result.firstError
+            )
+        }
+
         private suspend fun handleChangedFile(file: RemoteFile) {
+            SyncPaths.parseAudio(file.name)?.let { noteVoiceMemo(it, file); return }
             val (kind, id) = SyncPaths.parse(file.name) ?: return
             val state = states[kind to id]
             // Our own upload, or nothing new since we last looked
@@ -227,6 +256,7 @@ class SyncEngine(
         private suspend fun handleRemoteRemoval(fileId: String) {
             val state = states.values.find { it.remoteFileId == fileId } ?: return // not ours / already handled
             val key = state.entityKind to state.entityId
+            if (state.entityKind == SyncKind.AUDIO) { forget(key); return } // the memo left the cloud; the local file stays
             val currentHash = serializeLocal(state.entityKind, state.entityId)?.let(::contentHash)
             val unchangedSinceSync = currentHash != null && currentHash == state.contentHash
 

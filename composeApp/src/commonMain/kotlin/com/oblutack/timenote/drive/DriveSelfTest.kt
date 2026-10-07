@@ -77,3 +77,13 @@ suspend fun deleteDebugFiles(store: RemoteStore): Int {
     files.forEach { store.delete(it.id) }
     return files.size
 }
+
+/**
+ * Empties the whole app folder. For testing sync on a throw-away account only: it deletes real notes and voice memos
+ * stored by the app. Returns how many files were removed.
+ */
+suspend fun deleteEverythingInAppFolder(store: RemoteStore): Int {
+    val files = store.list()
+    files.forEach { store.delete(it.id) }
+    return files.size
+}

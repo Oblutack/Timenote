@@ -22,6 +22,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val ACTIVE_SESSION_BACKUP = stringPreferencesKey("active_session_backup")
     private val DEFAULT_TAGS_SEEDED = booleanPreferencesKey("default_tags_seeded")
     private val DEVICE_ID = stringPreferencesKey("device_id")
+    private val VOICE_WIFI_ONLY = booleanPreferencesKey("voice_wifi_only")
     private val SYNC_PAGE_TOKEN = stringPreferencesKey("sync_page_token")
     private val SYNC_ACCOUNT = stringPreferencesKey("sync_linked_account")
 
@@ -32,6 +33,17 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     override suspend fun markSeeded() {
         dataStore.edit { it[DEFAULT_TAGS_SEEDED] = true }
+    }
+
+    // --- VOICE MEMO UPLOADS: Wi-Fi only (on unless the user turns it off) ---
+    val voiceWifiOnlyFlow: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[VOICE_WIFI_ONLY] ?: true }
+
+    suspend fun voiceWifiOnly(): Boolean = voiceWifiOnlyFlow.first()
+
+    suspend fun setVoiceWifiOnly(enabled: Boolean) {
+        dataStore.edit { it[VOICE_WIFI_ONLY] = enabled }
     }
 
     // --- SYNC CHECKPOINT (see SyncCheckpoint) ---

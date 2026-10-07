@@ -9,6 +9,16 @@ object SyncPaths {
     const val TAGS_DIR = "tags/"
     const val AUDIO_DIR = "audio/"
 
+    /** "audio/<fileName>" */
+    fun audio(name: String): String = "$AUDIO_DIR$name"
+
+    /** "audio/<fileName>" to the file name; null for anything else (or names with folders in them). */
+    fun parseAudio(path: String): String? {
+        if (!path.startsWith(AUDIO_DIR)) return null
+        val name = path.removePrefix(AUDIO_DIR)
+        return name.takeIf { it.isNotEmpty() && '/' !in it }
+    }
+
     fun of(kind: String, id: String): String = when (kind) {
         SyncKind.NOTE -> "$NOTES_DIR$id.json"
         SyncKind.FOLDER -> "$FOLDERS_DIR$id.json"

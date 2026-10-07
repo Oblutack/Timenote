@@ -55,4 +55,22 @@ class SettingsRepositoryTest {
         repo.saveActiveSession(null)
         assertNull(repo.activeSessionBackupFlow.first())
     }
+
+    @Test fun voiceMemosUploadOnWifiOnlyUnlessTheUserChangesIt() = runAppTest {
+        val repo = newRepository()
+        assertEquals(true, repo.voiceWifiOnly(), "on by default")
+        repo.setVoiceWifiOnly(false)
+        assertEquals(false, repo.voiceWifiOnly())
+        repo.setVoiceWifiOnly(true)
+        assertEquals(true, repo.voiceWifiOnlyFlow.first())
+    }
+
+    @Test fun theSyncCheckpointAndLinkedAccountPersist() = runAppTest {
+        val repo = newRepository()
+        assertNull(repo.pageToken()); assertNull(repo.linkedAccount())
+        repo.savePageToken("42"); repo.saveLinkedAccount("acct-1")
+        assertEquals("42", repo.pageToken()); assertEquals("acct-1", repo.linkedAccount())
+        repo.savePageToken(null); repo.saveLinkedAccount(null)
+        assertNull(repo.pageToken()); assertNull(repo.linkedAccount())
+    }
 }
