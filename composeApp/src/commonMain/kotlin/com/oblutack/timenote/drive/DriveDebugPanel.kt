@@ -32,6 +32,7 @@ import com.oblutack.timenote.DefaultAccentColor
 import com.oblutack.timenote.SurfaceDark
 import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.getCurrentTimeMillis
 import kotlinx.coroutines.launch
 
 /**
@@ -83,6 +84,44 @@ fun DriveDebugPanel(session: DriveSession) {
             enabled = status == DriveStatus.Connected && !running,
             colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
         ) { Text(if (running) "Running..." else "Run round-trip test") }
+
+        Text("Cross-app check", color = TextSecondary, fontSize = 13.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                enabled = status == DriveStatus.Connected && !running,
+                onClick = {
+                    scope.launch {
+                        log.clear()
+                        try {
+                            val file = leaveWebCheckFile(session.store, getCurrentTimeMillis())
+                            log += "left ${file.name} in the app folder (id ${file.id})"
+                        } catch (e: RemoteException) { log += "FAIL: ${e.message}" }
+                    }
+                }
+            ) { Text("Leave file") }
+            OutlinedButton(
+                enabled = status == DriveStatus.Connected && !running,
+                onClick = {
+                    scope.launch {
+                        log.clear()
+                        try {
+                            val lines = describeAppFolder(session.store)
+                            if (lines.isEmpty()) log.add("app folder is empty") else log.addAll(lines)
+                        } catch (e: RemoteException) { log += "FAIL: ${e.message}" }
+                    }
+                }
+            ) { Text("List folder") }
+            OutlinedButton(
+                enabled = status == DriveStatus.Connected && !running,
+                onClick = {
+                    scope.launch {
+                        log.clear()
+                        try { log += "deleted ${deleteDebugFiles(session.store)} debug file(s)" }
+                        catch (e: RemoteException) { log += "FAIL: ${e.message}" }
+                    }
+                }
+            ) { Text("Clean up") }
+        }
 
         if (log.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))

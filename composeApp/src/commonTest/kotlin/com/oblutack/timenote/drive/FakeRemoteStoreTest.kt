@@ -110,4 +110,27 @@ class FakeRemoteStoreTest {
         assertTrue(log.last().startsWith("FAIL create file"), log.toString())
         assertTrue(log.last().contains("storage is full"), log.toString())
     }
+
+    // ---------------------------------------------------------------- debug panel helpers
+
+    @Test fun theWebCheckFileIsLeftOnceAndReplacedNotDuplicated() = runTest {
+        val store = FakeRemoteStore()
+        leaveWebCheckFile(store, now = 1)
+        leaveWebCheckFile(store, now = 2)
+        val files = store.list()
+        assertEquals(listOf(WEB_CHECK_FILE), files.map { it.name })
+        assertTrue(store.download(files.single().id).decodeToString().contains(""""at":2"""))
+    }
+
+    @Test fun theFolderCanBeDescribedAndCleanedUpWithoutTouchingRealData() = runTest {
+        val store = FakeRemoteStore()
+        assertTrue(describeAppFolder(store).isEmpty())
+        leaveWebCheckFile(store, now = 1)
+        store.upload("debug/from-web.json", byteArrayOf())
+        store.upload("notes/real.json", byteArrayOf(1, 2, 3))
+
+        assertEquals(3, describeAppFolder(store).size)
+        assertEquals(2, deleteDebugFiles(store))
+        assertEquals(listOf("notes/real.json (3 bytes)"), describeAppFolder(store))
+    }
 }

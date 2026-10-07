@@ -52,3 +52,28 @@ suspend fun runDriveSelfTest(store: RemoteStore, log: (String) -> Unit): Boolean
         step("delete file") { store.delete(fileId); store.list().none { it.id == fileId } } &&
         step("changes feed shows the removal") { changesSince(startToken).any { it.fileId == fileId && it.removed } }
 }
+
+/** Prefix of the files the debug panel creates. They are never real data. */
+private const val DEBUG_PREFIX = "debug/"
+
+/**
+ * For the "can another app of the same Google project (a web app) see this folder?" check: leaves a small file
+ * in the app folder so it can be looked at from outside. Replaces an earlier one with the same name.
+ */
+suspend fun leaveWebCheckFile(store: RemoteStore, now: Long): RemoteFile {
+    store.list().filter { it.name == WEB_CHECK_FILE }.forEach { store.delete(it.id) }
+    return store.upload(WEB_CHECK_FILE, """{"v":1,"from":"android","at":$now}""".encodeToByteArray())
+}
+
+const val WEB_CHECK_FILE = "debug/web-check.json"
+
+/** What is in the app folder, one line per file (name and size), for the debug panel. */
+suspend fun describeAppFolder(store: RemoteStore): List<String> =
+    store.list().sortedBy { it.name }.map { "${it.name} (${it.size ?: "?"} bytes)" }
+
+/** Removes every file the debug panel created (also ones created from elsewhere under "debug/"). Returns how many. */
+suspend fun deleteDebugFiles(store: RemoteStore): Int {
+    val files = store.list().filter { it.name.startsWith(DEBUG_PREFIX) }
+    files.forEach { store.delete(it.id) }
+    return files.size
+}
