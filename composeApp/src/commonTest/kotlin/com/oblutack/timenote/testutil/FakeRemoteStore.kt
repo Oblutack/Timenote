@@ -27,6 +27,12 @@ class FakeRemoteStore(private val pageSize: Int = 1000) : RemoteStore {
     var calls = 0
         private set
 
+    /**
+     * Runs just before every remote call, with the call number. Lets a test make ANOTHER device act in the middle of
+     * this device's sync run (a real race), for example to overwrite a file between a pull and a push.
+     */
+    var beforeCall: (suspend (callNumber: Int) -> Unit)? = null
+
     /** The next remote call (any kind) fails with [error]. Queue several to fail several calls in a row. */
     fun failNext(error: RemoteException, times: Int = 1) = repeat(times) { failures.addLast(error) }
 
@@ -35,6 +41,7 @@ class FakeRemoteStore(private val pageSize: Int = 1000) : RemoteStore {
 
     private suspend fun enter() {
         calls++
+        beforeCall?.invoke(calls)
         if (latencyMs > 0) delay(latencyMs)
         failures.removeFirstOrNull()?.let { throw it }
     }
