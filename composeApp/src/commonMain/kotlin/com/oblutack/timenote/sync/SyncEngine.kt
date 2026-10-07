@@ -17,6 +17,8 @@ data class SyncStats(
     val uploaded: Int = 0,
     val removedLocally: Int = 0,
     val deletedRemotely: Int = 0,
+    /** Old deletion records that were cleaned up (see [TOMBSTONE_TTL_MS]). */
+    val compacted: Int = 0,
     /** Cloud files that were left alone: written by a newer app version, or damaged. */
     val skipped: Int = 0
 )
@@ -35,7 +37,16 @@ sealed class SyncResult {
 
     /** A sync was already in progress. */
     data object AlreadyRunning : SyncResult()
+
+    /**
+     * The signed-in Google account is not the one this device has been syncing with. Nothing was touched. The user
+     * decides: go back to [linked], or call [SyncEngine.switchAccount] to merge this device's data into [current].
+     */
+    data class AccountChanged(val linked: String, val current: String) : SyncResult()
 }
+
+/** How long a deletion record is kept before it is cleaned up: a device offline for longer may bring the item back. */
+const val TOMBSTONE_TTL_MS = 180L * 24 * 60 * 60 * 1000
 
 /**
  * One sync run: pull what changed in the cloud and merge it in, remove what was permanently deleted here, push what
@@ -50,7 +61,9 @@ class SyncEngine(
     private val checkpoint: SyncCheckpoint,
     private val deviceIdSource: DeviceIdSource,
     writeLock: WriteLock = WriteLock(),
-    private val now: () -> Long = ::getCurrentTimeMillis
+    private val now: () -> Long = ::getCurrentTimeMillis,
+    /** Identifies the signed-in Google account; null when the platform cannot tell (the guard is then off). */
+    private val accountId: suspend () -> String? = { null }
 ) {
     private val writeLock = writeLock
     private val applier = SyncApplier(dao, deviceIdSource, writeLock, now)
@@ -59,7 +72,35 @@ class SyncEngine(
     suspend fun sync(): SyncResult {
         if (!running.tryLock()) return SyncResult.AlreadyRunning
         try {
+            val current = try { accountId() } catch (e: RemoteException) { return resultFor(e) }
+            val linked = checkpoint.linkedAccount()
+            if (current != null && linked != null && current != linked) return SyncResult.AccountChanged(linked, current)
+            if (current != null && linked == null) checkpoint.saveLinkedAccount(current)
             return Run().execute()
+        } finally {
+            running.unlock()
+        }
+    }
+
+    private fun resultFor(e: RemoteException): SyncResult = when (e) {
+        is RemoteException.NeedsSignIn, is RemoteException.Unauthorized -> SyncResult.NeedsSignIn
+        is RemoteException.StorageFull -> SyncResult.StorageFull
+        else -> SyncResult.Failed(e)
+    }
+
+    /**
+     * The user chose to sync with the currently signed-in account instead of the linked one. Nothing local is deleted:
+     * the old account's file ids and unfinished deletions are forgotten, and the next sync merges this device's data
+     * with whatever the new account already holds.
+     */
+    suspend fun switchAccount() {
+        val current = try { accountId() } catch (e: RemoteException) { null } ?: return
+        running.lock()
+        try {
+            dao.clearSyncStates()
+            dao.clearPendingRemoteDeletes()
+            checkpoint.savePageToken(null)
+            checkpoint.saveLinkedAccount(current)
         } finally {
             running.unlock()
         }
@@ -70,6 +111,7 @@ class SyncEngine(
         private val states = HashMap<Pair<String, String>, SyncStateEntity>()
         private val pendingDeletes = HashSet<Pair<String, String>>()
         private val duplicateFiles = mutableListOf<String>()
+        private val startedAt = now()
 
         suspend fun execute(): SyncResult = try {
             dao.getAllSyncStates().forEach { states[it.entityKind to it.entityId] = it }
@@ -86,16 +128,11 @@ class SyncEngine(
             val uploaded = pushLocalChanges()
             if (uploaded > 0) token = pullChanges(token) // sees other devices' writes made meanwhile
             removeDuplicateFiles()
+            compactOldDeletionRecords()
             checkpoint.savePageToken(token) // only now: the run is complete
             SyncResult.Done(stats)
-        } catch (e: RemoteException.NeedsSignIn) {
-            SyncResult.NeedsSignIn
-        } catch (e: RemoteException.Unauthorized) {
-            SyncResult.NeedsSignIn
-        } catch (e: RemoteException.StorageFull) {
-            SyncResult.StorageFull
         } catch (e: RemoteException) {
-            SyncResult.Failed(e)
+            resultFor(e)
         }
 
         // ------------------------------------------------------------------ pull
@@ -195,12 +232,14 @@ class SyncEngine(
 
             if (currentHash == null) {
                 forget(key) // already gone here too
-            } else if (unchangedSinceSync && state.entityKind != SyncKind.TAG) {
-                // Deleted on another device and not touched here since: follow the deletion
+            } else if (unchangedSinceSync) {
+                // Deleted on another device (or cleaned up long after it was deleted) and not touched here since:
+                // follow the deletion
                 writeLock.run {
                     when (state.entityKind) {
                         SyncKind.NOTE -> dao.hardDeleteTimenote(state.entityId)
                         SyncKind.FOLDER -> dao.hardDeleteFolder(state.entityId)
+                        else -> dao.hardDeleteTag(state.entityId)
                     }
                     dao.deleteFieldVersions(state.entityKind, state.entityId)
                     dao.deleteConflictsFor(state.entityId)
@@ -208,7 +247,7 @@ class SyncEngine(
                 forget(key)
                 stats = stats.copy(removedLocally = stats.removedLocally + 1)
             } else {
-                // Edited here after the last sync (or a tag): data safety wins, the item is uploaded again as new
+                // Edited here after the last sync: data safety wins, the item is uploaded again as new
                 putState(state.copy(remoteFileId = null, contentHash = null, remoteMd5 = null))
             }
         }
@@ -264,6 +303,34 @@ class SyncEngine(
                 stats = stats.copy(uploaded = stats.uploaded + 1)
             }
             return uploaded
+        }
+
+        /**
+         * Cleans up deletion records older than [TOMBSTONE_TTL_MS]: tags that were deleted long ago (and whose deletion
+         * has reached the cloud) are removed for good, and so are old "this tag/memo was removed from the note" marks.
+         */
+        private suspend fun compactOldDeletionRecords() {
+            val cutoff = now() - TOMBSTONE_TTL_MS
+            dao.deleteRemovedMembershipsOlderThan(cutoff)
+            for (tag in dao.getAllTagsOnce()) {
+                val deletedAt = tag.deletedAt
+                if (!tag.isDeleted || deletedAt == null || deletedAt >= cutoff) continue
+                val key = SyncKind.TAG to tag.id
+                val state = states[key] ?: continue
+                // Other devices must have had a whole run to see the deletion first: not one that was just uploaded
+                if (state.syncedAt >= startedAt) continue
+                val inCloud = state.contentHash != null && state.contentHash == serializeLocal(key.first, key.second)?.let(::contentHash)
+                if (!inCloud) continue // the deletion itself has not been uploaded yet: keep the record until it has
+                state.remoteFileId?.let {
+                    try { remote.delete(it) } catch (e: RemoteException.NotFound) { /* already gone */ }
+                }
+                writeLock.run {
+                    dao.hardDeleteTag(tag.id)
+                    dao.deleteFieldVersions(SyncKind.TAG, tag.id)
+                }
+                forget(key)
+                stats = stats.copy(compacted = stats.compacted + 1)
+            }
         }
 
         private suspend fun removeDuplicateFiles() {

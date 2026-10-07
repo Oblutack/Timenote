@@ -38,6 +38,10 @@ object SyncPaths {
 interface SyncCheckpoint {
     suspend fun pageToken(): String?
     suspend fun savePageToken(token: String?)
+
+    /** The Google account this device syncs with, once known. A different account must never be mixed in silently. */
+    suspend fun linkedAccount(): String?
+    suspend fun saveLinkedAccount(account: String?)
 }
 
 /** 64-bit FNV-1a over the text, as hex. Only used to notice that something changed, not for security. */

@@ -47,7 +47,9 @@ fun DriveDebugPanel(session: DriveSession) {
     val log = remember { mutableStateListOf<String>() }
     var running by remember { mutableStateOf(false) }
 
+    var account by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(session) { session.check() }
+    LaunchedEffect(status) { account = if (status == DriveStatus.Connected) session.accountId() else null }
 
     Column(
         modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(SurfaceDark).padding(16.dp),
@@ -58,7 +60,7 @@ fun DriveDebugPanel(session: DriveSession) {
             when (val s = status) {
                 DriveStatus.Unknown -> "Checking..."
                 DriveStatus.SignedOut -> "Not connected"
-                DriveStatus.Connected -> "Connected"
+                DriveStatus.Connected -> "Connected" + (account?.let { " (account id $it)" } ?: " (account unknown)")
                 is DriveStatus.Problem -> "Problem: ${s.message}"
             },
             color = TextSecondary, fontSize = 13.sp

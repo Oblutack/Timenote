@@ -85,6 +85,12 @@ class AndroidDriveSession(context: Context) : DriveSession {
         _status.value = statusOf(tokens.accessToken())
     }
 
+    override suspend fun accountId(): String? = try {
+        store.accountId()
+    } catch (e: RemoteException) {
+        null
+    }
+
     fun onConsentResult(data: Intent?) {
         _status.value = statusOf(tokens.completeConsent(data))
     }

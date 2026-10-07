@@ -25,6 +25,9 @@ interface DriveSession {
 
     /** Tries to get a token without showing any UI and updates [status]. */
     suspend fun check()
+
+    /** Identifies the connected Google account (null when not connected or unknown). */
+    suspend fun accountId(): String?
 }
 
 /** Returns a function that opens Google's consent screen so the user can connect their Drive. */

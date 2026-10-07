@@ -137,6 +137,13 @@ class KtorDriveClientTest {
         assertEquals("true", changesRequest.url.parameters["includeRemoved"])
     }
 
+    @Test fun theAccountIsIdentifiedByDrivesPermissionId() = runTest {
+        val api = client { json("""{"user":{"permissionId":"1234567890"}}""") }
+        assertEquals("1234567890", api.accountId())
+        assertEquals("/drive/v3/about", requests.single().url.encodedPath)
+        assertEquals("user(permissionId)", requests.single().url.parameters["fields"])
+    }
+
     // ---------------------------------------------------------------- tokens
 
     @Test fun anExpiredTokenIsReplacedOnceAndTheRequestRepeated() = runTest {

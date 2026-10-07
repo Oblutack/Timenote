@@ -102,6 +102,10 @@ class KtorDriveClient(
         )
     }
 
+    override suspend fun accountId(): String =
+        call(HttpMethod.Get, "/drive/v3/about", query = mapOf("fields" to "user(permissionId)"))
+            .parse<AboutDto>().user.permissionId
+
     // ------------------------------------------------------------------ plumbing
 
     private class Answer(val bytes: ByteArray)
@@ -223,6 +227,8 @@ class KtorDriveClient(
 
     @Serializable private class FileListDto(val nextPageToken: String? = null, val files: List<FileDto> = emptyList())
     @Serializable private class StartTokenDto(val startPageToken: String)
+    @Serializable private class AboutUserDto(val permissionId: String)
+    @Serializable private class AboutDto(val user: AboutUserDto)
 
     @Serializable
     private class ChangeDto(val fileId: String = "", val removed: Boolean = false, val file: FileDto? = null)

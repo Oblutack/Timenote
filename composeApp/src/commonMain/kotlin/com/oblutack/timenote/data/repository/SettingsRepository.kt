@@ -23,6 +23,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val DEFAULT_TAGS_SEEDED = booleanPreferencesKey("default_tags_seeded")
     private val DEVICE_ID = stringPreferencesKey("device_id")
     private val SYNC_PAGE_TOKEN = stringPreferencesKey("sync_page_token")
+    private val SYNC_ACCOUNT = stringPreferencesKey("sync_linked_account")
 
     // --- DEFAULT TAGS (see DefaultTagsState) ---
     override suspend fun isSeeded(): Boolean = dataStore.data
@@ -40,6 +41,14 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     override suspend fun savePageToken(token: String?) {
         dataStore.edit { if (token == null) it.remove(SYNC_PAGE_TOKEN) else it[SYNC_PAGE_TOKEN] = token }
+    }
+
+    override suspend fun linkedAccount(): String? = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .first()[SYNC_ACCOUNT]
+
+    override suspend fun saveLinkedAccount(account: String?) {
+        dataStore.edit { if (account == null) it.remove(SYNC_ACCOUNT) else it[SYNC_ACCOUNT] = account }
     }
 
     // --- DEVICE ID (see DeviceIdSource) ---

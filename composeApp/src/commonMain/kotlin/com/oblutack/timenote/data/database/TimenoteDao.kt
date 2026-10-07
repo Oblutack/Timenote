@@ -158,6 +158,20 @@ interface TimenoteDao {
     @Query("DELETE FROM note_conflicts WHERE noteId = :noteId")
     suspend fun deleteConflictsFor(noteId: String)
 
+    // --- CLEAN-UP of old deletion records (see SyncEngine) ---
+    @Query("DELETE FROM tags WHERE id = :id")
+    suspend fun hardDeleteTag(id: String)
+
+    @Query("DELETE FROM field_versions WHERE present = 0 AND updatedAt < :cutoff")
+    suspend fun deleteRemovedMembershipsOlderThan(cutoff: Long)
+
+    // Used when the user switches to another Google account: the old account's file ids mean nothing there
+    @Query("DELETE FROM sync_state")
+    suspend fun clearSyncStates()
+
+    @Query("DELETE FROM pending_remote_deletes")
+    suspend fun clearPendingRemoteDeletes()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSyncState(state: SyncStateEntity)
 

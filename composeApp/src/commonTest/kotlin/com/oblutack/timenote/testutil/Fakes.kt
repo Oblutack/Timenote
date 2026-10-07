@@ -145,6 +145,12 @@ class FakeTimenoteDao : TimenoteDao {
     override suspend fun deleteConflictsFor(noteId: String) {
         conflicts.value = conflicts.value.filterNot { it.noteId == noteId }
     }
+    override suspend fun hardDeleteTag(id: String) { tags.value = tags.value.filter { it.id != id } }
+    override suspend fun deleteRemovedMembershipsOlderThan(cutoff: Long) {
+        fieldVersions.removeAll { !it.present && it.updatedAt < cutoff }
+    }
+    override suspend fun clearSyncStates() { syncStates.clear() }
+    override suspend fun clearPendingRemoteDeletes() { pendingRemoteDeletes.clear() }
     override suspend fun upsertSyncState(state: SyncStateEntity) {
         syncStates.removeAll { it.entityKind == state.entityKind && it.entityId == state.entityId }
         syncStates += state
@@ -167,9 +173,11 @@ class FakeDataStore : DataStore<Preferences> {
 }
 
 /** In-memory stand-in for the persisted "default tags were already created" flag. */
-class FakeCheckpoint(var token: String? = null) : SyncCheckpoint {
+class FakeCheckpoint(var token: String? = null, var account: String? = null) : SyncCheckpoint {
     override suspend fun pageToken() = token
     override suspend fun savePageToken(token: String?) { this.token = token }
+    override suspend fun linkedAccount() = account
+    override suspend fun saveLinkedAccount(account: String?) { this.account = account }
 }
 
 class FakeDeviceId(private val id: String = "test-device") : DeviceIdSource {

@@ -381,6 +381,7 @@ class FailOnCall(
     override suspend fun delete(fileId: String) = run { tick(); inner.delete(fileId) }
     override suspend fun startPageToken() = run { tick(); inner.startPageToken() }
     override suspend fun changes(pageToken: String) = run { tick(); inner.changes(pageToken) }
+    override suspend fun accountId() = run { tick(); inner.accountId() }
 }
 
 private suspend fun SyncEngine.syncDone(): SyncStats = (sync() as SyncResult.Done).stats

@@ -44,6 +44,12 @@ interface RemoteStore {
     suspend fun startPageToken(): String
 
     suspend fun changes(pageToken: String): ChangesPage
+
+    /**
+     * Identifies the Google account behind this store (Drive's stable "permission id" of the user). Used to notice
+     * that the signed-in account is not the one this device has been syncing with.
+     */
+    suspend fun accountId(): String
 }
 
 /** What went wrong talking to the remote store, with enough detail to decide what to do next. */

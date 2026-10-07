@@ -73,6 +73,11 @@ class FakeRemoteStore(private val pageSize: Int = 1000) : RemoteStore {
         feed += Event(fileId, removed = true)
     }
 
+    /** The Google account this fake Drive belongs to. */
+    var account: String = "fake-account"
+
+    override suspend fun accountId(): String { enter(); return account }
+
     override suspend fun startPageToken(): String { enter(); return feed.size.toString() }
 
     override suspend fun changes(pageToken: String): ChangesPage {
