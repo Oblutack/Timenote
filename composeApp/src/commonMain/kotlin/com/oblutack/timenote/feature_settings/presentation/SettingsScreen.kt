@@ -41,6 +41,8 @@ import com.oblutack.timenote.di.LocalAppContainer
 import androidx.compose.material.icons.filled.Share
 import com.oblutack.timenote.backup.BackupStatus
 import com.oblutack.timenote.backup.rememberBackupLauncher
+import com.oblutack.timenote.drive.DriveDebugPanel
+import com.oblutack.timenote.drive.isDebugBuild
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -249,6 +251,13 @@ fun SettingsScreen(
                         Text("Add everything from a backup file. Nothing on this device is deleted.", color = TextSecondary, fontSize = 12.sp)
                     }
                 }
+            }
+
+            // --- DEVELOPER ONLY (debug builds) ---
+            val driveSession = LocalAppContainer.current.driveSession
+            if (driveSession != null && isDebugBuild()) {
+                Spacer(modifier = Modifier.height(32.dp))
+                DriveDebugPanel(driveSession)
             }
 
             Spacer(modifier = Modifier.height(32.dp))

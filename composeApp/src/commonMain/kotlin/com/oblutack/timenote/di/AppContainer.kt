@@ -10,6 +10,7 @@ import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import com.oblutack.timenote.core.AudioFiles
 import com.oblutack.timenote.backup.BackupRunner
+import com.oblutack.timenote.drive.DriveSession
 
 /**
  * Manual dependency injection: the platform entry point builds one of these and hands it to App().
@@ -25,6 +26,8 @@ class AppContainer(
     val audioFiles: AudioFiles,
     /** Export and import of a backup file (Settings). */
     val backupRunner: BackupRunner,
+    /** Google Drive connection (Android only for now; null where there is none). Used by the debug panel until sync ships. */
+    val driveSession: DriveSession? = null,
     /** The timer notification buttons emit here; TimerViewModel collects. */
     val serviceCommands: MutableSharedFlow<TimerServiceCommand> = MutableSharedFlow(extraBufferCapacity = 1)
 )

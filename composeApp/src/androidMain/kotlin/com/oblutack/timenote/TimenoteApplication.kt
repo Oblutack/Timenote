@@ -21,6 +21,7 @@ import com.oblutack.timenote.core.DirectoryAudioFiles
 import java.io.File
 import com.oblutack.timenote.backup.AndroidBackupRunner
 import com.oblutack.timenote.backup.BackupService
+import com.oblutack.timenote.drive.AndroidDriveSession
 
 // DataStore must be a process-wide singleton, hence the top-level delegate
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
@@ -67,7 +68,8 @@ class TimenoteApplication : Application() {
                 service = BackupService(database.timenoteDao(), settingsRepository),
                 scope = appScope,
                 audioDir = audioDir
-            )
+            ),
+            driveSession = AndroidDriveSession(this)
         )
 
         // Move memos recorded by older versions out of the OS-clearable cache directory
