@@ -38,6 +38,24 @@ interface RemoteStore {
 
     suspend fun download(fileId: String): ByteArray
 
+    /**
+     * Uploads a file of any size without holding it in memory: small files in one request, large ones in pieces that
+     * resume where they stopped after a connection problem. Replaces the content when [existingId] is given.
+     * [onProgress] receives (bytes sent so far, total).
+     */
+    suspend fun uploadFrom(
+        name: String,
+        source: ByteSource,
+        existingId: String? = null,
+        onProgress: (Long, Long) -> Unit = { _, _ -> }
+    ): RemoteFile
+
+    /**
+     * Downloads a file in pieces into [sink] (calling [ByteSink.finish] when complete, [ByteSink.abort] if it fails).
+     * [onProgress] receives (bytes received so far, total).
+     */
+    suspend fun downloadTo(fileId: String, sink: ByteSink, onProgress: (Long, Long) -> Unit = { _, _ -> })
+
     suspend fun delete(fileId: String)
 
     /** The position "now" in the changes feed; changes made after this are reported by [changes]. */

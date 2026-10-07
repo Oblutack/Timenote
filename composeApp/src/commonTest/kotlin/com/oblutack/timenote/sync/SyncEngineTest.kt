@@ -382,6 +382,10 @@ class FailOnCall(
     override suspend fun startPageToken() = run { tick(); inner.startPageToken() }
     override suspend fun changes(pageToken: String) = run { tick(); inner.changes(pageToken) }
     override suspend fun accountId() = run { tick(); inner.accountId() }
+    override suspend fun uploadFrom(name: String, source: com.oblutack.timenote.drive.ByteSource, existingId: String?, onProgress: (Long, Long) -> Unit) =
+        run { tick(); inner.uploadFrom(name, source, existingId, onProgress) }
+    override suspend fun downloadTo(fileId: String, sink: com.oblutack.timenote.drive.ByteSink, onProgress: (Long, Long) -> Unit) =
+        run { tick(); inner.downloadTo(fileId, sink, onProgress) }
 }
 
 private suspend fun SyncEngine.syncDone(): SyncStats = (sync() as SyncResult.Done).stats

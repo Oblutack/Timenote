@@ -102,6 +102,128 @@ class KtorDriveClient(
         )
     }
 
+    override suspend fun uploadFrom(name: String, source: ByteSource, existingId: String?, onProgress: (Long, Long) -> Unit): RemoteFile {
+        val total = source.size
+        if (total <= SMALL_UPLOAD_LIMIT) {
+            val bytes = source.read(0, total.toInt())
+            return upload(name, bytes, existingId).also { onProgress(total, total) }
+        }
+        return resumableUpload(name, source, existingId, onProgress)
+    }
+
+    override suspend fun downloadTo(fileId: String, sink: ByteSink, onProgress: (Long, Long) -> Unit) {
+        try {
+            val total = call(HttpMethod.Get, "/drive/v3/files/$fileId", query = mapOf("fields" to "size")).parse<SizeDto>().size?.toLongOrNull()
+                ?: throw RemoteException.Protocol("Drive did not report the file size")
+            var offset = 0L
+            while (offset < total) {
+                val last = minOf(total, offset + DOWNLOAD_CHUNK) - 1
+                val piece = call(
+                    HttpMethod.Get, "/drive/v3/files/$fileId", query = mapOf("alt" to "media"),
+                    headers = mapOf(HttpHeaders.Range to "bytes=$offset-$last")
+                ).bytes
+                if (piece.isEmpty()) throw RemoteException.Protocol("Drive returned an empty piece")
+                sink.write(piece)
+                offset += piece.size
+                onProgress(offset, total)
+            }
+            sink.finish()
+        } catch (e: Throwable) {
+            sink.abort()
+            throw e
+        }
+    }
+
+    /**
+     * Drive's resumable protocol: open a session, send the file in pieces, and after any interruption ask the
+     * session how much arrived and carry on from there. A session that expired is replaced by a new one.
+     */
+    private suspend fun resumableUpload(name: String, source: ByteSource, existingId: String?, onProgress: (Long, Long) -> Unit): RemoteFile {
+        val total = source.size
+        var session: String? = null
+        var offset = 0L
+        var interrupted = false
+        return retry.run {
+            try {
+                while (true) {
+                    if (session == null) {
+                        session = openUploadSession(name, total, existingId)
+                        offset = 0
+                    } else if (interrupted) {
+                        val status = uploadStatus(session!!, total)
+                        status.finished?.let { return@run it }
+                        offset = status.received
+                    }
+                    interrupted = true // from now on any retry first asks the session where it stands
+                    while (offset < total) {
+                        val end = minOf(total, offset + UPLOAD_CHUNK)
+                        val piece = source.read(offset, (end - offset).toInt())
+                        val answer = putPiece(session!!, offset, end - 1, total, piece)
+                        answer.finished?.let { onProgress(total, total); return@run it }
+                        offset = answer.received
+                        onProgress(offset, total)
+                    }
+                    // everything was sent but no final answer arrived: ask once more
+                    val status = uploadStatus(session!!, total)
+                    status.finished?.let { return@run it }
+                    offset = status.received
+                }
+                @Suppress("UNREACHABLE_CODE") error("unreachable")
+            } catch (e: RemoteException.NotFound) {
+                session = null // the session expired or was deleted: start over with a new one
+                interrupted = false
+                throw RemoteException.Network(e) // retryable, so the policy tries again
+            }
+        }
+    }
+
+    private class UploadProgress(val received: Long, val finished: RemoteFile?)
+
+    private suspend fun openUploadSession(name: String, total: Long, existingId: String?): String {
+        val metadata = if (existingId == null) json.encodeToString(CreateMetadata(name, listOf(APP_FOLDER))) else "{}"
+        val answer = callRaw(
+            if (existingId == null) HttpMethod.Post else HttpMethod.Patch,
+            if (existingId == null) "$baseUrl/upload/drive/v3/files" else "$baseUrl/upload/drive/v3/files/$existingId",
+            query = mapOf("uploadType" to "resumable", "fields" to FILE_FIELDS),
+            headers = mapOf("X-Upload-Content-Type" to "application/octet-stream", "X-Upload-Content-Length" to total.toString()),
+            body = metadata.encodeToByteArray(),
+            contentType = ContentType.parse("application/json; charset=UTF-8")
+        )
+        return answer.headers[HttpHeaders.Location] ?: throw RemoteException.Protocol("Drive did not return an upload session")
+    }
+
+    private suspend fun putPiece(session: String, first: Long, last: Long, total: Long, piece: ByteArray): UploadProgress {
+        val answer = callRaw(
+            HttpMethod.Put, session,
+            headers = mapOf(HttpHeaders.ContentRange to "bytes $first-$last/$total"),
+            body = piece, contentType = ContentType.Application.OctetStream, allow308 = true
+        )
+        return progressOf(answer)
+    }
+
+    private suspend fun uploadStatus(session: String, total: Long): UploadProgress {
+        val answer = callRaw(
+            HttpMethod.Put, session,
+            headers = mapOf(HttpHeaders.ContentRange to "bytes */$total"),
+            body = ByteArray(0), contentType = ContentType.Application.OctetStream, allow308 = true
+        )
+        return progressOf(answer)
+    }
+
+    private fun progressOf(answer: RawAnswer): UploadProgress {
+        if (answer.status == 308) {
+            // "Range: bytes=0-N" means the first N+1 bytes arrived; no Range header means nothing arrived yet
+            val received = answer.headers[HttpHeaders.Range]?.substringAfter('-', "")?.toLongOrNull()?.plus(1) ?: 0L
+            return UploadProgress(received, null)
+        }
+        val file = try {
+            json.decodeFromString<FileDto>(answer.bytes.decodeToString()).toFile()
+        } catch (e: Exception) {
+            throw RemoteException.Protocol("Unexpected answer from Drive: ${e.message}")
+        }
+        return UploadProgress(file.size ?: 0L, file)
+    }
+
     override suspend fun accountId(): String =
         call(HttpMethod.Get, "/drive/v3/about", query = mapOf("fields" to "user(permissionId)"))
             .parse<AboutDto>().user.permissionId
@@ -109,6 +231,65 @@ class KtorDriveClient(
     // ------------------------------------------------------------------ plumbing
 
     private class Answer(val bytes: ByteArray)
+
+    // Headers keeps names case-insensitive: Google sends "location" and "range" in lowercase
+    private class RawAnswer(val status: Int, val headers: io.ktor.http.Headers, val bytes: ByteArray)
+
+    /**
+     * One request to an absolute address (an upload session), with the same token handling as [call].
+     * With [allow308], "resume incomplete" is an ordinary answer instead of an error. Retrying is left to the caller,
+     * because after a failure an upload must first ask where it stands.
+     */
+    private suspend fun callRaw(
+        method: HttpMethod,
+        url: String,
+        query: Map<String, String> = emptyMap(),
+        headers: Map<String, String> = emptyMap(),
+        body: ByteArray? = null,
+        contentType: ContentType? = null,
+        allow308: Boolean = false
+    ): RawAnswer {
+        var refreshed = false
+        while (true) {
+            val token = when (val result = tokens.accessToken()) {
+                is TokenResult.Token -> result.value
+                TokenResult.NeedsSignIn -> throw RemoteException.NeedsSignIn()
+                is TokenResult.Failure -> throw RemoteException.Network(result.cause ?: IllegalStateException(result.message))
+            }
+            try {
+                val response: HttpResponse = try {
+                    http.request(url) {
+                        this.method = method
+                        url { query.forEach { (k, v) -> parameters.append(k, v) } }
+                        header(HttpHeaders.Authorization, "Bearer $token")
+                        headers.forEach { (k, v) -> header(k, v) }
+                        if (contentType != null) contentType(contentType)
+                        if (body != null) setBody(body)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw RemoteException.Network(e)
+                }
+                val bytes = try {
+                    response.body<ByteArray>()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    throw RemoteException.Network(e)
+                }
+                val status = response.status.value
+                if (response.status.isSuccess() || (allow308 && status == 308)) {
+                    return RawAnswer(status, response.headers, bytes)
+                }
+                throw errorFor(response, bytes.decodeToString())
+            } catch (e: RemoteException.Unauthorized) {
+                tokens.invalidate(token)
+                if (refreshed) throw e
+                refreshed = true
+            }
+        }
+    }
 
     private inline fun <reified T> Answer.parse(): T = try {
         json.decodeFromString<T>(bytes.decodeToString())
@@ -122,7 +303,8 @@ class KtorDriveClient(
         path: String,
         query: Map<String, String> = emptyMap(),
         body: ByteArray? = null,
-        contentType: ContentType? = null
+        contentType: ContentType? = null,
+        headers: Map<String, String> = emptyMap()
     ): Answer = retry.run {
         var refreshed = false
         while (true) {
@@ -132,7 +314,7 @@ class KtorDriveClient(
                 is TokenResult.Failure -> throw RemoteException.Network(result.cause ?: IllegalStateException(result.message))
             }
             try {
-                return@run send(method, path, query, body, contentType, token)
+                return@run send(method, path, query, body, contentType, token, headers)
             } catch (e: RemoteException.Unauthorized) {
                 tokens.invalidate(token)
                 if (refreshed) throw e
@@ -148,13 +330,15 @@ class KtorDriveClient(
         query: Map<String, String>,
         body: ByteArray?,
         contentType: ContentType?,
-        token: String
+        token: String,
+        extraHeaders: Map<String, String> = emptyMap()
     ): Answer {
         val response: HttpResponse = try {
             http.request(baseUrl + path) {
                 this.method = method
                 url { query.forEach { (k, v) -> parameters.append(k, v) } }
                 header(HttpHeaders.Authorization, "Bearer $token")
+                extraHeaders.forEach { (k, v) -> header(k, v) }
                 if (contentType != null) contentType(contentType)
                 if (body != null) setBody(body)
             }
@@ -227,6 +411,7 @@ class KtorDriveClient(
 
     @Serializable private class FileListDto(val nextPageToken: String? = null, val files: List<FileDto> = emptyList())
     @Serializable private class StartTokenDto(val startPageToken: String)
+    @Serializable private class SizeDto(val size: String? = null)
     @Serializable private class AboutUserDto(val permissionId: String)
     @Serializable private class AboutDto(val user: AboutUserDto)
 
@@ -244,5 +429,12 @@ class KtorDriveClient(
         const val APP_FOLDER = "appDataFolder"
         const val FILE_FIELDS = "id,name,modifiedTime,size,md5Checksum"
         const val BOUNDARY_SUFFIX = "f3a9c1d7b2e44a1c"
+
+        /** Up to this size a file is sent in one request; above it, as a resumable upload. */
+        const val SMALL_UPLOAD_LIMIT = 5L * 1024 * 1024
+
+        /** Piece sizes. Drive requires upload pieces to be a multiple of 256 KiB (except the last). */
+        const val UPLOAD_CHUNK = 2L * 1024 * 1024
+        const val DOWNLOAD_CHUNK = 2L * 1024 * 1024
     }
 }

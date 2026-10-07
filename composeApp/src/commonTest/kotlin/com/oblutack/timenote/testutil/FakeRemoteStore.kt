@@ -1,5 +1,7 @@
 package com.oblutack.timenote.testutil
 
+import com.oblutack.timenote.drive.ByteSink
+import com.oblutack.timenote.drive.ByteSource
 import com.oblutack.timenote.drive.ChangesPage
 import com.oblutack.timenote.drive.RemoteChange
 import com.oblutack.timenote.drive.RemoteException
@@ -71,6 +73,19 @@ class FakeRemoteStore(private val pageSize: Int = 1000) : RemoteStore {
         enter()
         files.remove(fileId) ?: throw RemoteException.NotFound()
         feed += Event(fileId, removed = true)
+    }
+
+    override suspend fun uploadFrom(name: String, source: ByteSource, existingId: String?, onProgress: (Long, Long) -> Unit): RemoteFile {
+        val file = upload(name, source.read(0, source.size.toInt()), existingId)
+        onProgress(source.size, source.size)
+        return file
+    }
+
+    override suspend fun downloadTo(fileId: String, sink: ByteSink, onProgress: (Long, Long) -> Unit) {
+        val bytes = try { download(fileId) } catch (e: Throwable) { sink.abort(); throw e }
+        sink.write(bytes)
+        sink.finish()
+        onProgress(bytes.size.toLong(), bytes.size.toLong())
     }
 
     /** The Google account this fake Drive belongs to. */
