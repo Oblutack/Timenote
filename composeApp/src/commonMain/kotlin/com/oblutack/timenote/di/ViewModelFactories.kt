@@ -6,6 +6,7 @@ import com.oblutack.timenote.feature_history.presentation.HistoryViewModel
 import com.oblutack.timenote.feature_history.presentation.TrashViewModel
 import com.oblutack.timenote.feature_settings.presentation.SettingsViewModel
 import com.oblutack.timenote.feature_timer.presentation.TimerViewModel
+import com.oblutack.timenote.feature_settings.presentation.SyncSettingsViewModel
 
 // Compose helpers that build ViewModels from the AppContainer. Used as default arguments of the
 // screens, so a screen can still be given a different ViewModel (e.g. one built with fakes).
@@ -37,6 +38,13 @@ fun historyViewModel(): HistoryViewModel {
             audioFetcher = container.audioFetcher
         )
     }
+}
+
+/** Null when this platform has no cloud sync. */
+@Composable
+fun syncSettingsViewModel(): SyncSettingsViewModel? {
+    val manager = LocalAppContainer.current.syncManager ?: return null
+    return viewModel { SyncSettingsViewModel(manager) }
 }
 
 @Composable

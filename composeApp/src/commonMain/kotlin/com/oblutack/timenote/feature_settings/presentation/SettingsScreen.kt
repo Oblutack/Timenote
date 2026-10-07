@@ -43,6 +43,8 @@ import com.oblutack.timenote.backup.BackupStatus
 import com.oblutack.timenote.backup.rememberBackupLauncher
 import com.oblutack.timenote.drive.DriveDebugPanel
 import com.oblutack.timenote.drive.isDebugBuild
+import com.oblutack.timenote.sync.FeatureFlags
+import com.oblutack.timenote.di.syncSettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -212,6 +214,14 @@ fun SettingsScreen(
         }
 
             Spacer(modifier = Modifier.height(32.dp))
+
+            // --- SYNC WITH GOOGLE DRIVE (hidden in release builds until the release that ships sync) ---
+            val syncViewModel = syncSettingsViewModel()
+            val syncDrive = LocalAppContainer.current.driveSession
+            if (syncViewModel != null && syncDrive != null && (isDebugBuild() || FeatureFlags.SYNC_UI_IN_RELEASE)) {
+                SyncSettingsSection(syncViewModel, syncDrive)
+                Spacer(modifier = Modifier.height(32.dp))
+            }
 
             // --- BACKUP ---
             Text("BACKUP", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
