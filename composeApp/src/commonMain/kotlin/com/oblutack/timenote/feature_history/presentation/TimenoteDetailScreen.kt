@@ -324,6 +324,14 @@ fun TimenoteDetailScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        // --- Other versions of the text (only when two devices edited it at the same time) ---
+        val textConflicts by viewModel.textConflicts.collectAsState()
+        TextConflictBanner(
+            conflicts = textConflicts.filter { it.noteId == timenoteId },
+            onRestore = { viewModel.restoreTextConflict(timenoteId, it) },
+            onDismiss = { viewModel.dismissTextConflict(timenoteId, it) }
+        )
+
         // --- 2. Description Section ---
         Box(
             modifier = Modifier

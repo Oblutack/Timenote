@@ -100,6 +100,11 @@ class HistoryViewModel(
     val folders = sessionRepository.folders
     val tags = sessionRepository.tags
 
+    /** Texts that lost a merge between devices (see sync); shown as a banner on the note. */
+    val textConflicts = sessionRepository.textConflicts
+    fun restoreTextConflict(noteId: String, textHash: String) = sessionRepository.restoreTextConflict(noteId, textHash)
+    fun dismissTextConflict(noteId: String, textHash: String) = sessionRepository.dismissTextConflict(noteId, textHash)
+
     // --- FILTER & SORT STATE ---
     private val _selectedFilterTags = MutableStateFlow<Set<String>>(emptySet())
     val selectedFilterTags = _selectedFilterTags.asStateFlow()
