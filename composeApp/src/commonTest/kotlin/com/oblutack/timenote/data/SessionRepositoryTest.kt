@@ -15,6 +15,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.oblutack.timenote.testutil.FakeDefaultTagsState
 import com.oblutack.timenote.testutil.FakeDeviceId
+import kotlinx.coroutines.launch
 
 class SessionRepositoryTest {
 
@@ -199,5 +200,18 @@ class SessionRepositoryTest {
         repo.saveTag(testTag("x", "Temp"))
         repo.deleteTag("x")
         assertTrue(repo.tags.value.none { it.id == "x" })
+    }
+
+    @Test fun editsByTheUserAreSignalledSoSyncCanFollowButSetupWritesAreNot() = runAppTest {
+        val repo = newRepository()
+        var signals = 0
+        backgroundScope.launch { repo.localEdits.collect { signals++ } }
+
+        assertEquals(0, signals, "seeding the default tags is not an edit")
+        repo.saveTimenote(testNote("a"))
+        repo.updateTimenoteTitle("a", "New")
+        repo.toggleTimenotePin("a")
+
+        assertEquals(3, signals)
     }
 }

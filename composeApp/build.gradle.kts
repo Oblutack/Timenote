@@ -36,6 +36,7 @@ kotlin {
             implementation("androidx.datastore:datastore-preferences:1.1.1")
             implementation(libs.ktor.client.okhttp)
             implementation(libs.play.services.auth)
+            implementation(libs.androidx.work.runtime)
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)

@@ -16,6 +16,12 @@ class MainActivity : ComponentActivity() {
         // Features that need a denied permission explain themselves where they are used
     }
 
+    override fun onStart() {
+        super.onStart()
+        // Coming to the foreground: sync, unless sync is off or it just happened
+        (application as? TimenoteApplication)?.container?.syncManager?.onAppForeground()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

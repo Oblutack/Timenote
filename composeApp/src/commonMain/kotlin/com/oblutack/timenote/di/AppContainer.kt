@@ -13,6 +13,7 @@ import com.oblutack.timenote.backup.BackupRunner
 import com.oblutack.timenote.drive.DriveSession
 import com.oblutack.timenote.sync.SyncEngine
 import com.oblutack.timenote.sync.AudioFetcher
+import com.oblutack.timenote.sync.SyncManager
 
 /**
  * Manual dependency injection: the platform entry point builds one of these and hands it to App().
@@ -32,6 +33,8 @@ class AppContainer(
     val driveSession: DriveSession? = null,
     /** One sync run with Google Drive (null until sync is available on the platform). */
     val syncEngine: SyncEngine? = null,
+    /** What the settings screen, app start and background worker use to run and report syncs. */
+    val syncManager: SyncManager? = null,
     /** Downloads voice memos recorded elsewhere when they are played (null when there is no sync). */
     val audioFetcher: AudioFetcher? = null,
     /** The timer notification buttons emit here; TimerViewModel collects. */

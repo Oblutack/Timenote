@@ -23,6 +23,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 /** The write time given to the default tags: older than every real edit and every pre-tracking row (time 0). */
 internal const val DEFAULT_TAG_STAMP = -1L
@@ -118,9 +121,20 @@ class SessionRepository(
         fields.forEach { dao.upsertFieldVersion(FieldVersionEntity(kind, id, it, time, device, present)) }
     }
 
+    private val _localEdits = MutableSharedFlow<Unit>(extraBufferCapacity = 64)
+
+    /**
+     * Emits after every change the USER makes (not after changes that arrive from sync), so sync can follow
+     * soon after an edit without reacting to its own work.
+     */
+    val localEdits: SharedFlow<Unit> = _localEdits.asSharedFlow()
+
     /** Runs a write in the background while holding the write lock. */
     private fun write(block: suspend () -> Unit) {
-        scope.launch { writeLock.run(block) }
+        scope.launch {
+            writeLock.run(block)
+            _localEdits.tryEmit(Unit)
+        }
     }
 
     // --- TIMENOTES ---

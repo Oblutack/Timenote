@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- 1. PERMISSIONS REQUIRED FOR FOREGROUND SERVICES -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
@@ -8,6 +9,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!--
+        WorkManager (used for background sync) asks for RECEIVE_BOOT_COMPLETED to restart its schedule after a reboot.
+        Until the release that ships sync, release builds must not gain new permissions, so it is removed here.
+        Remove these two lines when sync ships (background syncs then also resume after a reboot without opening the app).
+    -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
+    <!-- The same for the network state permission that WorkManager and the Wi-Fi-only rule need. The debug build declares it itself. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
 
     <application
         android:name=".TimenoteApplication"

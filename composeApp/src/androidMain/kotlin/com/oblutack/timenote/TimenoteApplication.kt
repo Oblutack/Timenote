@@ -26,6 +26,8 @@ import com.oblutack.timenote.sync.AndroidAudioNetworkPolicy
 import com.oblutack.timenote.sync.AndroidAudioStorage
 import com.oblutack.timenote.sync.AudioSync
 import com.oblutack.timenote.sync.SyncEngine
+import com.oblutack.timenote.sync.AndroidSyncScheduler
+import com.oblutack.timenote.sync.SyncManager
 
 // DataStore must be a process-wide singleton, hence the top-level delegate
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings.preferences_pb")
@@ -71,6 +73,15 @@ class TimenoteApplication : Application() {
             accountId = { drive.accountId() },
             audio = audioSync
         )
+        val syncManager = SyncManager(
+            engine = syncEngine,
+            session = drive,
+            prefs = settingsRepository,
+            scheduler = AndroidSyncScheduler(this),
+            scope = appScope
+        )
+        // A burst of edits by the user leads to one sync shortly after (nothing happens while sync is off)
+        appScope.launch { sessionRepository.localEdits.collect { syncManager.onLocalEdit() } }
 
         container = AppContainer(
             sessionRepository = sessionRepository,
@@ -90,6 +101,7 @@ class TimenoteApplication : Application() {
             ),
             driveSession = drive,
             syncEngine = syncEngine,
+            syncManager = syncManager,
             audioFetcher = audioSync
         )
 
