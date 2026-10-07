@@ -17,6 +17,9 @@ interface AudioFiles {
 
     /** The real file location on this device for a stored reference (a name or a legacy absolute path). */
     fun resolve(ref: String): String
+
+    /** Whether this device has the file (it may have been recorded elsewhere and not downloaded yet). */
+    fun isPresent(ref: String): Boolean
 }
 
 class DirectoryAudioFiles(
@@ -26,6 +29,8 @@ class DirectoryAudioFiles(
     private val directory = directory.trimEnd('/', BACKSLASH)
 
     override fun toRef(path: String): String = audioFileName(path)
+
+    override fun isPresent(ref: String): Boolean = exists(resolve(ref))
 
     override fun resolve(ref: String): String {
         val inDirectory = "$directory/${toRef(ref)}"

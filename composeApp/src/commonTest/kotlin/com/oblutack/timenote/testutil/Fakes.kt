@@ -222,6 +222,8 @@ class FakeAudioRecorder : AudioRecorder {
 }
 
 class FakeAudioPlayer : AudioPlayer {
+    /** Simulates a file that cannot be played: the completion callback fires immediately, as the real player does. */
+    var failImmediately = false
     var playing = false
     var lastPlayed: String? = null
     private var onComplete: () -> Unit = {}
@@ -230,6 +232,7 @@ class FakeAudioPlayer : AudioPlayer {
         lastPlayed = filePath
         this.onComplete = onComplete
         playing = true
+        if (failImmediately) { playing = false; onComplete() }
     }
     override fun pause() { playing = false }
     override fun stop() { playing = false }

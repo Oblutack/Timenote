@@ -67,7 +67,11 @@ fun VoiceNotesSection(
     onDelete: (String) -> Unit,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
-    micUnavailable: Boolean = false
+    micUnavailable: Boolean = false,
+    /** Voice notes being downloaded from the cloud right now. */
+    downloadingAudio: Set<String> = emptySet(),
+    audioMessage: String? = null,
+    onDismissAudioMessage: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
     Column(
@@ -93,12 +97,19 @@ fun VoiceNotesSection(
                 verticalAlignment = Alignment.CenterVertically
                 // REMOVED: horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Icon(
-                    imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = "Play/Pause",
-                    tint = DefaultAccentColor,
-                    modifier = Modifier.size(20.dp) // Slightly smaller icon
-                )
+                if (path in downloadingAudio) {
+                    CircularProgressIndicator(
+                        color = DefaultAccentColor, strokeWidth = 2.dp,
+                        modifier = Modifier.size(20.dp)
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = "Play/Pause",
+                        tint = DefaultAccentColor,
+                        modifier = Modifier.size(20.dp) // Slightly smaller icon
+                    )
+                }
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = "Voice Note $absoluteIndex",
@@ -125,6 +136,15 @@ fun VoiceNotesSection(
                 }
             }
             Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        if (audioMessage != null) {
+            Text(
+                text = audioMessage,
+                color = Color(0xFFE53935),
+                fontSize = 12.sp,
+                modifier = Modifier.fillMaxWidth().clickable { onDismissAudioMessage() }.padding(bottom = 8.dp)
+            )
         }
 
         // 3. The "Show More" Button

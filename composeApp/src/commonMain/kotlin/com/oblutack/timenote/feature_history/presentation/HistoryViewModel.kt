@@ -22,6 +22,12 @@ import com.oblutack.timenote.feature_timer.domain.AudioPlayer
 import com.oblutack.timenote.feature_timer.domain.AudioRecorder
 import com.oblutack.timenote.core.newId
 import com.oblutack.timenote.core.AudioFiles
+import com.oblutack.timenote.sync.AudioFetcher
+import com.oblutack.timenote.sync.FetchResult
+import com.oblutack.timenote.drive.RemoteException
+import com.oblutack.timenote.core.audioFileName
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 enum class SortOption(val displayName: String) {
     NEWEST("Newest First"),
@@ -35,6 +41,8 @@ class HistoryViewModel(
     private val audioPlayer: AudioPlayer,
     private val audioRecorder: AudioRecorder,
     private val audioFiles: AudioFiles,
+    /** Downloads voice memos recorded on other devices; null when cloud sync is not available. */
+    private val audioFetcher: AudioFetcher? = null,
     private val now: () -> Long = ::getCurrentTimeMillis
 ) : ViewModel() {
     val sessions = sessionRepository.timenotes
@@ -166,6 +174,14 @@ class HistoryViewModel(
     val playingAudioPath = _playingAudioPath.asStateFlow()
     private val _recordingTimenoteId = MutableStateFlow<String?>(null)
     val recordingTimenoteId = _recordingTimenoteId.asStateFlow()
+    // Voice memos recorded on another device are downloaded when first played
+    private val _downloadingAudio = MutableStateFlow<Set<String>>(emptySet())
+    val downloadingAudio = _downloadingAudio.asStateFlow()
+    private val _audioMessage = MutableStateFlow<String?>(null)
+    val audioMessage = _audioMessage.asStateFlow()
+
+    fun dismissAudioMessage() { _audioMessage.value = null }
+
     /** [audioRef] is what the database stores (a file name, or a legacy absolute path). */
     fun playAudio(audioRef: String) {
         val player = audioPlayer
@@ -173,11 +189,39 @@ class HistoryViewModel(
         if (_playingAudioPath.value == audioRef && player.isPlaying()) {
             player.pause()
             _playingAudioPath.value = null
-        } else {
-            player.play(audioFiles.resolve(audioRef)) {
-                _playingAudioPath.value = null // Resets the UI back to "Play" when finished!
+            return
+        }
+
+        val fetcher = audioFetcher
+        if (fetcher != null && !audioFiles.isPresent(audioRef)) {
+            if (audioRef in _downloadingAudio.value) return
+            _downloadingAudio.update { it + audioRef }
+            _audioMessage.value = null
+            viewModelScope.launch {
+                val result = fetcher.fetch(audioFileName(audioRef))
+                _downloadingAudio.update { it - audioRef }
+                when (result) {
+                    FetchResult.Ready -> startPlayback(audioRef)
+                    FetchResult.NotInCloud -> _audioMessage.value =
+                        "This voice memo is not on this device and not in your cloud copy (yet). " +
+                            "It may have been recorded on another device that has not uploaded it."
+                    is FetchResult.Failed -> _audioMessage.value =
+                        if (result.error is RemoteException.NeedsSignIn || result.error is RemoteException.Unauthorized)
+                            "Connect Google Drive again to download this voice memo."
+                        else "The voice memo could not be downloaded. Check your connection and try again."
+                }
             }
-            _playingAudioPath.value = audioRef
+            return
+        }
+        startPlayback(audioRef)
+    }
+
+    private fun startPlayback(audioRef: String) {
+        // Marked BEFORE starting: a file that cannot be played reports "finished" straight away, and that must
+        // be what the screen ends up showing (otherwise it would stay on "pause" for a memo that never played)
+        _playingAudioPath.value = audioRef
+        audioPlayer.play(audioFiles.resolve(audioRef)) {
+            _playingAudioPath.value = null // Resets the UI back to "Play" when finished!
         }
     }
 

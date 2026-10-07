@@ -81,6 +81,8 @@ fun TimenoteDetailScreen(
     val playingAudioPath by viewModel.playingAudioPath.collectAsState()
     val recordingTimenoteId by viewModel.recordingTimenoteId.collectAsState()
     val micUnavailable by viewModel.micUnavailable.collectAsState()
+    val downloadingAudio by viewModel.downloadingAudio.collectAsState()
+    val audioMessage by viewModel.audioMessage.collectAsState()
     val scope = rememberCoroutineScope()
 
     val folders by sessionRepository.folders.collectAsState()
@@ -449,7 +451,10 @@ fun TimenoteDetailScreen(
             onDelete = { viewModel.deleteVoiceNote(timenote.id, it) },
             onStartRecording = { viewModel.startRecordingForTimenote(timenote.id) },
             onStopRecording = { viewModel.stopRecordingForTimenote() },
-            micUnavailable = micUnavailable
+            micUnavailable = micUnavailable,
+            downloadingAudio = downloadingAudio,
+            audioMessage = audioMessage,
+            onDismissAudioMessage = { viewModel.dismissAudioMessage() }
         )
 
         Spacer(modifier = Modifier.height(24.dp))

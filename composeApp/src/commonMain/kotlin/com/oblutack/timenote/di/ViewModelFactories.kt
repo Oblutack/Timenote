@@ -33,7 +33,8 @@ fun historyViewModel(): HistoryViewModel {
             sessionRepository = container.sessionRepository,
             audioPlayer = container.audioPlayer,
             audioRecorder = container.audioRecorder,
-            audioFiles = container.audioFiles
+            audioFiles = container.audioFiles,
+            audioFetcher = container.audioFetcher
         )
     }
 }
