@@ -142,6 +142,22 @@ interface TimenoteDao {
     @Query("DELETE FROM pending_remote_deletes WHERE entityKind = :kind AND entityId = :id")
     suspend fun deletePendingRemoteDelete(kind: String, id: String)
 
+    // --- TEXT CONFLICTS ("other versions" of a note's text) ---
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertConflict(conflict: NoteConflictEntity)
+
+    @Query("SELECT * FROM note_conflicts ORDER BY detectedAt DESC")
+    fun getAllConflicts(): Flow<List<NoteConflictEntity>>
+
+    @Query("SELECT * FROM note_conflicts WHERE noteId = :noteId")
+    suspend fun getConflictsFor(noteId: String): List<NoteConflictEntity>
+
+    @Query("DELETE FROM note_conflicts WHERE noteId = :noteId AND textHash = :textHash")
+    suspend fun deleteConflict(noteId: String, textHash: String)
+
+    @Query("DELETE FROM note_conflicts WHERE noteId = :noteId")
+    suspend fun deleteConflictsFor(noteId: String)
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertSyncState(state: SyncStateEntity)
 

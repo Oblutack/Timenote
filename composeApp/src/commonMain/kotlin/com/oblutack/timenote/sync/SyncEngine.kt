@@ -163,9 +163,14 @@ class SyncEngine(
                 return
             }
 
+            var remoteTextHash: String? = null
             val outcome = try {
                 when (kind) {
-                    SyncKind.NOTE -> applier.applyNote(SyncJson.decodeFromString<SyncNote>(text))
+                    SyncKind.NOTE -> {
+                        val note = SyncJson.decodeFromString<SyncNote>(text)
+                        remoteTextHash = contentHash(note.fields.description.value)
+                        applier.applyNote(note, mode = ConflictMode.SYNC, baseTextHash = states[kind to id]?.baseTextHash)
+                    }
                     SyncKind.FOLDER -> applier.applyFolder(SyncJson.decodeFromString<SyncFolder>(text))
                     else -> applier.applyTag(SyncJson.decodeFromString<SyncTag>(text))
                 }
@@ -179,7 +184,7 @@ class SyncEngine(
 
             // If this device now equals the cloud copy nothing needs uploading; otherwise the item is "dirty"
             val sameAsCloud = outcome.localEqualsRemote && !isDuplicate
-            saveState(kind, id, file, if (sameAsCloud) serializeLocal(kind, id)?.let(::contentHash) else null)
+            saveState(kind, id, file, if (sameAsCloud) serializeLocal(kind, id)?.let(::contentHash) else null, remoteTextHash)
         }
 
         private suspend fun handleRemoteRemoval(fileId: String) {
@@ -198,6 +203,7 @@ class SyncEngine(
                         SyncKind.FOLDER -> dao.hardDeleteFolder(state.entityId)
                     }
                     dao.deleteFieldVersions(state.entityKind, state.entityId)
+                    dao.deleteConflictsFor(state.entityId)
                 }
                 forget(key)
                 stats = stats.copy(removedLocally = stats.removedLocally + 1)
@@ -236,6 +242,8 @@ class SyncEngine(
 
         private suspend fun pushLocalChanges(): Int {
             var uploaded = 0
+            // the text each note has right now: what the cloud will hold after this upload
+            val baseText = dao.getAllTimenotesOnce().associate { (SyncKind.NOTE to it.id) to contentHash(it.description) }
             for ((key, json) in snapshotLocal()) {
                 if (key in pendingDeletes) continue
                 val (kind, id) = key
@@ -251,7 +259,7 @@ class SyncEngine(
                 } catch (e: RemoteException.NotFound) {
                     remote.upload(name, bytes, null) // the file was removed from the cloud: create it again
                 }
-                putState(SyncStateEntity(kind, id, file.id, now(), hash, file.md5))
+                putState(SyncStateEntity(kind, id, file.id, now(), hash, file.md5, baseText[key]))
                 uploaded++
                 stats = stats.copy(uploaded = stats.uploaded + 1)
             }
@@ -294,8 +302,8 @@ class SyncEngine(
             }
         }
 
-        private suspend fun saveState(kind: String, id: String, file: RemoteFile, contentHash: String?) {
-            putState(SyncStateEntity(kind, id, file.id, now(), contentHash, file.md5))
+        private suspend fun saveState(kind: String, id: String, file: RemoteFile, contentHash: String?, baseTextHash: String? = null) {
+            putState(SyncStateEntity(kind, id, file.id, now(), contentHash, file.md5, baseTextHash))
         }
 
         private suspend fun putState(state: SyncStateEntity) {

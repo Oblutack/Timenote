@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import com.oblutack.timenote.data.database.FieldVersionEntity
+import com.oblutack.timenote.data.database.NoteConflictEntity
 import com.oblutack.timenote.data.database.PendingRemoteDeleteEntity
 import com.oblutack.timenote.data.database.SyncStateEntity
 import com.oblutack.timenote.data.repository.DeviceIdSource
@@ -32,6 +33,7 @@ class FakeTimenoteDao : TimenoteDao {
     val fieldVersions = mutableListOf<FieldVersionEntity>()
     val pendingRemoteDeletes = mutableListOf<PendingRemoteDeleteEntity>()
     val syncStates = mutableListOf<SyncStateEntity>()
+    private val conflicts = MutableStateFlow<List<NoteConflictEntity>>(emptyList())
     /** Everything that was still in the table at the moment each hard delete ran, to check ordering. */
     val pendingAtHardDelete = mutableListOf<List<PendingRemoteDeleteEntity>>()
 
@@ -131,6 +133,17 @@ class FakeTimenoteDao : TimenoteDao {
     override suspend fun getPendingRemoteDeletes() = pendingRemoteDeletes.toList()
     override suspend fun deletePendingRemoteDelete(kind: String, id: String) {
         pendingRemoteDeletes.removeAll { it.entityKind == kind && it.entityId == id }
+    }
+    override suspend fun insertConflict(conflict: NoteConflictEntity) {
+        if (conflicts.value.none { it.noteId == conflict.noteId && it.textHash == conflict.textHash }) conflicts.value = conflicts.value + conflict
+    }
+    override fun getAllConflicts(): Flow<List<NoteConflictEntity>> = conflicts.map { list -> list.sortedByDescending { it.detectedAt } }
+    override suspend fun getConflictsFor(noteId: String) = conflicts.value.filter { it.noteId == noteId }
+    override suspend fun deleteConflict(noteId: String, textHash: String) {
+        conflicts.value = conflicts.value.filterNot { it.noteId == noteId && it.textHash == textHash }
+    }
+    override suspend fun deleteConflictsFor(noteId: String) {
+        conflicts.value = conflicts.value.filterNot { it.noteId == noteId }
     }
     override suspend fun upsertSyncState(state: SyncStateEntity) {
         syncStates.removeAll { it.entityKind == state.entityKind && it.entityId == state.entityId }

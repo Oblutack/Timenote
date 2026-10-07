@@ -1,5 +1,6 @@
 package com.oblutack.timenote.sync
 
+import com.oblutack.timenote.data.database.NoteConflictEntity
 import com.oblutack.timenote.data.database.SyncKind
 import com.oblutack.timenote.data.database.TimenoteDao
 import com.oblutack.timenote.data.database.toDomain
@@ -9,6 +10,13 @@ import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.getCurrentTimeMillis
 
 enum class ApplyChange { ADDED, UPDATED, UNCHANGED }
+
+/**
+ * Decides when the text that loses a merge is kept as an "other version":
+ *  - [SYNC]: whichever text loses is kept, unless it is just the old text both sides started from
+ *  - [IMPORT]: only a local text that gets replaced by the backup's text is kept (the backup file still holds its own)
+ */
+enum class ConflictMode { SYNC, IMPORT }
 
 /**
  * What applying a remote item did to the local data.
@@ -66,8 +74,15 @@ class SyncApplier(
     /**
      * [tagLookup] provides the tag details a note embeds; by default they come from the database, so tags
      * should be applied before the notes that use them.
+     * [baseTextHash] is the hash of the note's text as it was when both sides last agreed (null if never):
+     * a text that differs from it was changed since, which is what makes a losing text worth keeping.
      */
-    suspend fun applyNote(incoming: SyncNote, tagLookup: ((String) -> TimenoteFolder?)? = null): ApplyOutcome = writeLock.run {
+    suspend fun applyNote(
+        incoming: SyncNote,
+        tagLookup: ((String) -> TimenoteFolder?)? = null,
+        mode: ConflictMode = ConflictMode.IMPORT,
+        baseTextHash: String? = null
+    ): ApplyOutcome = writeLock.run {
         val remote = incoming.clampedTo(now() + MAX_CLOCK_SKEW_MS)
         val device = deviceIdSource.deviceId()
         val lookup = tagLookup ?: dao.getAllTagsOnce().filter { !it.isDeleted }.associate { it.id to it.toDomain() }.let { m -> { id: String -> m[id] } }
@@ -75,12 +90,30 @@ class SyncApplier(
         val localSync = local?.toSync(dao.getFieldVersions(SyncKind.NOTE, remote.id), device)
         val merged = localSync?.let { mergeNotes(it, remote) } ?: remote
         val equalsRemote = merged == remote
+        if (localSync != null) keepLosingText(localSync, remote, merged, mode, baseTextHash)
         if (merged == localSync) return@run ApplyOutcome(ApplyChange.UNCHANGED, equalsRemote)
 
         val (entity, stamps) = merged.toEntity(lookup)
         dao.insertTimenote(entity)
         stamps.forEach { dao.upsertFieldVersion(it) }
         ApplyOutcome(if (local == null) ApplyChange.ADDED else ApplyChange.UPDATED, equalsRemote)
+    }
+
+    /** Saves the text that lost the merge as an "other version", when it is worth keeping (see [ConflictMode]). */
+    private suspend fun keepLosingText(local: SyncNote, remote: SyncNote, merged: SyncNote, mode: ConflictMode, baseTextHash: String?) {
+        val localText = local.fields.description
+        val remoteText = remote.fields.description
+        if (localText.value == remoteText.value) return
+        val remoteWins = merged.fields.description.value == remoteText.value
+        val loser = if (remoteWins) localText else remoteText
+        if (loser.value.isBlank()) return
+        val worthKeeping = when (mode) {
+            ConflictMode.IMPORT -> remoteWins
+            // the old shared text is not a lost edit; anything else the loser says is
+            ConflictMode.SYNC -> baseTextHash == null || contentHash(loser.value) != baseTextHash
+        }
+        if (!worthKeeping) return
+        dao.insertConflict(NoteConflictEntity(local.id, contentHash(loser.value), loser.value, loser.t, loser.d, now()))
     }
 }
 

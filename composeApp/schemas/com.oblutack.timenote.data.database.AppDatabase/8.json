@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "2b8bf146c2f8965515b3a4863cbc26bf",
+    "identityHash": "15174218d65e9e287849e6112d0a4b6c",
     "entities": [
       {
         "tableName": "timenotes",
@@ -293,7 +293,7 @@
       },
       {
         "tableName": "sync_state",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, `remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, `remoteMd5` TEXT, PRIMARY KEY(`entityKind`, `entityId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, `remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, `remoteMd5` TEXT, `baseTextHash` TEXT, PRIMARY KEY(`entityKind`, `entityId`))",
         "fields": [
           {
             "fieldPath": "entityKind",
@@ -326,6 +326,11 @@
           {
             "fieldPath": "remoteMd5",
             "columnName": "remoteMd5",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "baseTextHash",
+            "columnName": "baseTextHash",
             "affinity": "TEXT"
           }
         ],
@@ -372,11 +377,60 @@
             "entityId"
           ]
         }
+      },
+      {
+        "tableName": "note_conflicts",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`noteId` TEXT NOT NULL, `textHash` TEXT NOT NULL, `text` TEXT NOT NULL, `writtenAt` INTEGER NOT NULL, `deviceId` TEXT NOT NULL, `detectedAt` INTEGER NOT NULL, PRIMARY KEY(`noteId`, `textHash`))",
+        "fields": [
+          {
+            "fieldPath": "noteId",
+            "columnName": "noteId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "textHash",
+            "columnName": "textHash",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "writtenAt",
+            "columnName": "writtenAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deviceId",
+            "columnName": "deviceId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "detectedAt",
+            "columnName": "detectedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "noteId",
+            "textHash"
+          ]
+        }
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2b8bf146c2f8965515b3a4863cbc26bf')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '15174218d65e9e287849e6112d0a4b6c')"
     ]
   }
 }

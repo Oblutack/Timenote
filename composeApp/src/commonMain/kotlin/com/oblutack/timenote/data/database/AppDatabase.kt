@@ -15,7 +15,7 @@ const val DATABASE_VERSION = 8
 @Database(
     entities = [
         TimenoteEntity::class, TagEntity::class, FolderEntity::class,
-        FieldVersionEntity::class, SyncStateEntity::class, PendingRemoteDeleteEntity::class
+        FieldVersionEntity::class, SyncStateEntity::class, PendingRemoteDeleteEntity::class, NoteConflictEntity::class
     ],
     version = DATABASE_VERSION
 )
@@ -92,7 +92,12 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `sync_state` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +
                 "`remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, `remoteMd5` TEXT, " +
-                "PRIMARY KEY(`entityKind`, `entityId`))"
+                "`baseTextHash` TEXT, PRIMARY KEY(`entityKind`, `entityId`))"
+        )
+        connection.execSQL(
+            "CREATE TABLE IF NOT EXISTS `note_conflicts` (`noteId` TEXT NOT NULL, `textHash` TEXT NOT NULL, " +
+                "`text` TEXT NOT NULL, `writtenAt` INTEGER NOT NULL, `deviceId` TEXT NOT NULL, " +
+                "`detectedAt` INTEGER NOT NULL, PRIMARY KEY(`noteId`, `textHash`))"
         )
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `pending_remote_deletes` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +

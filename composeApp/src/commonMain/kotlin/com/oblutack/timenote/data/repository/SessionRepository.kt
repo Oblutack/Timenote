@@ -3,6 +3,9 @@ package com.oblutack.timenote.data.repository
 import com.oblutack.timenote.core.descendantIds
 import com.oblutack.timenote.data.database.FieldNames
 import com.oblutack.timenote.data.database.FieldVersionEntity
+import com.oblutack.timenote.data.database.NoteConflictEntity
+import com.oblutack.timenote.feature_history.domain.TextConflict
+import com.oblutack.timenote.sync.contentHash
 import com.oblutack.timenote.data.database.PendingRemoteDeleteEntity
 import com.oblutack.timenote.data.database.SyncKind
 import com.oblutack.timenote.data.database.TimenoteDao
@@ -55,6 +58,8 @@ class SessionRepository(
     private val _deletedTimenotes = MutableStateFlow<List<Timenote>>(emptyList())
     val deletedTimenotes: StateFlow<List<Timenote>> = _deletedTimenotes.asStateFlow()
 
+    private val _textConflicts = MutableStateFlow<List<TextConflict>>(emptyList())
+
     private val _deletedFolders = MutableStateFlow<List<ProjectFolder>>(emptyList())
     val deletedFolders: StateFlow<List<ProjectFolder>> = _deletedFolders.asStateFlow()
 
@@ -88,6 +93,11 @@ class SessionRepository(
                     if (loadedTags.isEmpty()) return@collect // the next emission carries the new tags
                 }
                 _tags.value = loadedTags
+            }
+        }
+        scope.launch {
+            dao.getAllConflicts().collect { rows ->
+                _textConflicts.value = rows.map { TextConflict(it.noteId, it.textHash, it.text, it.writtenAt, it.deviceId, it.detectedAt) }
             }
         }
         scope.launch {
@@ -332,9 +342,41 @@ class SessionRepository(
     private suspend fun permanentlyDelete(kind: String, id: String) {
         dao.insertPendingRemoteDelete(PendingRemoteDeleteEntity(kind, id, remoteFileId = null, createdAt = now()))
         when (kind) {
-            SyncKind.NOTE -> dao.hardDeleteTimenote(id)
+            SyncKind.NOTE -> { dao.hardDeleteTimenote(id); dao.deleteConflictsFor(id) }
             SyncKind.FOLDER -> dao.hardDeleteFolder(id)
         }
         dao.deleteFieldVersions(kind, id)
+    }
+
+    // --- OTHER VERSIONS OF A NOTE'S TEXT (see sync/SyncApplier.kt) ---
+
+    /** Texts that lost a merge between devices, newest first. Empty for almost everybody. */
+    val textConflicts: StateFlow<List<TextConflict>> = _textConflicts.asStateFlow()
+
+    fun conflictsFor(noteId: String): List<TextConflict> = _textConflicts.value.filter { it.noteId == noteId }
+
+    /**
+     * Brings an "other version" back as the note's text. The text that is replaced is kept as an other version in its
+     * place, so switching back and forth never loses anything.
+     */
+    fun restoreTextConflict(noteId: String, textHash: String) {
+        write {
+            val conflict = dao.getConflictsFor(noteId).find { it.textHash == textHash } ?: return@write
+            val note = getTimenoteById(noteId) ?: return@write
+            val time = now()
+            if (note.description.isNotBlank() && note.description != conflict.text) {
+                dao.insertConflict(
+                    NoteConflictEntity(noteId, contentHash(note.description), note.description, time, deviceIdSource.deviceId(), time)
+                )
+            }
+            dao.deleteConflict(noteId, textHash)
+            dao.updateTimenoteDescription(noteId, conflict.text, time)
+            stamp(SyncKind.NOTE, noteId, time, listOf(FieldNames.DESCRIPTION))
+        }
+    }
+
+    /** The user does not want this other version any more. */
+    fun dismissTextConflict(noteId: String, textHash: String) {
+        write { dao.deleteConflict(noteId, textHash) }
     }
 }

@@ -27,6 +27,17 @@ data class TimenoteFolder(
     @Serializable(with = ColorSerializer::class) val color: Color,
 )
 
+/** A text of a note that lost a merge between devices and can be viewed, restored or dismissed. */
+data class TextConflict(
+    val noteId: String,
+    val textHash: String,
+    val text: String,
+    /** When (epoch millis) and on which device that text was written. */
+    val writtenAt: Long,
+    val deviceId: String,
+    val detectedAt: Long
+)
+
 @Serializable
 data class Timenote(
     val id: String,
