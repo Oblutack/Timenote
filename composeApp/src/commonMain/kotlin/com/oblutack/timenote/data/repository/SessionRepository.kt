@@ -38,7 +38,9 @@ class SessionRepository(
     private val scope: CoroutineScope,
     private val defaultTags: DefaultTagsState,
     private val deviceIdSource: DeviceIdSource,
-    private val now: () -> Long = ::getCurrentTimeMillis
+    private val now: () -> Long = ::getCurrentTimeMillis,
+    /** Shared with sync, so edits and sync merges never interleave. */
+    val writeLock: WriteLock = WriteLock()
 ) {
 
     private val _timenotes = MutableStateFlow<List<Timenote>>(emptyList())
@@ -106,11 +108,16 @@ class SessionRepository(
         fields.forEach { dao.upsertFieldVersion(FieldVersionEntity(kind, id, it, time, device, present)) }
     }
 
+    /** Runs a write in the background while holding the write lock. */
+    private fun write(block: suspend () -> Unit) {
+        scope.launch { writeLock.run(block) }
+    }
+
     // --- TIMENOTES ---
 
     /** Saves a newly recorded timenote. */
     fun saveTimenote(timenote: Timenote) {
-        scope.launch {
+        write {
             val time = now()
             dao.insertTimenote(timenote.toEntity(updatedAt = time))
             val fields = FieldNames.NOTE_ALL +
@@ -121,7 +128,7 @@ class SessionRepository(
     }
 
     fun deleteTimenote(id: String) {
-        scope.launch { softDeleteNote(id, now()) }
+        write { softDeleteNote(id, now()) }
     }
 
     private suspend fun softDeleteNote(id: String, time: Long) {
@@ -136,7 +143,7 @@ class SessionRepository(
 
     /** Deletes the timenote and ALL its descendants (to the trash). */
     fun cascadeSoftDeleteTimenote(id: String) {
-        scope.launch {
+        write {
             val descendants = getDescendantIds(id)
             val timestamp = now()
             softDeleteNote(id, timestamp)
@@ -146,7 +153,7 @@ class SessionRepository(
 
     /** Deletes the timenote (to the trash) and turns its direct children into roots. */
     fun deleteAndOrphanChildren(id: String) {
-        scope.launch {
+        write {
             val time = now()
             _timenotes.value.filter { it.parentTimenoteId == id }.forEach { child ->
                 dao.orphanTimenote(child.id, time)
@@ -157,7 +164,7 @@ class SessionRepository(
     }
 
     fun assignFolderToTimenote(timenoteId: String, folderId: String?) {
-        scope.launch {
+        write {
             val time = now()
             dao.updateTimenoteFolder(timenoteId, folderId, time)
             stamp(SyncKind.NOTE, timenoteId, time, listOf(FieldNames.FOLDER_ID))
@@ -165,7 +172,7 @@ class SessionRepository(
     }
 
     fun updateTimenoteDescription(timenoteId: String, newDescription: String) {
-        scope.launch {
+        write {
             val time = now()
             dao.updateTimenoteDescription(timenoteId, newDescription, time)
             stamp(SyncKind.NOTE, timenoteId, time, listOf(FieldNames.DESCRIPTION))
@@ -173,7 +180,7 @@ class SessionRepository(
     }
 
     fun updateTimenoteTitle(timenoteId: String, newTitle: String) {
-        scope.launch {
+        write {
             val time = now()
             dao.updateTimenoteTitle(timenoteId, newTitle, time)
             stamp(SyncKind.NOTE, timenoteId, time, listOf(FieldNames.TITLE))
@@ -181,7 +188,7 @@ class SessionRepository(
     }
 
     fun updateTimenoteTags(timenoteId: String, newTags: List<TimenoteFolder>) {
-        scope.launch {
+        write {
             val time = now()
             val before = getTimenoteById(timenoteId)?.tags?.map { it.id }?.toSet() ?: emptySet()
             val after = newTags.map { it.id }.toSet()
@@ -196,8 +203,8 @@ class SessionRepository(
     // Voice notes are a JSON list, so append/remove read the current list but only write that column.
     // [ref] is the stored reference (a file name, see core/AudioFiles.kt).
     fun addVoiceNote(timenoteId: String, ref: String) {
-        scope.launch {
-            val note = getTimenoteById(timenoteId) ?: return@launch
+        write {
+            val note = getTimenoteById(timenoteId) ?: return@write
             val time = now()
             dao.updateTimenoteVoiceNotes(timenoteId, Json.encodeToString(note.voiceNotes + ref), time)
             stamp(SyncKind.NOTE, timenoteId, time, listOf(FieldNames.voice(ref)), present = true)
@@ -205,8 +212,8 @@ class SessionRepository(
     }
 
     fun removeVoiceNote(timenoteId: String, ref: String) {
-        scope.launch {
-            val note = getTimenoteById(timenoteId) ?: return@launch
+        write {
+            val note = getTimenoteById(timenoteId) ?: return@write
             val time = now()
             dao.updateTimenoteVoiceNotes(timenoteId, Json.encodeToString(note.voiceNotes - ref), time)
             stamp(SyncKind.NOTE, timenoteId, time, listOf(FieldNames.voice(ref)), present = false)
@@ -214,8 +221,8 @@ class SessionRepository(
     }
 
     fun toggleTimenotePin(id: String) {
-        scope.launch {
-            val note = getTimenoteById(id) ?: return@launch
+        write {
+            val note = getTimenoteById(id) ?: return@write
             val time = now()
             dao.updateTimenotePin(id, !note.isPinned, time)
             stamp(SyncKind.NOTE, id, time, listOf(FieldNames.IS_PINNED))
@@ -225,7 +232,7 @@ class SessionRepository(
     // --- TAGS (no trash screen; deleting is a soft delete so it can reach other devices) ---
 
     fun saveTag(tag: TimenoteFolder) {
-        scope.launch {
+        write {
             val time = now()
             val existing = _tags.value.find { it.id == tag.id }
             dao.insertTag(tag.toEntity(updatedAt = time))
@@ -243,7 +250,7 @@ class SessionRepository(
     }
 
     fun deleteTag(id: String) {
-        scope.launch {
+        write {
             val time = now()
             dao.softDeleteTag(id, time)
             stamp(SyncKind.TAG, id, time, listOf(FieldNames.DELETED_AT))
@@ -255,7 +262,7 @@ class SessionRepository(
     fun getFolderById(id: String): ProjectFolder? = _folders.value.find { it.id == id }
 
     fun saveFolder(folder: ProjectFolder) {
-        scope.launch {
+        write {
             val time = now()
             val existing = getFolderById(folder.id)
             dao.insertFolder(folder.toEntity(updatedAt = time))
@@ -274,7 +281,7 @@ class SessionRepository(
     }
 
     fun deleteFolder(id: String) {
-        scope.launch {
+        write {
             val time = now()
             dao.softDeleteFolder(id, time)
             stamp(SyncKind.FOLDER, id, time, listOf(FieldNames.DELETED_AT))
@@ -282,8 +289,8 @@ class SessionRepository(
     }
 
     fun toggleFolderPin(id: String) {
-        scope.launch {
-            val folder = getFolderById(id) ?: return@launch
+        write {
+            val folder = getFolderById(id) ?: return@write
             val time = now()
             dao.updateFolderPin(id, !folder.isPinned, time)
             stamp(SyncKind.FOLDER, id, time, listOf(FieldNames.IS_PINNED))
@@ -293,7 +300,7 @@ class SessionRepository(
     // --- TRASH ---
 
     fun restoreTimenote(id: String) {
-        scope.launch {
+        write {
             val time = now()
             dao.restoreTimenote(id, time)
             stamp(SyncKind.NOTE, id, time, listOf(FieldNames.DELETED_AT))
@@ -301,18 +308,18 @@ class SessionRepository(
     }
 
     fun restoreFolder(id: String) {
-        scope.launch {
+        write {
             val time = now()
             dao.restoreFolder(id, time)
             stamp(SyncKind.FOLDER, id, time, listOf(FieldNames.DELETED_AT))
         }
     }
 
-    fun hardDeleteTimenote(id: String) { scope.launch { permanentlyDelete(SyncKind.NOTE, id) } }
-    fun hardDeleteFolder(id: String) { scope.launch { permanentlyDelete(SyncKind.FOLDER, id) } }
+    fun hardDeleteTimenote(id: String) { write { permanentlyDelete(SyncKind.NOTE, id) } }
+    fun hardDeleteFolder(id: String) { write { permanentlyDelete(SyncKind.FOLDER, id) } }
 
     fun emptyTrash() {
-        scope.launch {
+        write {
             _deletedTimenotes.value.forEach { permanentlyDelete(SyncKind.NOTE, it.id) }
             _deletedFolders.value.forEach { permanentlyDelete(SyncKind.FOLDER, it.id) }
         }

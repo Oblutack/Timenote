@@ -2,6 +2,9 @@ package com.oblutack.timenote.backup
 
 import com.oblutack.timenote.core.audioFileName
 import com.oblutack.timenote.data.database.FieldVersionEntity
+import com.oblutack.timenote.data.repository.WriteLock
+import com.oblutack.timenote.sync.SyncApplier
+import com.oblutack.timenote.sync.ApplyChange
 import com.oblutack.timenote.data.database.SyncKind
 import com.oblutack.timenote.data.database.TimenoteDao
 import com.oblutack.timenote.data.database.toDomain
@@ -21,6 +24,7 @@ import com.oblutack.timenote.sync.toEntity
 import com.oblutack.timenote.sync.toSync
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import com.oblutack.timenote.sync.SyncPaths
 
 /**
  * Where a backup is written to. The platform decides how (a zip file on Android); this class only says what goes in.
@@ -58,10 +62,10 @@ data class BackupManifest(
 
 const val APP_NAME = "timenote"
 const val MANIFEST_PATH = "manifest.json"
-const val NOTES_DIR = "notes/"
-const val FOLDERS_DIR = "folders/"
-const val TAGS_DIR = "tags/"
-const val AUDIO_DIR = "audio/"
+const val NOTES_DIR = SyncPaths.NOTES_DIR
+const val FOLDERS_DIR = SyncPaths.FOLDERS_DIR
+const val TAGS_DIR = SyncPaths.TAGS_DIR
+const val AUDIO_DIR = SyncPaths.AUDIO_DIR
 
 data class ExportResult(val notes: Int, val folders: Int, val tags: Int, val audioFiles: Int, val missingAudio: Int)
 
@@ -91,8 +95,10 @@ sealed class ImportResult {
 class BackupService(
     private val dao: TimenoteDao,
     private val deviceIdSource: DeviceIdSource,
-    private val now: () -> Long = ::getCurrentTimeMillis
+    private val now: () -> Long = ::getCurrentTimeMillis,
+    writeLock: WriteLock = WriteLock()
 ) {
+    private val applier = SyncApplier(dao, deviceIdSource, writeLock, now)
 
     suspend fun export(sink: BackupSink): ExportResult {
         val device = deviceIdSource.deviceId()
@@ -130,9 +136,6 @@ class BackupService(
         if (manifest.app != APP_NAME) return ImportResult.NotABackup
         if (!isSupportedFormat(manifest.v)) return ImportResult.NewerFormat
 
-        val device = deviceIdSource.deviceId()
-        val versions = dao.getAllFieldVersions().groupBy { it.entityKind to it.entityId }
-        fun versionsOf(kind: String, id: String) = versions[kind to id].orEmpty()
         var skipped = 0
 
         /** Reads and decodes every file under [prefix]; unreadable or too-new files are counted and left out. */
@@ -144,45 +147,32 @@ class BackupService(
 
         // 1. tags first: notes embed their tag details
         var tagsAdded = 0; var tagsUpdated = 0
-        val localTags = dao.getAllTagsOnce().associateBy { it.id }
         for (remote in items(TAGS_DIR) { SyncJson.decodeFromString<SyncTag>(it) }) {
-            val local = localTags[remote.id]
-            val localSync = local?.toSync(versionsOf(SyncKind.TAG, remote.id), device)
-            val merged = localSync?.let { mergeTags(it, remote) } ?: remote
-            if (merged == localSync) continue
-            val (entity, stamps) = merged.toEntity(sessionCount = local?.sessionCount ?: 0)
-            dao.insertTag(entity)
-            stamps.forEach { dao.upsertFieldVersion(it) }
-            if (local == null) tagsAdded++ else tagsUpdated++
+            when (applier.applyTag(remote).change) {
+                ApplyChange.ADDED -> tagsAdded++
+                ApplyChange.UPDATED -> tagsUpdated++
+                ApplyChange.UNCHANGED -> {}
+            }
         }
 
         // 2. folders
         var foldersAdded = 0; var foldersUpdated = 0
-        val localFolders = dao.getAllFoldersOnce().associateBy { it.id }
         for (remote in items(FOLDERS_DIR) { SyncJson.decodeFromString<SyncFolder>(it) }) {
-            val local = localFolders[remote.id]
-            val localSync = local?.toSync(versionsOf(SyncKind.FOLDER, remote.id), device)
-            val merged = localSync?.let { mergeFolders(it, remote) } ?: remote
-            if (merged == localSync) continue
-            val (entity, stamps) = merged.toEntity()
-            dao.insertFolder(entity)
-            stamps.forEach { dao.upsertFieldVersion(it) }
-            if (local == null) foldersAdded++ else foldersUpdated++
+            when (applier.applyFolder(remote).change) {
+                ApplyChange.ADDED -> foldersAdded++
+                ApplyChange.UPDATED -> foldersUpdated++
+                ApplyChange.UNCHANGED -> {}
+            }
         }
 
         // 3. notes (tag details now come from the merged tag table)
-        val tagDetails = dao.getAllTagsOnce().filter { !it.isDeleted }.associate { it.id to it.toDomain() }
         var notesAdded = 0; var notesUpdated = 0
-        val localNotes = dao.getAllTimenotesOnce().associateBy { it.id }
         for (remote in items(NOTES_DIR) { SyncJson.decodeFromString<SyncNote>(it) }) {
-            val local = localNotes[remote.id]
-            val localSync = local?.toSync(versionsOf(SyncKind.NOTE, remote.id), device)
-            val merged = localSync?.let { mergeNotes(it, remote) } ?: remote
-            if (merged == localSync) continue
-            val (entity, stamps) = merged.toEntity { tagDetails[it] }
-            dao.insertTimenote(entity)
-            stamps.forEach { dao.upsertFieldVersion(it) }
-            if (local == null) notesAdded++ else notesUpdated++
+            when (applier.applyNote(remote).change) {
+                ApplyChange.ADDED -> notesAdded++
+                ApplyChange.UPDATED -> notesUpdated++
+                ApplyChange.UNCHANGED -> {}
+            }
         }
 
         // 4. voice memos. Names come from the file, so only plain file names are accepted (no folders, no "..")

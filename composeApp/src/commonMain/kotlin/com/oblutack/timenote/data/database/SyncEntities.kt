@@ -29,15 +29,28 @@ data class FieldVersionEntity(
     val present: Boolean = true
 )
 
-/** What was last uploaded for each item, so only real changes are sent again. */
+/**
+ * What sync knows about the cloud copy of each item.
+ *  - [remoteFileId]: the Drive file for this item (null when it has none yet)
+ *  - [contentHash]: hash of the LOCAL item as last sent to / found equal to the cloud copy; the item needs uploading
+ *    when its current hash differs, or when this is null. [BLOCKED_HASH] means the cloud copy was written by a newer
+ *    app version and must not be overwritten.
+ *  - [remoteMd5]: Drive's checksum of the cloud file as last seen, so our own uploads are not downloaded again
+ *  - [syncedAt]: when this item last took part in a sync (local clock)
+ */
 @Entity(tableName = "sync_state", primaryKeys = ["entityKind", "entityId"])
 data class SyncStateEntity(
     val entityKind: String,
     val entityId: String,
     val remoteFileId: String?,
     val syncedAt: Long,
-    val contentHash: String?
-)
+    val contentHash: String?,
+    val remoteMd5: String? = null
+) {
+    companion object {
+        const val BLOCKED_HASH = "blocked-newer-format"
+    }
+}
 
 /**
  * Items that were permanently deleted here and whose cloud copy still has to be removed.

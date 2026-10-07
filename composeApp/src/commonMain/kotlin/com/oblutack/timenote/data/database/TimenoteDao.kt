@@ -102,6 +102,16 @@ interface TimenoteDao {
     @Query("UPDATE timenotes SET isPinned = :isPinned, updatedAt = :updatedAt WHERE id = :id")
     suspend fun updateTimenotePin(id: String, isPinned: Boolean, updatedAt: Long)
 
+    // --- SINGLE ROWS (sync reads the current copy right before merging into it) ---
+    @Query("SELECT * FROM timenotes WHERE id = :id")
+    suspend fun getTimenoteOnce(id: String): TimenoteEntity?
+
+    @Query("SELECT * FROM project_folders WHERE id = :id")
+    suspend fun getFolderOnce(id: String): FolderEntity?
+
+    @Query("SELECT * FROM tags WHERE id = :id")
+    suspend fun getTagOnce(id: String): TagEntity?
+
     // --- FULL SNAPSHOTS (backup and sync): active AND trashed/deleted rows ---
     @Query("SELECT * FROM project_folders")
     suspend fun getAllFoldersOnce(): List<FolderEntity>
@@ -128,4 +138,16 @@ interface TimenoteDao {
 
     @Query("SELECT * FROM pending_remote_deletes ORDER BY createdAt")
     suspend fun getPendingRemoteDeletes(): List<PendingRemoteDeleteEntity>
+
+    @Query("DELETE FROM pending_remote_deletes WHERE entityKind = :kind AND entityId = :id")
+    suspend fun deletePendingRemoteDelete(kind: String, id: String)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsertSyncState(state: SyncStateEntity)
+
+    @Query("SELECT * FROM sync_state")
+    suspend fun getAllSyncStates(): List<SyncStateEntity>
+
+    @Query("DELETE FROM sync_state WHERE entityKind = :kind AND entityId = :id")
+    suspend fun deleteSyncState(kind: String, id: String)
 }

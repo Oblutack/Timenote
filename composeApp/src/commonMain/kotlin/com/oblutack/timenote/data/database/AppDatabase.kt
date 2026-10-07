@@ -91,7 +91,7 @@ val MIGRATION_7_8 = object : Migration(7, 8) {
         )
         connection.execSQL(
             "CREATE TABLE IF NOT EXISTS `sync_state` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, " +
-                "`remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, " +
+                "`remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, `remoteMd5` TEXT, " +
                 "PRIMARY KEY(`entityKind`, `entityId`))"
         )
         connection.execSQL(

@@ -7,9 +7,10 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import com.oblutack.timenote.core.newId
+import com.oblutack.timenote.sync.SyncCheckpoint
 
 /** User preferences plus the running-session backup, stored in a (multiplatform) DataStore. */
-class SettingsRepository(private val dataStore: DataStore<Preferences>) : DefaultTagsState, DeviceIdSource {
+class SettingsRepository(private val dataStore: DataStore<Preferences>) : DefaultTagsState, DeviceIdSource, SyncCheckpoint {
 
     // --- KEYS ---
     private val USE_MONOCHROME_NODES = booleanPreferencesKey("use_monochrome_nodes")
@@ -21,6 +22,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val ACTIVE_SESSION_BACKUP = stringPreferencesKey("active_session_backup")
     private val DEFAULT_TAGS_SEEDED = booleanPreferencesKey("default_tags_seeded")
     private val DEVICE_ID = stringPreferencesKey("device_id")
+    private val SYNC_PAGE_TOKEN = stringPreferencesKey("sync_page_token")
 
     // --- DEFAULT TAGS (see DefaultTagsState) ---
     override suspend fun isSeeded(): Boolean = dataStore.data
@@ -29,6 +31,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     override suspend fun markSeeded() {
         dataStore.edit { it[DEFAULT_TAGS_SEEDED] = true }
+    }
+
+    // --- SYNC CHECKPOINT (see SyncCheckpoint) ---
+    override suspend fun pageToken(): String? = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .first()[SYNC_PAGE_TOKEN]
+
+    override suspend fun savePageToken(token: String?) {
+        dataStore.edit { if (token == null) it.remove(SYNC_PAGE_TOKEN) else it[SYNC_PAGE_TOKEN] = token }
     }
 
     // --- DEVICE ID (see DeviceIdSource) ---

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 8,
-    "identityHash": "0a793ba158ad0be20b2f955a80bbd6a9",
+    "identityHash": "2b8bf146c2f8965515b3a4863cbc26bf",
     "entities": [
       {
         "tableName": "timenotes",
@@ -293,7 +293,7 @@
       },
       {
         "tableName": "sync_state",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, `remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, PRIMARY KEY(`entityKind`, `entityId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`entityKind` TEXT NOT NULL, `entityId` TEXT NOT NULL, `remoteFileId` TEXT, `syncedAt` INTEGER NOT NULL, `contentHash` TEXT, `remoteMd5` TEXT, PRIMARY KEY(`entityKind`, `entityId`))",
         "fields": [
           {
             "fieldPath": "entityKind",
@@ -321,6 +321,11 @@
           {
             "fieldPath": "contentHash",
             "columnName": "contentHash",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "remoteMd5",
+            "columnName": "remoteMd5",
             "affinity": "TEXT"
           }
         ],
@@ -371,7 +376,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '0a793ba158ad0be20b2f955a80bbd6a9')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '2b8bf146c2f8965515b3a4863cbc26bf')"
     ]
   }
 }

@@ -20,7 +20,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
 import com.oblutack.timenote.data.database.FieldVersionEntity
 import com.oblutack.timenote.data.database.PendingRemoteDeleteEntity
+import com.oblutack.timenote.data.database.SyncStateEntity
 import com.oblutack.timenote.data.repository.DeviceIdSource
+import com.oblutack.timenote.sync.SyncCheckpoint
 
 /** In-memory TimenoteDao that mirrors the ordering and soft-delete rules of the real queries. */
 class FakeTimenoteDao : TimenoteDao {
@@ -29,6 +31,7 @@ class FakeTimenoteDao : TimenoteDao {
     private val folders = MutableStateFlow<List<FolderEntity>>(emptyList())
     val fieldVersions = mutableListOf<FieldVersionEntity>()
     val pendingRemoteDeletes = mutableListOf<PendingRemoteDeleteEntity>()
+    val syncStates = mutableListOf<SyncStateEntity>()
     /** Everything that was still in the table at the moment each hard delete ran, to check ordering. */
     val pendingAtHardDelete = mutableListOf<List<PendingRemoteDeleteEntity>>()
 
@@ -104,6 +107,9 @@ class FakeTimenoteDao : TimenoteDao {
     override suspend fun updateFolderPin(id: String, isPinned: Boolean, updatedAt: Long) =
         updateFolder(id) { it.copy(isPinned = isPinned, updatedAt = updatedAt) }
 
+    override suspend fun getTimenoteOnce(id: String): TimenoteEntity? = notes.value.find { it.id == id }
+    override suspend fun getFolderOnce(id: String): FolderEntity? = folders.value.find { it.id == id }
+    override suspend fun getTagOnce(id: String): TagEntity? = tags.value.find { it.id == id }
     override suspend fun getAllFoldersOnce(): List<FolderEntity> = folders.value
     override suspend fun getAllTagsOnce(): List<TagEntity> = tags.value
     override suspend fun getAllFieldVersions(): List<FieldVersionEntity> = fieldVersions.toList()
@@ -123,6 +129,17 @@ class FakeTimenoteDao : TimenoteDao {
         pendingRemoteDeletes += pending
     }
     override suspend fun getPendingRemoteDeletes() = pendingRemoteDeletes.toList()
+    override suspend fun deletePendingRemoteDelete(kind: String, id: String) {
+        pendingRemoteDeletes.removeAll { it.entityKind == kind && it.entityId == id }
+    }
+    override suspend fun upsertSyncState(state: SyncStateEntity) {
+        syncStates.removeAll { it.entityKind == state.entityKind && it.entityId == state.entityId }
+        syncStates += state
+    }
+    override suspend fun getAllSyncStates() = syncStates.toList()
+    override suspend fun deleteSyncState(kind: String, id: String) {
+        syncStates.removeAll { it.entityKind == kind && it.entityId == id }
+    }
 }
 
 /** In-memory DataStore: applies transforms immediately, no files involved. */
@@ -137,6 +154,11 @@ class FakeDataStore : DataStore<Preferences> {
 }
 
 /** In-memory stand-in for the persisted "default tags were already created" flag. */
+class FakeCheckpoint(var token: String? = null) : SyncCheckpoint {
+    override suspend fun pageToken() = token
+    override suspend fun savePageToken(token: String?) { this.token = token }
+}
+
 class FakeDeviceId(private val id: String = "test-device") : DeviceIdSource {
     override suspend fun deviceId() = id
 }
