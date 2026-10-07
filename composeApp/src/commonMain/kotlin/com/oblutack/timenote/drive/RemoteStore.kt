@@ -68,6 +68,9 @@ interface RemoteStore {
      * that the signed-in account is not the one this device has been syncing with.
      */
     suspend fun accountId(): String
+
+    /** A readable name for the account (its email address) to show the user, or null if unknown. */
+    suspend fun accountLabel(): String? = null
 }
 
 /** What went wrong talking to the remote store, with enough detail to decide what to do next. */

@@ -8,9 +8,11 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import com.oblutack.timenote.core.newId
 import com.oblutack.timenote.sync.SyncCheckpoint
+import androidx.datastore.preferences.core.longPreferencesKey
+import com.oblutack.timenote.sync.SyncPrefs
 
 /** User preferences plus the running-session backup, stored in a (multiplatform) DataStore. */
-class SettingsRepository(private val dataStore: DataStore<Preferences>) : DefaultTagsState, DeviceIdSource, SyncCheckpoint {
+class SettingsRepository(private val dataStore: DataStore<Preferences>) : DefaultTagsState, DeviceIdSource, SyncCheckpoint, SyncPrefs {
 
     // --- KEYS ---
     private val USE_MONOCHROME_NODES = booleanPreferencesKey("use_monochrome_nodes")
@@ -23,6 +25,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val DEFAULT_TAGS_SEEDED = booleanPreferencesKey("default_tags_seeded")
     private val DEVICE_ID = stringPreferencesKey("device_id")
     private val VOICE_WIFI_ONLY = booleanPreferencesKey("voice_wifi_only")
+    private val SYNC_ENABLED = booleanPreferencesKey("sync_enabled")
+    private val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
     private val SYNC_PAGE_TOKEN = stringPreferencesKey("sync_page_token")
     private val SYNC_ACCOUNT = stringPreferencesKey("sync_linked_account")
 
@@ -36,13 +40,29 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     }
 
     // --- VOICE MEMO UPLOADS: Wi-Fi only (on unless the user turns it off) ---
-    val voiceWifiOnlyFlow: Flow<Boolean> = dataStore.data
+    override val syncEnabledFlow: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[SYNC_ENABLED] ?: false }
+
+    override suspend fun setSyncEnabled(enabled: Boolean) {
+        dataStore.edit { it[SYNC_ENABLED] = enabled }
+    }
+
+    override val lastSyncAtFlow: Flow<Long?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[LAST_SYNC_AT] }
+
+    override suspend fun setLastSyncAt(time: Long?) {
+        dataStore.edit { if (time == null) it.remove(LAST_SYNC_AT) else it[LAST_SYNC_AT] = time }
+    }
+
+    override val voiceWifiOnlyFlow: Flow<Boolean> = dataStore.data
         .catch { emit(emptyPreferences()) }
         .map { it[VOICE_WIFI_ONLY] ?: true }
 
     suspend fun voiceWifiOnly(): Boolean = voiceWifiOnlyFlow.first()
 
-    suspend fun setVoiceWifiOnly(enabled: Boolean) {
+    override suspend fun setVoiceWifiOnly(enabled: Boolean) {
         dataStore.edit { it[VOICE_WIFI_ONLY] = enabled }
     }
 

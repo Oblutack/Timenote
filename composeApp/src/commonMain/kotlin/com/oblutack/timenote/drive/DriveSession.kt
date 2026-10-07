@@ -28,6 +28,9 @@ interface DriveSession {
 
     /** Identifies the connected Google account (null when not connected or unknown). */
     suspend fun accountId(): String?
+
+    /** The account's email address for display, when known. */
+    suspend fun accountLabel(): String?
 }
 
 /** Returns a function that opens Google's consent screen so the user can connect their Drive. */

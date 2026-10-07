@@ -85,6 +85,8 @@ class AndroidDriveSession(context: Context) : DriveSession {
         _status.value = statusOf(tokens.accessToken())
     }
 
+    override suspend fun accountLabel(): String? = store.accountLabel()
+
     override suspend fun accountId(): String? = try {
         store.accountId()
     } catch (e: RemoteException) {

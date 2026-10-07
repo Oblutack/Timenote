@@ -51,6 +51,32 @@ sealed class SyncResult {
     data class AccountChanged(val linked: String, val current: String) : SyncResult()
 }
 
+enum class LinkKind {
+    /** Nothing here and nothing in the cloud yet. */
+    NothingYet,
+    /** This device has data, the cloud has none: it will be backed up. */
+    Backup,
+    /** The cloud has data, this device has none: it will be restored. */
+    Restore,
+    /** Both have data: items with the same id are merged, everything else is added; nothing is deleted. */
+    Merge
+}
+
+/** The counts shown to the user before a device is linked, so a first sync never comes as a surprise. */
+data class LinkPreview(val localNotes: Int, val localFolders: Int, val cloudNotes: Int, val cloudFolders: Int) {
+    val kind: LinkKind
+        get() {
+            val local = localNotes + localFolders > 0
+            val cloud = cloudNotes + cloudFolders > 0
+            return when {
+                local && cloud -> LinkKind.Merge
+                local -> LinkKind.Backup
+                cloud -> LinkKind.Restore
+                else -> LinkKind.NothingYet
+            }
+        }
+}
+
 /** How long a deletion record is kept before it is cleaned up: a device offline for longer may bring the item back. */
 const val TOMBSTONE_TTL_MS = 180L * 24 * 60 * 60 * 1000
 
@@ -94,6 +120,34 @@ class SyncEngine(
         is RemoteException.NeedsSignIn, is RemoteException.Unauthorized -> SyncResult.NeedsSignIn
         is RemoteException.StorageFull -> SyncResult.StorageFull
         else -> SyncResult.Failed(e)
+    }
+
+    /**
+     * Stops being linked to any account: forgets the cloud file ids, unfinished cloud deletions, the changes-feed
+     * position and the linked account. Nothing local is touched, and nothing is deleted in the cloud. Connecting
+     * again later (to any account) starts with a merge, exactly like the first time.
+     */
+    suspend fun unlink() {
+        running.lock()
+        try {
+            dao.clearSyncStates()
+            dao.clearPendingRemoteDeletes()
+            checkpoint.savePageToken(null)
+            checkpoint.saveLinkedAccount(null)
+        } finally {
+            running.unlock()
+        }
+    }
+
+    /** What connecting this device would do, worked out without changing anything (see [LinkPreview]). */
+    suspend fun previewLinking(): LinkPreview {
+        val names = remote.list().mapNotNull { SyncPaths.parse(it.name)?.first }
+        return LinkPreview(
+            localNotes = dao.getAllTimenotesOnce().size,
+            localFolders = dao.getAllFoldersOnce().size,
+            cloudNotes = names.count { it == SyncKind.NOTE },
+            cloudFolders = names.count { it == SyncKind.FOLDER }
+        )
     }
 
     /**

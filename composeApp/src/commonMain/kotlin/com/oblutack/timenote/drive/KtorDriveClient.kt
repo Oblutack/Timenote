@@ -228,6 +228,13 @@ class KtorDriveClient(
         call(HttpMethod.Get, "/drive/v3/about", query = mapOf("fields" to "user(permissionId)"))
             .parse<AboutDto>().user.permissionId
 
+    override suspend fun accountLabel(): String? = try {
+        call(HttpMethod.Get, "/drive/v3/about", query = mapOf("fields" to "user(emailAddress)"))
+            .parse<AboutLabelDto>().user.emailAddress
+    } catch (e: RemoteException) {
+        null // only for display: not being able to show it is not worth failing anything
+    }
+
     // ------------------------------------------------------------------ plumbing
 
     private class Answer(val bytes: ByteArray)
@@ -414,6 +421,8 @@ class KtorDriveClient(
     @Serializable private class SizeDto(val size: String? = null)
     @Serializable private class AboutUserDto(val permissionId: String)
     @Serializable private class AboutDto(val user: AboutUserDto)
+    @Serializable private class AboutLabelUserDto(val emailAddress: String? = null)
+    @Serializable private class AboutLabelDto(val user: AboutLabelUserDto = AboutLabelUserDto())
 
     @Serializable
     private class ChangeDto(val fileId: String = "", val removed: Boolean = false, val file: FileDto? = null)
