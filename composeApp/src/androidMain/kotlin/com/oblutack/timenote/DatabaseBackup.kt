@@ -21,7 +21,12 @@ fun backupDatabaseBeforeUpgrade(context: Context, databaseName: String, targetVe
         if (!db.exists()) return
 
         val currentVersion = SQLiteDatabase.openDatabase(db.path, null, SQLiteDatabase.OPEN_READONLY).use { it.version }
-        if (currentVersion <= 0 || currentVersion >= targetVersion) return
+        if (currentVersion >= targetVersion) {
+            // Already upgraded (some time ago): the safety copies have done their job once they are old enough
+            pruneOldDatabaseBackups(db.parentFile, databaseName, System.currentTimeMillis())
+            return
+        }
+        if (currentVersion <= 0) return
 
         val backup = File(db.path + ".bak-v$currentVersion")
         if (backup.exists()) return
@@ -33,4 +38,20 @@ fun backupDatabaseBeforeUpgrade(context: Context, databaseName: String, targetVe
     } catch (e: Exception) {
         logError("DatabaseBackup", "Could not back up the database before upgrading", e)
     }
+}
+
+/** How long a pre-upgrade copy is kept: long enough to notice a problem, short enough not to hold old data forever. */
+const val DATABASE_BACKUP_KEEP_MS = 14L * 24 * 60 * 60 * 1000
+
+/**
+ * Deletes the pre-upgrade copies ("<name>.bak-v7" and its "-wal") that are older than [keepMs]. Returns what was removed.
+ * Only files with that exact naming are touched, never the database itself.
+ */
+fun pruneOldDatabaseBackups(directory: File?, databaseName: String, now: Long, keepMs: Long = DATABASE_BACKUP_KEEP_MS): List<File> {
+    val removed = mutableListOf<File>()
+    directory?.listFiles()?.forEach { file ->
+        val isBackup = file.name.startsWith("$databaseName.bak-v")
+        if (isBackup && file.isFile && now - file.lastModified() >= keepMs && file.delete()) removed += file
+    }
+    return removed
 }
