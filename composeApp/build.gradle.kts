@@ -60,6 +60,12 @@ kotlin {
             implementation(libs.datastore.preferences)
             implementation(libs.ktor.client.core)
         }
+        // Runs the real database migrations on a plain SQLite database in unit tests (see MigrationChainTest)
+        val androidUnitTest by getting {
+            dependencies {
+                implementation("org.xerial:sqlite-jdbc:3.41.2.2")
+            }
+        }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
