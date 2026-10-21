@@ -3,11 +3,11 @@ package com.oblutack.timenote.sync
 /**
  * Whether the Google Drive sync section is shown in RELEASE builds. Debug builds always show it.
  *
- * Off for the release that ships the database upgrade and backup file (no network permission there). Switch it on, and
- * move the permissions from the debug manifest to the main one, in the release that ships sync.
+ * On since the release that ships sync (1.1.0). Switching it off hides the section and nothing else, so it can also
+ * serve as an emergency switch in a later release.
  */
 object FeatureFlags {
-    const val SYNC_UI_IN_RELEASE = false
+    const val SYNC_UI_IN_RELEASE = true
 }
 
 private fun plural(n: Int, one: String, many: String = one + "s") = "$n ${if (n == 1) one else many}"

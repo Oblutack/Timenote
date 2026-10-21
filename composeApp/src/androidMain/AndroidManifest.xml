@@ -10,14 +10,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
-    <!--
-        WorkManager (used for background sync) asks for RECEIVE_BOOT_COMPLETED to restart its schedule after a reboot.
-        Until the release that ships sync, release builds must not gain new permissions, so it is removed here.
-        Remove these two lines when sync ships (background syncs then also resume after a reboot without opening the app).
-    -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" tools:node="remove" />
-    <!-- The same for the network state permission that WorkManager and the Wi-Fi-only rule need. The debug build declares it itself. -->
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="remove" />
+    <!-- 2. GOOGLE DRIVE SYNC: talking to Google Drive, and knowing whether Wi-Fi is available (voice memos upload on Wi-Fi only by default) -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- WorkManager adds RECEIVE_BOOT_COMPLETED itself, so background syncs resume after a reboot without opening the app. -->
 
     <application
         android:name=".TimenoteApplication"
