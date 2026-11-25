@@ -82,6 +82,9 @@ private fun AppContent() {
         var historyTab by remember { mutableStateOf(0) }
 
         val snackbarHostState = LocalSnackbarHost.current
+        // One timer for the whole app, not one per screen: a timer screen that is replaced (a branch, "Start Session"
+        // from a folder) must show the same session, not start a second timer with its own state
+        val timerViewModel: TimerViewModel = timerViewModel()
         Scaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
@@ -96,7 +99,7 @@ private fun AppContent() {
                     NavigationBarItem(
                         icon = { Icon(Icons.Default.PlayArrow, contentDescription = "Timer") },
                         label = { Text("Timer") },
-                        selected = currentRoute == "timer",
+                        selected = currentRoute?.startsWith("timer") == true, // the route carries optional arguments
                         onClick = {
                             navController.navigate("timer") {
                                 // Prevents building up a massive backstack if you click the tab 10 times
@@ -157,8 +160,6 @@ private fun AppContent() {
                     val branchToken = backStackEntry.arguments?.getString("token")
                     val folderId = backStackEntry.arguments?.getString("folderId")
 
-                    val timerViewModel: TimerViewModel = timerViewModel()
-
                     LaunchedEffect(parentId, waypointId, branchToken) {
                         if (parentId != null && waypointId != null) {
                             timerViewModel.onAction(TimerAction.SetParentLinks(parentId, waypointId, branchToken))
@@ -203,7 +204,7 @@ private fun AppContent() {
                             // ---------------------------------------------
                             onBranchClick = { parentId, waypointId ->
                                 navController.navigate("timer?parentId=$parentId&waypointId=$waypointId&token=${getCurrentTimeMillis()}") {
-                                    popUpTo("timer") { inclusive = false }
+                                    popUpTo("timer") { inclusive = true }
                                 }
                             }
                         )
@@ -218,7 +219,7 @@ private fun AppContent() {
                             onTimenoteClick = { noteId -> navController.navigate("details/$noteId") },
                             onStartSessionClick = {
                                 navController.navigate("timer?folderId=$id&token=${getCurrentTimeMillis()}") {
-                                    popUpTo("timer") { inclusive = false }
+                                    popUpTo("timer") { inclusive = true }
                                 }
                             }
                         )
