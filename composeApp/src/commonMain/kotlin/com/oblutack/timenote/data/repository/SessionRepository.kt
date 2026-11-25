@@ -1,5 +1,6 @@
 package com.oblutack.timenote.data.repository
 
+import com.oblutack.timenote.core.TRASH_RETENTION_MS
 import com.oblutack.timenote.core.descendantIds
 import com.oblutack.timenote.data.database.FieldNames
 import com.oblutack.timenote.data.database.FieldVersionEntity
@@ -346,6 +347,24 @@ class SessionRepository(
         write {
             _deletedTimenotes.value.forEach { permanentlyDelete(SyncKind.NOTE, it.id) }
             _deletedFolders.value.forEach { permanentlyDelete(SyncKind.FOLDER, it.id) }
+        }
+    }
+
+    /**
+     * Removes for good what has been in the trash longer than [TRASH_RETENTION_MS]. Reads the database itself, not the
+     * lists the screens use (those may not be loaded yet at app start). Only items that are in the trash AND have a
+     * known deletion time before the cutoff are touched; nothing else is ever removed here. Goes through the same path as
+     * "Empty trash", so the cloud copy is removed too.
+     */
+    fun purgeOldTrash() {
+        write {
+            val cutoff = now() - TRASH_RETENTION_MS
+            dao.getAllTimenotesOnce()
+                .filter { it.isDeleted && it.deletedAt != null && it.deletedAt < cutoff }
+                .forEach { permanentlyDelete(SyncKind.NOTE, it.id) }
+            dao.getAllFoldersOnce()
+                .filter { it.isDeleted && it.deletedAt != null && it.deletedAt < cutoff }
+                .forEach { permanentlyDelete(SyncKind.FOLDER, it.id) }
         }
     }
 

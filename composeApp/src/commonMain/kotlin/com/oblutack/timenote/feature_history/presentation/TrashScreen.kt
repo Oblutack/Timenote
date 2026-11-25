@@ -13,6 +13,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.oblutack.timenote.core.TRASH_RETENTION_DAYS
+import com.oblutack.timenote.core.describeTrashItem
+import com.oblutack.timenote.getCurrentTimeMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -34,6 +40,21 @@ fun TrashScreen(
 ) {
     val deletedFolders by viewModel.deletedFolders.collectAsState()
     val deletedTimenotes by viewModel.deletedTimenotes.collectAsState()
+    val now = getCurrentTimeMillis()
+    var confirmEmpty by remember { mutableStateOf(false) }
+
+    if (confirmEmpty) {
+        AlertDialog(
+            onDismissRequest = { confirmEmpty = false },
+            containerColor = SurfaceDark,
+            title = { Text("Empty the trash?", color = TextPrimary) },
+            text = { Text("Everything in it is removed for good, also from your Google Drive copy if sync is on. This cannot be undone.", color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { confirmEmpty = false; viewModel.emptyTrash() }) { Text("Empty trash", color = Color(0xFFE53935)) }
+            },
+            dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Cancel", color = TextSecondary) } }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -58,10 +79,19 @@ fun TrashScreen(
             }
 
             if (deletedFolders.isNotEmpty() || deletedTimenotes.isNotEmpty()) {
-                TextButton(onClick = { viewModel.emptyTrash() }) {
+                TextButton(onClick = { confirmEmpty = true }) {
                     Text("Empty Trash", color = Color(0xFFE53935), fontWeight = FontWeight.Medium)
                 }
             }
+        }
+
+        if (deletedFolders.isNotEmpty() || deletedTimenotes.isNotEmpty()) {
+            Text(
+                text = "Deleted sessions and folders are removed for good after $TRASH_RETENTION_DAYS days.",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
         }
 
         if (deletedFolders.isEmpty() && deletedTimenotes.isEmpty()) {
@@ -90,7 +120,7 @@ fun TrashScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = folder.name, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = "Folder", color = TextSecondary, fontSize = 12.sp)
+                                Text(text = "Folder · ${describeTrashItem(now, folder.deletedAt)}", color = TextSecondary, fontSize = 12.sp)
                             }
                             Row {
                                 IconButton(onClick = { viewModel.restoreFolder(folder.id) }) {
@@ -122,7 +152,7 @@ fun TrashScreen(
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(text = note.title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = note.duration, color = TextSecondary, fontSize = 12.sp)
+                                Text(text = "${note.duration} · ${describeTrashItem(now, note.deletedAt)}", color = TextSecondary, fontSize = 12.sp)
                             }
                             Row {
                                 IconButton(onClick = { viewModel.restoreTimenote(note.id) }) {
