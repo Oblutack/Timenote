@@ -1,5 +1,12 @@
 package com.oblutack.timenote.ui.theme
 
+import timenote.composeapp.generated.resources.jetbrainsmono_regular
+import timenote.composeapp.generated.resources.jetbrainsmono_light
+import timenote.composeapp.generated.resources.jetbrainsmono_bold
+import timenote.composeapp.generated.resources.Res
+import org.jetbrains.compose.resources.Font
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
@@ -61,9 +68,16 @@ val DarkTnColors = TnColors(
 
 val LocalTnColors = staticCompositionLocalOf { DarkTnColors }
 
+/** The face for every time value: all digits are equally wide, so a running clock never shakes. */
+val LocalTnMono = staticCompositionLocalOf<FontFamily> { FontFamily.Monospace }
+
 object TnTheme {
     val colors: TnColors
         @Composable @ReadOnlyComposable get() = LocalTnColors.current
+
+    /** Time values (clocks, durations, timestamps). Titles and other text keep the system font. */
+    val mono: FontFamily
+        @Composable @ReadOnlyComposable get() = LocalTnMono.current
 }
 
 // The names screens have always used. They now follow the active theme, so no screen had to change when themes arrived.
@@ -118,8 +132,15 @@ private fun TnColors.toMaterial() = darkColorScheme(
 )
 
 @Composable
+private fun rememberMonoFamily(): FontFamily = FontFamily(
+    Font(Res.font.jetbrainsmono_light, FontWeight.Light),
+    Font(Res.font.jetbrainsmono_regular, FontWeight.Normal),
+    Font(Res.font.jetbrainsmono_bold, FontWeight.Bold)
+)
+
+@Composable
 fun TimenoteTheme(colors: TnColors = DarkTnColors, content: @Composable () -> Unit) {
-    androidx.compose.runtime.CompositionLocalProvider(LocalTnColors provides colors) {
+    androidx.compose.runtime.CompositionLocalProvider(LocalTnColors provides colors, LocalTnMono provides rememberMonoFamily()) {
         MaterialTheme(colorScheme = colors.toMaterial(), content = content)
     }
 }

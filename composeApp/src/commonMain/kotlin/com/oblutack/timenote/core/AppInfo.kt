@@ -47,5 +47,6 @@ val OPEN_SOURCE_LIBRARIES: List<Pair<String, String>> = listOf(
     "AndroidX: Room, DataStore, Lifecycle, Navigation, WorkManager, Activity, Core" to "Google · Apache License 2.0",
     "OkHttp" to "Square · Apache License 2.0",
     "SQLite" to "Public domain",
+    "JetBrains Mono (the font for clocks and durations)" to "The JetBrains Mono Project Authors · SIL Open Font License 1.1",
     "Google Play services (sign-in to Google Drive)" to "Google · Google's terms of service"
 )

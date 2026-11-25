@@ -246,6 +246,7 @@ fun SessionCard(
             Text(
                 text = session.duration,
                 color = TextSecondary,
+                fontFamily = TnTheme.mono,
                 fontSize = TnType.Body
             )
             Spacer(modifier = Modifier.height(8.dp))

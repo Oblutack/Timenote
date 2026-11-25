@@ -378,7 +378,7 @@ fun GraphScreen(
                                     Column {
                                         Text("Focus time", color = TextSecondary, fontSize = TnType.Caption)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(com.oblutack.timenote.core.formatDuration(note.activeSeconds), color = TextPrimary, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
+                                        Text(com.oblutack.timenote.core.formatDuration(note.activeSeconds), color = TextPrimary, fontFamily = TnTheme.mono, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
                                     }
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
@@ -386,7 +386,7 @@ fun GraphScreen(
                                             color = TextSecondary, fontSize = TnType.Caption
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(familyTime, color = TextPrimary, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
+                                        Text(familyTime, color = TextPrimary, fontFamily = TnTheme.mono, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
                                     }
                                 }
 

@@ -280,7 +280,7 @@ fun TimenoteDetailScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = timenote.duration, color = TextSecondary, fontSize = TnType.BodyLarge)
+        Text(text = timenote.duration, color = TextSecondary, fontFamily = TnTheme.mono, fontSize = TnType.BodyLarge)
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -651,7 +651,7 @@ fun TimenoteDetailScreen(
                                 ) {
                                     Text(text = note.title, color = TextPrimary, fontSize = TnType.BodyLarge)
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = note.timestamp, color = TextSecondary, fontSize = TnType.Caption)
+                                    Text(text = note.timestamp, color = TextSecondary, fontFamily = TnTheme.mono, fontSize = TnType.Caption)
                                 }
                             }
                         }

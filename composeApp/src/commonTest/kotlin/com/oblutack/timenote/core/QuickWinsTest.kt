@@ -99,3 +99,11 @@ class BackupReminderTest {
         assertTrue("not made a backup" in describeBackupReminder(NOW, null))
     }
 }
+
+class OpenSourceCreditsTest {
+    @Test fun theBundledFontIsCreditedWithItsLicence() {
+        // the SIL Open Font License asks for the licence to travel with the font
+        val entry = OPEN_SOURCE_LIBRARIES.firstOrNull { "JetBrains Mono" in it.first }
+        assertTrue(entry != null && "SIL Open Font License" in entry.second, "JetBrains Mono must be listed with its licence")
+    }
+}

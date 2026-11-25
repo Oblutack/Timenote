@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
@@ -266,6 +267,7 @@ fun FolderDetailScreen(
                                     Text(
                                         text = session.duration,
                                         color = TextSecondary,
+                                        fontFamily = TnTheme.mono,
                                         fontSize = TnType.Body
                                     )
                                 }

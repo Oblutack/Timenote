@@ -151,7 +151,12 @@ fun TimerScreen(
             text = if (showLastLabel) "00:00:00" else state.displayTime,
             fontSize = 64.sp,
             fontWeight = FontWeight.Light,
-            color = TextPrimary
+            fontFamily = TnTheme.mono,
+            color = TextPrimary,
+            // one line always: with a large system font the clock shrinks instead of wrapping
+            maxLines = 1,
+            softWrap = false,
+            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 64.sp)
         )
 
         // --- NEW: Smooth Fade-In Pause Timer ---
@@ -164,6 +169,7 @@ fun TimerScreen(
 
         Text(
             text = "PAUSED: ${state.currentPauseTime}",
+            fontFamily = TnTheme.mono,
             color = TnTheme.colors.pause,
             fontSize = TnType.Body,
             fontWeight = FontWeight.SemiBold,

@@ -115,6 +115,7 @@ fun TimenoteTimelineItem(
             Text(
                 text = event.timestamp,
                 color = TextSecondary,
+                fontFamily = TnTheme.mono,
                 fontSize = TnType.Body
             )
 
