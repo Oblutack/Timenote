@@ -29,9 +29,13 @@ import kotlinx.datetime.*
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.ui.text.style.TextOverflow
 import com.oblutack.timenote.getCurrentTimeMillis
+/** More tags than this on a session card are summarised as "+N". */
+private const val MAX_TAGS_ON_CARD = 3
+
 @Composable
 fun FolderCard(
     folder: ProjectFolder,
+    sessionCount: Int,
     onClick: () -> Unit,
     onOptionsClick: () -> Unit
 ) {
@@ -73,7 +77,7 @@ fun FolderCard(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
                 Text(
-                    text = folder.description?.takeIf { it.isNotBlank() } ?: "Folder",
+                    text = folder.description?.takeIf { it.isNotBlank() } ?: if (sessionCount == 1) "1 session" else "$sessionCount sessions",
                     color = TextSecondary,
                     fontSize = 12.sp,
                     maxLines = 1,
@@ -101,6 +105,7 @@ fun FolderCard(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SessionCard(
     session: Timenote,
@@ -160,7 +165,8 @@ fun SessionCard(
             Spacer(modifier = Modifier.height(16.dp))
 
             // Tags / Folders
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Wraps onto a second line instead of running off the card
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isChild) {
                     Box(
                         modifier = Modifier
@@ -191,7 +197,7 @@ fun SessionCard(
                     }
                 }
 
-                session.tags.forEach { tag ->
+                session.tags.take(MAX_TAGS_ON_CARD).forEach { tag ->
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(50))
@@ -203,6 +209,17 @@ fun SessionCard(
                             color = tag.color,
                             fontSize = 12.sp
                         )
+                    }
+                }
+                val hiddenTags = session.tags.size - MAX_TAGS_ON_CARD
+                if (hiddenTags > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(50))
+                            .padding(horizontal = 12.dp, vertical = 4.dp)
+                    ) {
+                        Text(text = "+$hiddenTags", color = TextSecondary, fontSize = 12.sp)
                     }
                 }
             }

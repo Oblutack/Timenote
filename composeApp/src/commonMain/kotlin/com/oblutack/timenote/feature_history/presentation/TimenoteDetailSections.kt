@@ -19,6 +19,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -74,6 +76,19 @@ fun VoiceNotesSection(
     onDismissAudioMessage: () -> Unit = {}
 ) {
     val haptic = LocalHapticFeedback.current
+    var voiceNoteToDelete by remember { mutableStateOf<String?>(null) }
+    voiceNoteToDelete?.let { path ->
+        AlertDialog(
+            onDismissRequest = { voiceNoteToDelete = null },
+            containerColor = SurfaceDark,
+            title = { Text("Delete this voice note?", color = TextPrimary) },
+            text = { Text("The recording is removed from this session.", color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { onDelete(path); voiceNoteToDelete = null }) { Text("Delete", color = Color(0xFFE53935)) }
+            },
+            dismissButton = { TextButton(onClick = { voiceNoteToDelete = null }) { Text("Cancel", color = TextSecondary) } }
+        )
+    }
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -123,7 +138,7 @@ fun VoiceNotesSection(
                 IconButton(
                     onClick = {
                         if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        onDelete(path)
+                        voiceNoteToDelete = path
                     },
                     modifier = Modifier.size(28.dp)
                 ) {
@@ -323,14 +338,35 @@ fun DescriptionEditorSheet(
     otherTimenotes: List<Timenote>,
     focusRequester: FocusRequester,
     enableHaptics: Boolean,
+    /** True when the text differs from what is saved. */
+    hasChanges: Boolean,
+    /** The sheet was closed without choosing: swipe down, tap outside, Back. What was typed is kept, never thrown away. */
+    onDismiss: () -> Unit,
+    /** The Cancel button: discards the changes (after asking, when there are any). */
     onCancel: () -> Unit,
     onSave: () -> Unit
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val haptic = LocalHapticFeedback.current
+    var confirmDiscard by remember { mutableStateOf(false) }
+
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            containerColor = SurfaceDark,
+            title = { Text("Discard your changes?", color = TextPrimary) },
+            text = { Text("What you typed in this note will be lost.", color = TextSecondary) },
+            confirmButton = {
+                TextButton(onClick = { confirmDiscard = false; onCancel() }) { Text("Discard", color = Color(0xFFE53935)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing", color = DefaultAccentColor) }
+            }
+        )
+    }
 
         ModalBottomSheet(
-            onDismissRequest = onCancel,
+            onDismissRequest = onDismiss,
             sheetState = sheetState,
             containerColor = SurfaceDark,
         ) {
@@ -342,7 +378,7 @@ fun DescriptionEditorSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    TextButton(onClick = onCancel) {
+                    TextButton(onClick = { if (hasChanges) confirmDiscard = true else onCancel() }) {
                         Text("Cancel", color = TextSecondary)
                     }
                     Text("Edit Note", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)

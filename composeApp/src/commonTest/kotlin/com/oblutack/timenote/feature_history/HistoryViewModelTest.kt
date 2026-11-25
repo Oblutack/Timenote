@@ -278,4 +278,73 @@ class HistoryViewModelTest {
         assertTrue(trash.deletedTimenotes.value.isEmpty())
         assertTrue(trash.deletedFolders.value.isEmpty())
     }
+
+    // --- Undo after a delete (B4) ---
+
+    @Test fun deletingANoteOffersUndoAndUndoBringsItBack() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a", title = "Morning pages"))
+        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
+
+        env.vm.requestDelete(env.sessions.getTimenoteById("a")!!)
+
+        assertEquals(1, offers.size)
+        assertEquals(listOf("a"), offers.single().ids)
+        assertTrue("Morning pages" in offers.single().message)
+        assertTrue(env.sessions.timenotes.value.isEmpty())
+
+        env.vm.restoreTimenotes(offers.single().ids)
+
+        assertEquals(listOf("a"), env.sessions.timenotes.value.map { it.id })
+        assertTrue(env.sessions.deletedTimenotes.value.isEmpty())
+    }
+
+    @Test fun deletingAWholeBranchOffersUndoForAllOfIt() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("parent"))
+        env.sessions.saveTimenote(testNote("child", "parent"))
+        env.sessions.saveTimenote(testNote("grandchild", "child"))
+        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
+
+        env.vm.requestDelete(env.sessions.getTimenoteById("parent")!!)
+        env.vm.confirmDelete(cascade = true)
+        assertTrue(env.sessions.timenotes.value.isEmpty())
+
+        assertEquals(setOf("parent", "child", "grandchild"), offers.single().ids.toSet())
+        env.vm.restoreTimenotes(offers.single().ids)
+        assertEquals(setOf("parent", "child", "grandchild"), env.sessions.timenotes.value.map { it.id }.toSet())
+    }
+
+    @Test fun cancellingTheBranchQuestionOffersNothing() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("parent"))
+        env.sessions.saveTimenote(testNote("child", "parent"))
+        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
+
+        env.vm.requestDelete(env.sessions.getTimenoteById("parent")!!)
+        env.vm.cancelDelete()
+
+        assertTrue(offers.isEmpty())
+        assertEquals(2, env.sessions.timenotes.value.size)
+    }
+
+    @Test fun oneSwipeIsOneDeleteEvenIfItIsReportedTwice() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a"))
+        env.sessions.saveTimenote(testNote("b"))
+        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
+
+        val a = env.sessions.getTimenoteById("a")!!
+        env.vm.requestDelete(a)
+        env.vm.requestDelete(a) // the swipe widget reports the same delete again
+
+        assertEquals(1, offers.size, "one Undo offer, not two queued one after the other")
+
+        env.vm.requestDelete(env.sessions.getTimenoteById("b")!!) // a different session is a different delete
+        assertEquals(2, offers.size)
+    }
 }

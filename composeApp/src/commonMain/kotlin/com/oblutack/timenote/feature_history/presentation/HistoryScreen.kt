@@ -185,6 +185,19 @@ fun HistoryScreen(
     val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
 
+    // After a delete: a short message with Undo, instead of an instant, silent loss
+    val snackbar = com.oblutack.timenote.LocalSnackbarHost.current
+    LaunchedEffect(Unit) {
+        viewModel.undoDelete.collect { undo ->
+            val result = snackbar.showSnackbar(
+                message = undo.message,
+                actionLabel = "Undo",
+                duration = androidx.compose.material3.SnackbarDuration.Long
+            )
+            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) viewModel.restoreTimenotes(undo.ids)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -482,9 +495,30 @@ fun HistoryScreen(
                                         selectedDate = selectedDate, // THE FIX: Pass the missing parameter
                                         streaks = streaks,
                                         onDateSelected = { clickedDate ->
-                                            viewModel.selectDateForSummary(clickedDate)
+                                            // Tapping a day filters the list to it; tapping it again clears the filter
+                                            selectedDate = if (selectedDate == clickedDate) null else clickedDate
+                                            if (selectedDate != null) viewModel.selectDateForSummary(clickedDate)
                                         }
                                     )
+                                }
+                            }
+
+                            val filterDate = selectedDate
+                            if (isCalendarView && filterDate != null) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(50))
+                                            .background(DefaultAccentColor.copy(alpha = 0.15f))
+                                            .clickable { selectedDate = null }
+                                            .padding(horizontal = 14.dp, vertical = 6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        val monthName = filterDate.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
+                                        Text("$monthName ${filterDate.dayOfMonth}, ${filterDate.year}", color = DefaultAccentColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Icon(Icons.Default.Close, contentDescription = "Show all days", tint = DefaultAccentColor, modifier = Modifier.size(14.dp))
+                                    }
                                 }
                             }
 
@@ -497,7 +531,11 @@ fun HistoryScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "No sessions recorded on this date.",
+                                    text = when {
+                                        isCalendarView && selectedDate != null -> "No sessions recorded on this date."
+                                        searchQuery.isNotBlank() || selectedFilterTags.isNotEmpty() -> "No sessions match your search or filters."
+                                        else -> "No sessions yet. Start one on the Timer tab."
+                                    },
                                     color = TextSecondary,
                                     fontSize = 16.sp
                                 )
@@ -590,6 +628,7 @@ fun HistoryScreen(
                     items(sortedFolders) { folder ->
                         FolderCard(
                             folder = folder,
+                            sessionCount = recentSessions.count { it.folderId == folder.id },
                             onClick = { onFolderClick(folder.id) },
                             onOptionsClick = {
                                 folderOptionsId = folder.id

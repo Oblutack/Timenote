@@ -691,6 +691,15 @@ fun TimenoteDetailScreen(
             otherTimenotes = allTimenotes.filter { it.id != timenote.id },
             focusRequester = focusRequester,
             enableHaptics = enableHaptics,
+            hasChanges = descriptionText.text != cleanDescription,
+            onDismiss = {
+                // Closed without choosing: keep what was typed
+                if (descriptionText.text != cleanDescription) {
+                    sessionRepository.updateTimenoteDescription(timenote.id, descriptionText.text)
+                    optimisticDescription = descriptionText.text
+                }
+                isEditingDescription = false
+            },
             onCancel = {
                 isEditingDescription = false
                 descriptionText = TextFieldValue(

@@ -3,6 +3,7 @@ package com.oblutack.timenote.feature_settings.presentation
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -46,7 +47,7 @@ import com.oblutack.timenote.drive.isDebugBuild
 import com.oblutack.timenote.sync.FeatureFlags
 import com.oblutack.timenote.di.syncSettingsViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun SettingsScreen(
     onBackClick: () -> Unit,
@@ -59,6 +60,7 @@ fun SettingsScreen(
     val customColors by viewModel.customColors.collectAsState()
 
     var isColorPickerOpen by remember { mutableStateOf(false) }
+    var colorToRemove by remember { mutableStateOf<Long?>(null) }
     var tempPickedColor by remember { mutableStateOf(DefaultAccentColor) }
 
     val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
@@ -175,6 +177,10 @@ fun SettingsScreen(
 
         // --- CUSTOM COLOR PALETTE ---
         Text("CUSTOM COLOR PALETTE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        if (customColors.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text("Press and hold a colour to remove it.", color = TextSecondary.copy(alpha = 0.7f), fontSize = 12.sp)
+        }
         Spacer(modifier = Modifier.height(16.dp))
 
         LazyRow(
@@ -204,12 +210,9 @@ fun SettingsScreen(
                         .size(48.dp)
                         .clip(CircleShape)
                         .background(color)
-                        .clickable { viewModel.deleteCustomColor(colorLong) }, // Tap to delete!
+                        .combinedClickable(onClick = {}, onLongClick = { colorToRemove = colorLong }),
                     contentAlignment = Alignment.Center
-                ) {
-                    // Show a faint X to indicate it's deletable
-                    Icon(Icons.Default.Close, contentDescription = "Delete", tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(16.dp))
-                }
+                ) {}
             }
         }
 
@@ -330,6 +333,27 @@ fun SettingsScreen(
 
         // Fixed: Replaced weight with a standard height spacer!
         // Spacer(modifier = Modifier.height(48.dp))
+    }
+
+    colorToRemove?.let { colorLong ->
+        AlertDialog(
+            onDismissRequest = { colorToRemove = null },
+            containerColor = SurfaceDark,
+            title = { Text("Remove this colour?", color = TextPrimary) },
+            text = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(modifier = Modifier.size(28.dp).clip(CircleShape).background(Color(colorLong.toULong())))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("It is removed from your palette. Things already using it keep it.", color = TextSecondary)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { viewModel.deleteCustomColor(colorLong); colorToRemove = null }) {
+                    Text("Remove", color = Color(0xFFE53935))
+                }
+            },
+            dismissButton = { TextButton(onClick = { colorToRemove = null }) { Text("Cancel", color = TextSecondary) } }
+        )
     }
 
     // --- THE COLOR WHEEL BOTTOM SHEET ---
@@ -453,7 +477,7 @@ fun SettingsScreen(
                     Text("Make your notes actionable. Use the toolbar in the text editor to create checklists ([ ]). You can tap these checkboxes directly on the note's detail screen to check them off without opening the editor!", color = TextSecondary)
 
                     Text("3. Smart Mentions", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
-                    Text("Type '@' in the note editor to instantly search and link to past sessions. Tapping a glowing tag jumps you directly to that session's details.", color = TextSecondary)
+                    Text("Type '@' in the note editor to instantly search and link to past sessions. Tapping a highlighted mention jumps you directly to that session's details.", color = TextSecondary)
 
                     Text("4. Voice Memos & Ducking", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
                     Text("You can record voice memos directly into your timeline. When you play them back, Timenote will automatically lower the volume of your background music (like Spotify) so you can hear your thoughts clearly.", color = TextSecondary)

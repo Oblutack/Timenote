@@ -317,7 +317,7 @@ fun DeleteBranchSheet(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Delete Branch?", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("This session has $descendantCount connected child sessions.", color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+                Text(if (descendantCount == 1) "This session has 1 connected branch." else "This session has $descendantCount connected branches.", color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(

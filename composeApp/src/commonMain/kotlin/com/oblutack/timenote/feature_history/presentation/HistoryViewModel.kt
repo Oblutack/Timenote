@@ -6,6 +6,8 @@ import com.oblutack.timenote.data.repository.SessionRepository
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -35,6 +37,9 @@ enum class SortOption(val displayName: String) {
     LONGEST("Longest Duration"),
     SHORTEST("Shortest Duration")
 }
+
+/** Delete requests for the same session closer together than this are one request. */
+private const val DUPLICATE_DELETE_WINDOW_MS = 1_500L
 
 class HistoryViewModel(
     private val sessionRepository: SessionRepository,
@@ -263,6 +268,17 @@ class HistoryViewModel(
         sessionRepository.toggleTimenotePin(id)
     }
 
+    // --- UNDO AFTER A DELETE ---
+    /** What the screen offers to bring back: the notes that were just moved to the trash. */
+    data class UndoDelete(val message: String, val ids: List<String>)
+
+    private val _undoDelete = MutableSharedFlow<UndoDelete>(extraBufferCapacity = 4)
+    val undoDelete = _undoDelete.asSharedFlow()
+
+    fun restoreTimenotes(ids: List<String>) {
+        ids.forEach { sessionRepository.restoreTimenote(it) }
+    }
+
     // --- DELETE CASCADER STATE ---
     private val _sessionPendingDelete = MutableStateFlow<Timenote?>(null)
     val sessionPendingDelete = _sessionPendingDelete.asStateFlow()
@@ -270,22 +286,33 @@ class HistoryViewModel(
     private val _descendantCount = MutableStateFlow(0)
     val descendantCount = _descendantCount.asStateFlow()
 
+    // A swipe can report the same delete more than once; one swipe must be one delete (and one Undo offer)
+    private var lastDeleteRequest: Pair<String, Long>? = null
+
     fun requestDelete(session: Timenote) {
+        val at = now()
+        val last = lastDeleteRequest
+        if (last != null && last.first == session.id && at - last.second < DUPLICATE_DELETE_WINDOW_MS) return
+        lastDeleteRequest = session.id to at
+
         val descendants = sessionRepository.getDescendantIds(session.id)
         if (descendants.isNotEmpty()) {
             // It has children! Pause and ask the user.
             _descendantCount.value = descendants.size
             _sessionPendingDelete.value = session
         } else {
-            // No children. Delete instantly.
+            // No children: delete right away, with a way back
             sessionRepository.deleteTimenote(session.id)
+            _undoDelete.tryEmit(UndoDelete("\"${session.title.ifBlank { "Untitled" }}\" moved to trash", listOf(session.id)))
         }
     }
 
     fun confirmDelete(cascade: Boolean) {
         val session = _sessionPendingDelete.value ?: return
         if (cascade) {
+            val ids = listOf(session.id) + sessionRepository.getDescendantIds(session.id)
             sessionRepository.cascadeSoftDeleteTimenote(session.id)
+            _undoDelete.tryEmit(UndoDelete("${ids.size} sessions moved to trash", ids))
         } else {
             sessionRepository.deleteAndOrphanChildren(session.id)
         }

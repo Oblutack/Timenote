@@ -366,12 +366,15 @@ fun GraphScreen(
                                 // ROW 1: Total Times
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column {
-                                        Text("Node Time", color = TextSecondary, fontSize = 12.sp)
+                                        Text("Focus time", color = TextSecondary, fontSize = 12.sp)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(note.duration, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text(com.oblutack.timenote.core.formatDuration(note.activeSeconds), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                     }
                                     Column(horizontalAlignment = Alignment.End) {
-                                        Text("Family Time ($childCount children)", color = TextSecondary, fontSize = 12.sp)
+                                        Text(
+                                            when (childCount) { 0 -> "With branches"; 1 -> "With 1 branch"; else -> "With $childCount branches" },
+                                            color = TextSecondary, fontSize = 12.sp
+                                        )
                                         Spacer(modifier = Modifier.height(4.dp))
                                         Text(familyTime, color = DefaultAccentColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                                     }
