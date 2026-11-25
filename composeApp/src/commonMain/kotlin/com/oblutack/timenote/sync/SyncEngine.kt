@@ -375,7 +375,9 @@ class SyncEngine(
                 val hash = contentHash(json)
                 if (state?.contentHash == hash) continue
 
-                val bytes = json.encodeToByteArray()
+                // The hash above is of what THIS device knows; the cloud copy may also hold fields only a newer app
+                // understands, which must survive this upload (see carryUnknownFields)
+                val bytes = withCloudOnlyFields(json, state?.remoteFileId).encodeToByteArray()
                 val name = SyncPaths.of(kind, id)
                 val file = try {
                     remote.upload(name, bytes, state?.remoteFileId)
@@ -387,6 +389,21 @@ class SyncEngine(
                 stats = stats.copy(uploaded = stats.uploaded + 1)
             }
             return uploaded
+        }
+
+        /**
+         * [json] with the fields of the current cloud copy that this app does not know added to it. Reads the cloud
+         * copy right before the upload, so it is what is being replaced. A copy that is gone or unreadable has nothing
+         * to keep. Any other failure stops the run rather than risk uploading without knowing what would be lost.
+         */
+        private suspend fun withCloudOnlyFields(json: String, fileId: String?): String {
+            if (fileId == null) return json // a new file replaces nothing
+            val cloudCopy = try {
+                remote.download(fileId).decodeToString()
+            } catch (e: RemoteException.NotFound) {
+                return json
+            }
+            return carryUnknownFields(json, cloudCopy)
         }
 
         /**
