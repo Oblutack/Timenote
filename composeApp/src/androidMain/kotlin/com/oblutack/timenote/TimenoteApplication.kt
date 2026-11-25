@@ -2,6 +2,8 @@ package com.oblutack.timenote
 
 import android.app.Application
 import android.content.Context
+import android.os.Build
+import com.oblutack.timenote.core.AppInfo
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -97,13 +99,21 @@ class TimenoteApplication : Application() {
                 context = this,
                 service = BackupService(database.timenoteDao(), settingsRepository),
                 scope = appScope,
-                audioDir = audioDir
+                audioDir = audioDir,
+                onExported = { settingsRepository.setLastBackupAt(System.currentTimeMillis()) }
             ),
             driveSession = drive,
             syncEngine = syncEngine,
             syncManager = syncManager,
-            audioFetcher = audioSync
+            audioFetcher = audioSync,
+            appInfo = AppInfo(
+                versionName = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty(),
+                platformSummary = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
+            )
         )
+
+        // What has been in the trash for 30 days is removed for good (and from the cloud copy, when sync is on)
+        sessionRepository.purgeOldTrash()
 
         // Move memos recorded by older versions out of the OS-clearable cache directory
         appScope.launch(Dispatchers.IO) {

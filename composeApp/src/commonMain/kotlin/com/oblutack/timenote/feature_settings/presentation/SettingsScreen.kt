@@ -33,10 +33,16 @@ import com.oblutack.timenote.TextPrimary
 import com.oblutack.timenote.TextSecondary
 import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalUriHandler
+import com.oblutack.timenote.core.OPEN_SOURCE_LIBRARIES
+import com.oblutack.timenote.core.PRIVACY_POLICY_URL
+import com.oblutack.timenote.core.bugReportLink
+import com.oblutack.timenote.core.describeLastBackup
+import com.oblutack.timenote.getCurrentTimeMillis
 import com.oblutack.timenote.di.settingsViewModel
 import com.oblutack.timenote.di.LocalAppContainer
 import androidx.compose.material.icons.filled.Share
@@ -70,7 +76,9 @@ fun SettingsScreen(
     val backupLauncher = rememberBackupLauncher(backupRunner)
 
     val uriHandler = LocalUriHandler.current
+    val appInfo = LocalAppContainer.current.appInfo
     var isHelpSheetOpen by remember { mutableStateOf(false) }
+    var isLicensesOpen by remember { mutableStateOf(false) }
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && (isColorPickerOpen || isHelpSheetOpen)) 16.dp else 0.dp, // <-- ADDED isHelpSheetOpen
@@ -228,6 +236,9 @@ fun SettingsScreen(
 
             // --- BACKUP ---
             Text("BACKUP", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            val lastBackupAt by settingsRepository.lastBackupAtFlow.collectAsState(initial = null)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(describeLastBackup(getCurrentTimeMillis(), lastBackupAt), color = TextSecondary.copy(alpha = 0.7f), fontSize = 12.sp)
             Spacer(modifier = Modifier.height(16.dp))
 
             Column(
@@ -304,13 +315,52 @@ fun SettingsScreen(
                     // 2. Report a Bug
                     Row(
                         modifier = Modifier.fillMaxWidth().clickable {
-                            uriHandler.openUri("mailto:timenotesupport@gmail.com?subject=Timenote%20Bug%20Report")
+                            // the email already says which app and system version it is about
+                            uriHandler.openUri(bugReportLink(appInfo))
                         }.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(Icons.Default.Build, contentDescription = "Bug", tint = TextPrimary)
                         Spacer(modifier = Modifier.width(16.dp))
                         Text("Report a Bug", color = TextPrimary, fontSize = 16.sp)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // --- ABOUT ---
+                Text("ABOUT", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(SurfaceDark)
+                        .padding(8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Version", color = TextPrimary, fontSize = 16.sp)
+                        Text(appInfo.versionName.ifBlank { "unknown" }, color = TextSecondary, fontSize = 16.sp)
+                    }
+                    if (PRIVACY_POLICY_URL.isNotBlank()) {
+                        Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BackgroundDark))
+                        Row(
+                            modifier = Modifier.fillMaxWidth().clickable { uriHandler.openUri(PRIVACY_POLICY_URL) }.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Privacy policy", color = TextPrimary, fontSize = 16.sp)
+                        }
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BackgroundDark))
+                    Row(
+                        modifier = Modifier.fillMaxWidth().clickable { isLicensesOpen = true }.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Open-source libraries", color = TextPrimary, fontSize = 16.sp)
                     }
                 }
 
@@ -442,6 +492,26 @@ fun SettingsScreen(
             confirmButton = {
                 TextButton(onClick = { backupRunner.dismiss() }) { Text("OK", color = DefaultAccentColor) }
             }
+        )
+    }
+
+    if (isLicensesOpen) {
+        AlertDialog(
+            onDismissRequest = { isLicensesOpen = false },
+            containerColor = SurfaceDark,
+            title = { Text("Open-source libraries", color = TextPrimary) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Timenote is built with the work of many people. Thank you.", color = TextSecondary, fontSize = 14.sp)
+                    OPEN_SOURCE_LIBRARIES.forEach { (name, licence) ->
+                        Column {
+                            Text(name, color = TextPrimary, fontSize = 14.sp)
+                            Text(licence, color = TextSecondary, fontSize = 12.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { isLicensesOpen = false }) { Text("Close", color = DefaultAccentColor) } }
         )
     }
 

@@ -8,6 +8,7 @@ import com.oblutack.timenote.feature_timer.domain.AudioRecorder
 import com.oblutack.timenote.feature_timer.domain.TimerServiceCommand
 import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
 import kotlinx.coroutines.flow.MutableSharedFlow
+import com.oblutack.timenote.core.AppInfo
 import com.oblutack.timenote.core.AudioFiles
 import com.oblutack.timenote.backup.BackupRunner
 import com.oblutack.timenote.drive.DriveSession
@@ -37,6 +38,8 @@ class AppContainer(
     val syncManager: SyncManager? = null,
     /** Downloads voice memos recorded elsewhere when they are played (null when there is no sync). */
     val audioFetcher: AudioFetcher? = null,
+    /** App and system version, for the About section and bug reports. */
+    val appInfo: AppInfo = AppInfo(),
     /** The timer notification buttons emit here; TimerViewModel collects. */
     val serviceCommands: MutableSharedFlow<TimerServiceCommand> = MutableSharedFlow(extraBufferCapacity = 1)
 )
