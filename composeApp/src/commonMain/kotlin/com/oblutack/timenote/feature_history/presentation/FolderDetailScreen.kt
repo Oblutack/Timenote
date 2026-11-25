@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,10 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.graphicsLayer
@@ -87,7 +89,7 @@ fun FolderDetailScreen(
             Text(
                 text = "Folder Details",
                 color = TextSecondary,
-                fontSize = 16.sp
+                fontSize = TnType.BodyLarge
             )
         }
 
@@ -110,7 +112,7 @@ fun FolderDetailScreen(
                     Text(
                         text = folderDescription,
                         color = TextSecondary,
-                        fontSize = 14.sp,
+                        fontSize = TnType.Body,
                         lineHeight = 20.sp
                     )
                 }
@@ -118,7 +120,7 @@ fun FolderDetailScreen(
                 Text(
                     text = "${folderTimenotes.size} sessions • Total time: $formattedTime",
                     color = TextSecondary,
-                    fontSize = 16.sp
+                    fontSize = TnType.BodyLarge
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
@@ -127,7 +129,7 @@ fun FolderDetailScreen(
                 ) {
                     OutlinedButton(
                         onClick = onStartSessionClick,
-                        shape = RoundedCornerShape(24.dp),
+                        shape = TnShape.Large,
                         border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                     ) {
@@ -142,7 +144,7 @@ fun FolderDetailScreen(
 
                     OutlinedButton(
                         onClick = { isAddSessionDialogOpen = true },
-                        shape = RoundedCornerShape(24.dp),
+                        shape = TnShape.Large,
                         border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
                         colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
                     ) {
@@ -162,7 +164,7 @@ fun FolderDetailScreen(
                     Text(
                         text = "No sessions in this folder yet.",
                         color = TextSecondary,
-                        fontSize = 16.sp
+                        fontSize = TnType.BodyLarge
                     )
                 }
             } else {
@@ -206,7 +208,7 @@ fun FolderDetailScreen(
                 Text(
                     text = "Folder not found.",
                     color = TextSecondary,
-                    fontSize = 16.sp
+                    fontSize = TnType.BodyLarge
                 )
             }
         }
@@ -217,7 +219,7 @@ fun FolderDetailScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(SurfaceDark, RoundedCornerShape(16.dp))
+                    .background(SurfaceDark, TnShape.Card)
                     .padding(24.dp)
             ) {
                 Text(
@@ -232,7 +234,7 @@ fun FolderDetailScreen(
                     Text(
                         text = "No unassigned sessions available.",
                         color = TextSecondary,
-                        fontSize = 16.sp
+                        fontSize = TnType.BodyLarge
                     )
                 } else {
                     LazyColumn(
@@ -243,9 +245,9 @@ fun FolderDetailScreen(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(TnShape.Medium)
                                     // Premium ghost border
-                                    .border(1.dp, TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                    .border(1.dp, TextSecondary.copy(alpha = 0.3f), TnShape.Medium)
                                     .clickable {
                                         sessionRepository.assignFolderToTimenote(session.id, folder.id)
                                     }
@@ -257,14 +259,14 @@ fun FolderDetailScreen(
                                     Text(
                                         text = session.title,
                                         color = TextPrimary,
-                                        fontSize = 16.sp,
+                                        fontSize = TnType.BodyLarge,
                                         fontWeight = FontWeight.Medium
                                     )
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
                                         text = session.duration,
                                         color = TextSecondary,
-                                        fontSize = 14.sp
+                                        fontSize = TnType.Body
                                     )
                                 }
 

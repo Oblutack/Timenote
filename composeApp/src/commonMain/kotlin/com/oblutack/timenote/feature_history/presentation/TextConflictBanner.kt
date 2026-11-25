@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,10 +28,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.feature_history.domain.TextConflict
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -52,7 +54,7 @@ fun TextConflictBanner(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(TnShape.Medium)
             .background(SurfaceDark)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -61,7 +63,7 @@ fun TextConflictBanner(
         Text(
             if (conflicts.size == 1) "Another version of this note's text was saved."
             else "${conflicts.size} other versions of this note's text were saved.",
-            color = TextPrimary, fontSize = 14.sp, modifier = Modifier.weight(1f).padding(end = 8.dp)
+            color = TextPrimary, fontSize = TnType.Body, modifier = Modifier.weight(1f).padding(end = 8.dp)
         )
         TextButton(onClick = { isOpen = true }) { Text("View", color = DefaultAccentColor, fontWeight = FontWeight.Bold) }
     }
@@ -79,14 +81,14 @@ fun TextConflictBanner(
                     Text(
                         "These texts were changed on another device at the same time. The newer one is in your note. " +
                             "Restoring one puts it in the note and keeps the current text here.",
-                        color = TextSecondary, fontSize = 12.sp
+                        color = TextSecondary, fontSize = TnType.Caption
                     )
                     conflicts.forEach { conflict ->
                         Column {
-                            Text("Written ${formatWhen(conflict.writtenAt)}", color = TextSecondary, fontSize = 12.sp)
+                            Text("Written ${formatWhen(conflict.writtenAt)}", color = TextSecondary, fontSize = TnType.Caption)
                             Spacer(Modifier.height(4.dp))
                             Column(Modifier.heightIn(max = 180.dp).verticalScroll(rememberScrollState())) {
-                                Text(conflict.text, color = TextPrimary, fontSize = 14.sp)
+                                Text(conflict.text, color = TextPrimary, fontSize = TnType.Body)
                             }
                             Row(horizontalArrangement = Arrangement.End, modifier = Modifier.fillMaxWidth()) {
                                 TextButton(onClick = { onDismiss(conflict.textHash); if (conflicts.size == 1) isOpen = false }) {

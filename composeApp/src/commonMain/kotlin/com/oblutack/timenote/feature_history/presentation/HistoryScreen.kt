@@ -1,5 +1,9 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.Palette
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -38,11 +42,11 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
 import androidx.compose.material3.IconButton
 import kotlinx.datetime.*
 import kotlinx.coroutines.launch
@@ -159,7 +163,7 @@ fun HistoryScreen(
     var isCreateFolderDialogOpen by remember { mutableStateOf(false) }
     var newFolderName by remember { mutableStateOf("") }
     var newFolderDescription by remember { mutableStateOf("") }
-    var newFolderColor by remember { mutableStateOf(Color(0xFF4FA8F9)) }
+    var newFolderColor by remember { mutableStateOf(Palette.Blue) }
     var folderOptionsId by remember { mutableStateOf<String?>(null) }
 
     val customColors by settingsRepository.customColorsFlow.collectAsState(initial = emptyList())
@@ -221,7 +225,7 @@ fun HistoryScreen(
                 onValueChange = { viewModel.updateSearchQuery(it) },
                 placeholder = { Text("Search sessions, notes, tags...", color = TextSecondary) },
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(50),
+                shape = TnShape.Pill,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = SurfaceDark,
                     unfocusedContainerColor = SurfaceDark,
@@ -252,7 +256,7 @@ fun HistoryScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight()
-                        .clip(RoundedCornerShape(50))
+                        .clip(TnShape.Pill)
                         .background(SurfaceDark)
                         .padding(4.dp)
                 ) {
@@ -260,8 +264,8 @@ fun HistoryScreen(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(50))
-                            .background(if (selectedTab == 0) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clip(TnShape.Pill)
+                            .background(if (selectedTab == 0) TnTheme.colors.surfaceRaised else Color.Transparent)
                             .clickable {
                                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // <-- ADD THIS
                                 onTabSelected(0)
@@ -273,15 +277,15 @@ fun HistoryScreen(
                             text = "Sessions",
                             color = if (selectedTab == 0) TextPrimary else TextSecondary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = TnType.Body
                         )
                     }
                     Box(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight()
-                            .clip(RoundedCornerShape(50))
-                            .background(if (selectedTab == 1) Color(0xFF2C2C2C) else Color.Transparent)
+                            .clip(TnShape.Pill)
+                            .background(if (selectedTab == 1) TnTheme.colors.surfaceRaised else Color.Transparent)
                             .clickable {
                                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // <-- ADD THIS
                                 onTabSelected(1)
@@ -293,7 +297,7 @@ fun HistoryScreen(
                             text = "Folders",
                             color = if (selectedTab == 1) TextPrimary else TextSecondary,
                             fontWeight = FontWeight.Bold,
-                            fontSize = 14.sp
+                            fontSize = TnType.Body
                         )
                     }
                 }
@@ -303,7 +307,7 @@ fun HistoryScreen(
                 // Unified Action Pill
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(TnShape.Pill)
                         .background(SurfaceDark)
                         .padding(horizontal = 4.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -357,7 +361,7 @@ fun HistoryScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(TnShape.Card)
                         .background(SurfaceDark)
                         .height(IntrinsicSize.Min), // Forces the dividers to match the row height!
                     verticalAlignment = Alignment.CenterVertically
@@ -386,7 +390,7 @@ fun HistoryScreen(
                         Text(
                             text = "Heatmap",
                             color = if (isCalendarView) DefaultAccentColor else TextSecondary,
-                            fontSize = 13.sp,
+                            fontSize = TnType.Label,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -418,7 +422,7 @@ fun HistoryScreen(
                         Text(
                             text = if (hasTags) "${selectedFilterTags.size} Tags" else "Tags",
                             color = if (hasTags) DefaultAccentColor else TextSecondary,
-                            fontSize = 13.sp,
+                            fontSize = TnType.Label,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -448,7 +452,7 @@ fun HistoryScreen(
                         Text(
                             text = sortOption.displayName.split(" ").first(), // e.g., turns "Newest First" into "Newest" to fit perfectly!
                             color = TextSecondary,
-                            fontSize = 13.sp,
+                            fontSize = TnType.Label,
                             fontWeight = FontWeight.Medium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -493,13 +497,13 @@ fun HistoryScreen(
                                     Column(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clip(RoundedCornerShape(16.dp))
+                                            .clip(TnShape.Card)
                                             .background(DefaultAccentColor.copy(alpha = 0.12f))
                                             .padding(16.dp)
                                     ) {
                                         Text("Back up your timenotes", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(reminder, color = TextSecondary, fontSize = 13.sp)
+                                        Text(reminder, color = TextSecondary, fontSize = TnType.Label)
                                         Spacer(modifier = Modifier.height(8.dp))
                                         Row {
                                             TextButton(onClick = onSettingsClick) { Text("Back up now", color = DefaultAccentColor) }
@@ -533,14 +537,14 @@ fun HistoryScreen(
                                 item {
                                     Row(
                                         modifier = Modifier
-                                            .clip(RoundedCornerShape(50))
+                                            .clip(TnShape.Pill)
                                             .background(DefaultAccentColor.copy(alpha = 0.15f))
                                             .clickable { selectedDate = null }
                                             .padding(horizontal = 14.dp, vertical = 6.dp),
                                         verticalAlignment = Alignment.CenterVertically
                                     ) {
                                         val monthName = filterDate.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-                                        Text("$monthName ${filterDate.dayOfMonth}, ${filterDate.year}", color = DefaultAccentColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                        Text("$monthName ${filterDate.dayOfMonth}, ${filterDate.year}", color = DefaultAccentColor, fontSize = TnType.Label, fontWeight = FontWeight.Medium)
                                         Spacer(modifier = Modifier.width(8.dp))
                                         Icon(Icons.Default.Close, contentDescription = "Show all days", tint = DefaultAccentColor, modifier = Modifier.size(14.dp))
                                     }
@@ -562,7 +566,7 @@ fun HistoryScreen(
                                         else -> "No sessions yet. Start one on the Timer tab."
                                     },
                                     color = TextSecondary,
-                                    fontSize = 16.sp
+                                    fontSize = TnType.BodyLarge
                                 )
                             }
                         }
@@ -587,8 +591,8 @@ fun HistoryScreen(
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
-                                        .clip(RoundedCornerShape(16.dp))
-                                        .background(Color(0xFFE53935))
+                                        .clip(TnShape.Card)
+                                        .background(TnTheme.colors.danger)
                                         .padding(end = 24.dp),
                                     contentAlignment = Alignment.CenterEnd
                                 ) {
@@ -607,22 +611,23 @@ fun HistoryScreen(
                 }
             }
         } else {
+            val dashColor = TextSecondary
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(TnShape.Card)
                         .clickable {
                             newFolderName = ""
                             newFolderDescription = ""
-                            newFolderColor = Color(0xFF4FA8F9)
+                            newFolderColor = Palette.Blue
                             folderBeingEditedId = null
                             isCreateFolderDialogOpen = true
                         }
                         .drawBehind {
                             drawRoundRect(
-                                color = TextSecondary.copy(alpha = 0.5f),
+                                color = dashColor.copy(alpha = 0.5f),
                                 style = Stroke(
                                     width = 2.dp.toPx(),
                                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f), 0f)
@@ -635,7 +640,7 @@ fun HistoryScreen(
                     Text(
                         text = "+ New Folder",
                         color = TextSecondary,
-                        fontSize = 14.sp,
+                        fontSize = TnType.Body,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -681,7 +686,7 @@ fun HistoryScreen(
                 isCreateFolderDialogOpen = false
                 newFolderName = ""
                 newFolderDescription = ""
-                newFolderColor = Color(0xFF4FA8F9)
+                newFolderColor = Palette.Blue
                 folderBeingEditedId = null
             }
         )

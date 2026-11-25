@@ -1,4 +1,8 @@
 package com.oblutack.timenote.feature_timer.presentation
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TagColorChoices
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,11 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
@@ -63,7 +67,7 @@ fun AddNoteSheet(
                     onValueChange = { onAction(TimerAction.UpdateDialogNoteText(it)) },
                     placeholder = { Text("Write note here...", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth().focusRequester(noteFocus),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = TnShape.Medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = BackgroundDark,
                         unfocusedContainerColor = BackgroundDark,
@@ -79,10 +83,7 @@ fun AddNoteSheet(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val defaultColors = listOf(
-                        Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
-                        Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
-                    )
+                    val defaultColors = TagColorChoices
                     val allColors = defaultColors + customColors.map { Color(it.toULong()) }
 
                     allColors.forEach { color ->
@@ -157,11 +158,11 @@ fun SaveTimenoteSheet(
                             val isSelected = state.selectedFolder?.id == folder.id
                             Box(
                                 modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
+                                    .clip(TnShape.Small)
                                     .background(if (isSelected) folder.color.copy(alpha = 0.2f) else SurfaceDark)
                                     .then(
-                                        if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(8.dp))
-                                        else Modifier.border(1.dp, TextSecondary.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                                        if (isSelected) Modifier.border(1.dp, folder.color, TnShape.Small)
+                                        else Modifier.border(1.dp, TextSecondary.copy(alpha = 0.3f), TnShape.Small)
                                     )
                                     .clickable { onAction(TimerAction.SelectFolder(folder)) }
                                     .padding(horizontal = 12.dp, vertical = 8.dp)
@@ -169,7 +170,7 @@ fun SaveTimenoteSheet(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(modifier = Modifier.size(8.dp).background(folder.color, CircleShape))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text(folder.name, color = TextPrimary, fontSize = 14.sp)
+                                    Text(folder.name, color = TextPrimary, fontSize = TnType.Body)
                                 }
                             }
                         }
@@ -189,10 +190,10 @@ fun SaveTimenoteSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(TnShape.Small)
                                 .background(if (isSelected) folder.color.copy(alpha = 0.2f) else Color.Transparent)
                                 .then(
-                                    if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(8.dp))
+                                    if (isSelected) Modifier.border(1.dp, folder.color, TnShape.Small)
                                     else Modifier
                                 )
                                 .clickable { onAction(TimerAction.ToggleCategory(folder)) }
@@ -208,7 +209,7 @@ fun SaveTimenoteSheet(
                             Text(
                                 text = folder.name,
                                 color = TextPrimary,
-                                fontSize = 16.sp
+                                fontSize = TnType.BodyLarge
                             )
                         }
                     }
@@ -220,9 +221,9 @@ fun SaveTimenoteSheet(
                         Row(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(TnShape.Small)
                                 .background(SurfaceDark)
-                                .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                .border(1.dp, TextSecondary.copy(alpha = 0.5f), TnShape.Small)
                                 .clickable { onAction(TimerAction.OpenCreateTagDialog) }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -231,15 +232,15 @@ fun SaveTimenoteSheet(
                             Text(
                                 text = "+ New Tag",
                                 color = TextSecondary,
-                                fontSize = 16.sp
+                                fontSize = TnType.BodyLarge
                             )
                         }
                         Row(
                             modifier = Modifier
                                 .weight(1f)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(TnShape.Small)
                                 .background(SurfaceDark)
-                                .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                .border(1.dp, TextSecondary.copy(alpha = 0.5f), TnShape.Small)
                                 .clickable { onAction(TimerAction.OpenManageTagsSheet) }
                                 .padding(8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -248,7 +249,7 @@ fun SaveTimenoteSheet(
                             Text(
                                 text = "Manage Tags",
                                 color = TextSecondary,
-                                fontSize = 16.sp
+                                fontSize = TnType.BodyLarge
                             )
                         }
                     }
@@ -303,7 +304,7 @@ fun CreateTagSheet(
                     onValueChange = { onAction(TimerAction.UpdateNewTagName(it)) },
                     placeholder = { Text("Tag name...", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = TnShape.Medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = BackgroundDark,
                         unfocusedContainerColor = BackgroundDark,
@@ -321,7 +322,7 @@ fun CreateTagSheet(
                     onValueChange = { onAction(TimerAction.UpdateNewTagDescription(it)) },
                     placeholder = { Text("Description (Optional)", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = TnShape.Medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = BackgroundDark,
                         unfocusedContainerColor = BackgroundDark,
@@ -339,10 +340,7 @@ fun CreateTagSheet(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val defaultColors = listOf(
-                        Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
-                        Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
-                    )
+                    val defaultColors = TagColorChoices
                     val allColors = defaultColors + customColors.map { Color(it.toULong()) }
 
                     allColors.forEach { color ->
@@ -399,7 +397,7 @@ fun ManageTagsSheet(
                 text = { Text("This tag is removed from your list of tags.", color = TextSecondary) },
                 confirmButton = {
                     TextButton(onClick = { onAction(TimerAction.DeleteTag(tag.id)); tagToDelete = null }) {
-                        Text("Delete", color = Color(0xFFE53935))
+                        Text("Delete", color = TnTheme.colors.danger)
                     }
                 },
                 dismissButton = { TextButton(onClick = { tagToDelete = null }) { Text("Cancel", color = TextSecondary) } }
@@ -451,14 +449,14 @@ fun ManageTagsSheet(
                                         Text(
                                             text = tag.name,
                                             color = TextPrimary,
-                                            fontSize = 16.sp
+                                            fontSize = TnType.BodyLarge
                                         )
                                         val tagDescription = tag.description
                                         if (!tagDescription.isNullOrBlank()) {
                                             Text(
                                                 text = tagDescription,
                                                 color = TextSecondary.copy(alpha = 0.7f),
-                                                fontSize = 12.sp,
+                                                fontSize = TnType.Caption,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis
                                             )
@@ -470,7 +468,7 @@ fun ManageTagsSheet(
                                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextSecondary)
                                     }
                                     IconButton(onClick = { tagToDelete = tag }) {
-                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
+                                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = TnTheme.colors.danger)
                                     }
                                 }
                             }

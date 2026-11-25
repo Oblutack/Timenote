@@ -1,5 +1,8 @@
 package com.oblutack.timenote.feature_timer.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -20,11 +23,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -91,8 +94,8 @@ fun TimerScreen(
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = "BRANCHED FROM:",
-                    color = Color(0xFF9C27B0),
-                    fontSize = 12.sp,
+                    color = TnTheme.colors.branch,
+                    fontSize = TnType.Caption,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 1.5.sp
                 )
@@ -100,7 +103,7 @@ fun TimerScreen(
                 Text(
                     text = parentTitle.uppercase(),
                     color = TextSecondary,
-                    fontSize = 14.sp,
+                    fontSize = TnType.Body,
                     fontWeight = FontWeight.SemiBold,
                     letterSpacing = 1.5.sp
                 )
@@ -122,7 +125,7 @@ fun TimerScreen(
         Text(
             text = "LAST SESSION",
             color = TextSecondary,
-            fontSize = 14.sp,
+            fontSize = TnType.Body,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.5.sp,
             modifier = Modifier.alpha(labelAlpha)
@@ -134,7 +137,7 @@ fun TimerScreen(
             // While idle, displayTime holds how long that last session was: shown here, in small type
             text = "${state.lastSessionTitle.ifEmpty { "Untitled Session" }.uppercase()} · ${state.displayTime}",
             color = TextSecondary,             // <-- Changed to Gray
-            fontSize = 14.sp,                  // <-- Matched size
+            fontSize = TnType.Body,                  // <-- Matched size
             fontWeight = FontWeight.SemiBold,  // <-- Matched weight
             letterSpacing = 1.5.sp,            // <-- Matched premium letter spacing
             modifier = Modifier.alpha(labelAlpha)
@@ -162,7 +165,7 @@ fun TimerScreen(
         Text(
             text = "PAUSED: ${state.currentPauseTime}",
             color = TextSecondary,
-            fontSize = 14.sp,
+            fontSize = TnType.Body,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.5.sp,
             modifier = Modifier.alpha(pauseAlpha)
@@ -179,7 +182,7 @@ fun TimerScreen(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }), // Done closes the keyboard
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = TnShape.Medium,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedContainerColor = SurfaceDark,
                 unfocusedContainerColor = SurfaceDark,
@@ -198,9 +201,9 @@ fun TimerScreen(
         ) {
             Box(
                 modifier = Modifier
-                    .clip(RoundedCornerShape(50))
+                    .clip(TnShape.Pill)
                     .background(if (state.selectedCategories.isNotEmpty()) SurfaceDark else Color.Transparent)
-                    .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(50))
+                    .border(1.dp, TextSecondary.copy(alpha = 0.5f), TnShape.Pill)
                     .clickable { viewModel.onAction(TimerAction.ToggleTagsRowVisibility) }
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             ) {
@@ -211,7 +214,7 @@ fun TimerScreen(
                         else -> "+ Tags"
                     },
                     color = if (state.selectedCategories.isNotEmpty() && !state.isTagsRowVisible) TextPrimary else TextSecondary,
-                    fontSize = 12.sp,
+                    fontSize = TnType.Caption,
                     fontWeight = FontWeight.Medium
                 )
             }
@@ -231,31 +234,31 @@ fun TimerScreen(
             ) {
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(TnShape.Pill)
                         .background(SurfaceDark)
-                        .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                        .border(1.dp, TextSecondary, TnShape.Pill)
                         .clickable { viewModel.onAction(TimerAction.OpenCreateTagDialog) }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = "+ New",
                         color = TextSecondary,
-                        fontSize = 12.sp,
+                        fontSize = TnType.Caption,
                         fontWeight = FontWeight.Medium
                     )
                 }
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(TnShape.Pill)
                         .background(SurfaceDark)
-                        .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                        .border(1.dp, TextSecondary, TnShape.Pill)
                         .clickable { viewModel.onAction(TimerAction.OpenManageTagsSheet) }
                         .padding(horizontal = 12.dp, vertical = 8.dp)
                 ) {
                     Text(
                         text = "Manage",
                         color = TextSecondary,
-                        fontSize = 12.sp,
+                        fontSize = TnType.Caption,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -264,10 +267,10 @@ fun TimerScreen(
                     val isSelected = state.selectedCategories.any { it.id == folder.id }
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
                             .background(if (isSelected) folder.color.copy(alpha = 0.2f) else SurfaceDark)
                             .then(
-                                if (isSelected) Modifier.border(1.dp, folder.color, RoundedCornerShape(50))
+                                if (isSelected) Modifier.border(1.dp, folder.color, TnShape.Pill)
                                 else Modifier
                             )
                             .clickable { viewModel.onAction(TimerAction.ToggleCategory(folder)) }
@@ -283,7 +286,7 @@ fun TimerScreen(
                             Text(
                                 text = folder.name,
                                 color = TextPrimary,
-                                fontSize = 12.sp,
+                                fontSize = TnType.Caption,
                                 fontWeight = FontWeight.Medium
                             )
                         }
@@ -292,16 +295,16 @@ fun TimerScreen(
                 if (state.availableTags.size > 4) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
                             .background(SurfaceDark)
-                            .border(1.dp, TextSecondary, RoundedCornerShape(50))
+                            .border(1.dp, TextSecondary, TnShape.Pill)
                             .clickable { viewModel.onAction(TimerAction.ToggleTagMenu) }
                             .padding(horizontal = 12.dp, vertical = 8.dp)
                     ) {
                         Text(
                             text = if (!state.isTagMenuExpanded) "+ ${state.availableTags.size - 4}" else "Show Less",
                             color = TextSecondary,
-                            fontSize = 12.sp,
+                            fontSize = TnType.Caption,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -327,7 +330,7 @@ fun TimerScreen(
                         containerColor = DefaultAccentColor,
                         contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(24.dp)
+                    shape = TnShape.Large
                     // no End button next to it while idle, so no gap on its side: Start stays centred
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Start")
@@ -344,7 +347,7 @@ fun TimerScreen(
                         containerColor = DefaultAccentColor,
                         contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = TnShape.Large,
                     modifier = Modifier.padding(end = 16.dp)
                 ) {
                     Icon(Icons.Default.Pause, contentDescription = "Pause")
@@ -358,7 +361,7 @@ fun TimerScreen(
                         containerColor = DefaultAccentColor,
                         contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(24.dp),
+                    shape = TnShape.Large,
                     modifier = Modifier.padding(end = 16.dp)
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Resume")
@@ -379,7 +382,7 @@ fun TimerScreen(
                         containerColor = SurfaceDark
                     ),
                     border = null,
-                    shape = RoundedCornerShape(24.dp)
+                    shape = TnShape.Large
                 ) {
                     Text("End")
                 }
@@ -437,16 +440,16 @@ fun TimerScreen(
                 Button(
                     onClick = { viewModel.onAction(TimerAction.StopVoiceMemo) },
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFE53935).copy(alpha = 0.2f),
-                        contentColor = Color(0xFFE53935)
+                        containerColor = TnTheme.colors.danger.copy(alpha = 0.2f),
+                        contentColor = TnTheme.colors.danger
                     ),
-                    border = BorderStroke(1.dp, Color(0xFFE53935))
+                    border = BorderStroke(1.dp, TnTheme.colors.danger)
                 ) {
                     Box(
                         modifier = Modifier
                             .size(10.dp)
                             .alpha(pulseAlpha)
-                            .background(Color(0xFFE53935), CircleShape)
+                            .background(TnTheme.colors.danger, CircleShape)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Recording...", fontWeight = FontWeight.Medium)
@@ -464,8 +467,8 @@ fun TimerScreen(
             Spacer(modifier = Modifier.height(12.dp))
             Text(
                 text = "Voice memos need microphone permission. Allow it in the app's system settings.",
-                color = Color(0xFFE53935),
-                fontSize = 12.sp,
+                color = TnTheme.colors.danger,
+                fontSize = TnType.Caption,
                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
             )
         }
@@ -481,7 +484,7 @@ fun TimerScreen(
             Text(
                 text = "TIMELINE",
                 color = TextSecondary,
-                fontSize = 12.sp,
+                fontSize = TnType.Caption,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )

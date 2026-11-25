@@ -1,4 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,10 +26,10 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.feature_timer.domain.EventType
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import com.oblutack.timenote.feature_history.domain.Timenote
@@ -54,6 +57,10 @@ fun TimenoteTimelineItem(
                 .width(24.dp)
                 .fillMaxHeight(),
         ) {
+            val startColor = if (useMonochrome) TextPrimary else TnTheme.colors.success
+            val endColor = if (useMonochrome) TextSecondary else TnTheme.colors.danger
+            val noteFallback = DefaultAccentColor
+            val connectorColor = SurfaceDark
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // 1. Determine size and color based on EventType
                 val isStartOrEnd = event.type == EventType.START || event.type == EventType.END
@@ -61,9 +68,9 @@ fun TimenoteTimelineItem(
                 val circleCenterY = 10.dp.toPx()
 
                 val nodeColor = when (event.type) {
-                    EventType.START -> if (useMonochrome) TextPrimary else Color(0xFF4CAF50)
-                    EventType.END -> if (useMonochrome) TextSecondary else Color(0xFFE53935)
-                    else -> event.color ?: DefaultAccentColor
+                    EventType.START -> startColor
+                    EventType.END -> endColor
+                    else -> event.color ?: noteFallback
                 }
 
                 drawCircle(
@@ -82,7 +89,7 @@ fun TimenoteTimelineItem(
                 if (!isLastItem) {
                     val lineStartY = circleCenterY + circleRadius + 4.dp.toPx()
                     drawLine(
-                        color = SurfaceDark,
+                        color = connectorColor,
                         start = Offset(size.width / 2, lineStartY),
                         end = Offset(size.width / 2, size.height + 8.dp.toPx()),
                         strokeWidth = 2.dp.toPx()
@@ -100,13 +107,13 @@ fun TimenoteTimelineItem(
             Text(
                 text = event.title,
                 color = TextPrimary,
-                fontSize = 16.sp
+                fontSize = TnType.BodyLarge
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = event.timestamp,
                 color = TextSecondary,
-                fontSize = 14.sp
+                fontSize = TnType.Body
             )
 
             if (event.audioPath != null) {
@@ -114,9 +121,9 @@ fun TimenoteTimelineItem(
                 val isPlaying = playingAudioPath == event.audioPath
                 Row(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
+                        .clip(TnShape.Pill)
                         .background(SurfaceDark)
-                        .border(1.dp, DefaultAccentColor, RoundedCornerShape(50))
+                        .border(1.dp, DefaultAccentColor, TnShape.Pill)
                         .clickable { event.audioPath?.let(onPlayAudioClick) }
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -131,7 +138,7 @@ fun TimenoteTimelineItem(
                     Text(
                         text = if (isPlaying) "Pause" else "Play Voice Memo",
                         color = DefaultAccentColor,
-                        fontSize = 12.sp,
+                        fontSize = TnType.Caption,
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -144,9 +151,9 @@ fun TimenoteTimelineItem(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(TnShape.Small)
                             .background(DefaultAccentColor.copy(alpha = 0.1f))
-                            .border(1.dp, DefaultAccentColor.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .border(1.dp, DefaultAccentColor.copy(alpha = 0.3f), TnShape.Small)
                             .clickable { onChildClick(child.id) }
                             .padding(horizontal = 12.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -154,7 +161,7 @@ fun TimenoteTimelineItem(
                         Text(
                             text = "↳ Branched: ${child.title}",
                             color = DefaultAccentColor,
-                            fontSize = 12.sp,
+                            fontSize = TnType.Caption,
                             fontWeight = FontWeight.Medium
                         )
                     }

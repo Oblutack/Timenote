@@ -1,5 +1,9 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.Palette
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -16,10 +20,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import kotlinx.datetime.*
 import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.shape.CircleShape
@@ -74,7 +78,7 @@ fun FlowHeatmap(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
-            .background(SurfaceDark, RoundedCornerShape(16.dp))
+            .background(SurfaceDark, TnShape.Card)
             .padding(12.dp)
             .alpha(alpha.value)
     ) {
@@ -84,20 +88,20 @@ fun FlowHeatmap(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("FLOW STATE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+            Text("FLOW STATE", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Minimalist Blue Circle for Current Streak
                 Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(DefaultAccentColor))
                 Spacer(Modifier.width(6.dp))
-                Text("Current: ${streaks.first}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Current: ${streaks.first}", color = TextPrimary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
 
                 Spacer(modifier = Modifier.width(16.dp))
 
                 // Minimalist Orange Circle for Best Streak
-                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Color(0xFFFF9800)))
+                Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(Palette.Orange))
                 Spacer(Modifier.width(6.dp))
-                Text("Best: ${streaks.second}", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("Best: ${streaks.second}", color = TextPrimary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
             }
         }
 
@@ -109,7 +113,7 @@ fun FlowHeatmap(
                 modifier = Modifier.padding(top = 22.dp, end = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                val dayStyle = TextStyle(color = TextSecondary.copy(alpha=0.5f), fontSize = 10.sp)
+                val dayStyle = TextStyle(color = TextSecondary.copy(alpha=0.5f), fontSize = TnType.Micro)
                 Text("M", style = dayStyle, modifier = Modifier.height(16.dp))
                 Text("", style = dayStyle, modifier = Modifier.height(16.dp))
                 Text("W", style = dayStyle, modifier = Modifier.height(16.dp))
@@ -128,7 +132,7 @@ fun FlowHeatmap(
                     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                         Box(modifier = Modifier.height(16.dp), contentAlignment = Alignment.BottomStart) {
                             monthLabels[weekIndex]?.let { label ->
-                                Text(label, color = TextSecondary, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+                                Text(label, color = TextSecondary, fontSize = TnType.Micro, fontWeight = FontWeight.Medium)
                             }
                         }
 
@@ -140,7 +144,7 @@ fun FlowHeatmap(
                                 val isSelected = selectedDate == date
 
                                 val boxColor = when {
-                                    seconds == 0 -> Color(0xFF2C2C2C)
+                                    seconds == 0 -> TnTheme.colors.surfaceRaised
                                     seconds < 3600 -> DefaultAccentColor.copy(alpha = 0.3f)
                                     seconds < 10800 -> DefaultAccentColor.copy(alpha = 0.6f)
                                     else -> DefaultAccentColor
@@ -165,9 +169,9 @@ fun FlowHeatmap(
 
         // --- THE LEGEND ---
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
-            Text("Less", color = TextSecondary, fontSize = 10.sp)
+            Text("Less", color = TextSecondary, fontSize = TnType.Micro)
             Spacer(modifier = Modifier.width(6.dp))
-            Box(modifier = Modifier.size(10.dp).clip(RoundedCornerShape(2.dp)).background(Color(0xFF2C2C2C)))
+            Box(modifier = Modifier.size(10.dp).clip(RoundedCornerShape(2.dp)).background(TnTheme.colors.surfaceRaised))
             Spacer(modifier = Modifier.width(4.dp))
             Box(modifier = Modifier.size(10.dp).clip(RoundedCornerShape(2.dp)).background(DefaultAccentColor.copy(alpha=0.3f)))
             Spacer(modifier = Modifier.width(4.dp))
@@ -175,7 +179,7 @@ fun FlowHeatmap(
             Spacer(modifier = Modifier.width(4.dp))
             Box(modifier = Modifier.size(10.dp).clip(RoundedCornerShape(2.dp)).background(DefaultAccentColor))
             Spacer(modifier = Modifier.width(6.dp))
-            Text("More", color = TextSecondary, fontSize = 10.sp)
+            Text("More", color = TextSecondary, fontSize = TnType.Micro)
         }
     }
 }

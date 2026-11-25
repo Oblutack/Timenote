@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_timer.presentation
 
+import com.oblutack.timenote.ui.theme.Palette
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,7 +41,7 @@ data class TimerState(
 
     val isAddNoteDialogOpen: Boolean = false,
     val dialogNoteText: String = "",
-    val dialogNoteColor: Color = Color(0xFF4FA8F9),
+    val dialogNoteColor: Color = Palette.Blue,
 
     val selectedCategories: List<TimenoteFolder> = emptyList(),
     val isCategoryPopupOpen: Boolean = false,
@@ -49,7 +50,7 @@ data class TimerState(
     val isCreateTagDialogOpen: Boolean = false,
     val newTagName: String = "",
     val newTagDescription: String = "",
-    val newTagColor: Color = Color(0xFF4FA8F9),
+    val newTagColor: Color = Palette.Blue,
     val isTagMenuExpanded: Boolean = false,
     val isTagsRowVisible: Boolean = false,
 
@@ -420,7 +421,7 @@ class TimerViewModel(
 
         if (_state.value.parentSessionTitle != null && _state.value.parentWaypointTitle != null) {
             val branchMessage = "Branched from: ${_state.value.parentWaypointTitle} (${_state.value.parentSessionTitle})"
-            addEventToTimeline(branchMessage, EventType.NOTE, Color(0xFF9C27B0)) // Purple to signify a branch!
+            addEventToTimeline(branchMessage, EventType.NOTE, Palette.Purple) // Purple to signify a branch!
         }
 
         _state.update { it.copy(isRunning = true, isPaused = false) }
@@ -530,7 +531,7 @@ class TimerViewModel(
         _state.update { it.copy(
             isAddNoteDialogOpen = false,
             dialogNoteText = "",
-            dialogNoteColor = Color(0xFF4FA8F9)
+            dialogNoteColor = Palette.Blue
         ) }
         backupCurrentState()
     }

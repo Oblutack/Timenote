@@ -1,5 +1,8 @@
 package com.oblutack.timenote.feature_settings.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -33,18 +36,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.drive.DriveSession
 import com.oblutack.timenote.drive.DriveStatus
 import com.oblutack.timenote.drive.rememberDriveConnect
+import androidx.compose.runtime.ReadOnlyComposable
 import com.oblutack.timenote.getCurrentTimeMillis
 import com.oblutack.timenote.sync.describeLastSync
 import com.oblutack.timenote.sync.describeLinkPreview
 
-private val Red = Color(0xFFE53935)
+private val Red: Color @Composable @ReadOnlyComposable get() = TnTheme.colors.danger
 
 /** "Sync with Google Drive": connect, see what will happen, turn it off, remove the cloud copy. */
 @Composable
@@ -64,22 +68,22 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
         }
     }
 
-    Text("SYNC WITH GOOGLE DRIVE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    Text("SYNC WITH GOOGLE DRIVE", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
     Spacer(modifier = Modifier.height(16.dp))
 
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(SurfaceDark).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(TnShape.Card).background(SurfaceDark).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (!state.enabled) {
-            Text("Keep your timenotes on all your devices", color = TextPrimary, fontSize = 16.sp)
+            Text("Keep your timenotes on all your devices", color = TextPrimary, fontSize = TnType.BodyLarge)
             Text(
                 "Your timenotes and voice memos are copied to your own Google Drive, in a hidden folder that only Timenote can " +
                     "open. If you lose your phone, sign in on a new one and everything comes back. Timenote has no server and cannot see your data.",
-                color = TextSecondary, fontSize = 12.sp
+                color = TextSecondary, fontSize = TnType.Caption
             )
             val connected = state.connection == DriveStatus.Connected
-            if (connected) state.accountLabel?.let { Text("Google account: $it", color = TextSecondary, fontSize = 12.sp) }
+            if (connected) state.accountLabel?.let { Text("Google account: $it", color = TextSecondary, fontSize = TnType.Caption) }
             Button(
                 onClick = {
                     if (connected) viewModel.showLinkPreview() else { awaitingConsent = true; connect() }
@@ -90,7 +94,7 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
         } else {
             Text(
                 "Syncing with ${state.accountLabel ?: "Google Drive"}",
-                color = TextPrimary, fontSize = 16.sp
+                color = TextPrimary, fontSize = TnType.BodyLarge
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (state.syncing) {
@@ -99,11 +103,11 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
                 }
                 Text(
                     if (state.syncing) "Syncing..." else describeLastSync(getCurrentTimeMillis(), state.lastSyncAt),
-                    color = TextSecondary, fontSize = 13.sp
+                    color = TextSecondary, fontSize = TnType.Label
                 )
             }
             state.problem?.let {
-                Text(it.text, color = if (it.needsUser) Red else TextSecondary, fontSize = 12.sp)
+                Text(it.text, color = if (it.needsUser) Red else TextSecondary, fontSize = TnType.Caption)
             }
             if (state.problem?.needsUser == true && state.connection != DriveStatus.Connected) {
                 Button(
@@ -116,8 +120,8 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                    Text("Upload voice memos on Wi-Fi only", color = TextPrimary, fontSize = 14.sp)
-                    Text("Voice memos are large. Turn this off to also upload them on mobile data.", color = TextSecondary, fontSize = 12.sp)
+                    Text("Upload voice memos on Wi-Fi only", color = TextPrimary, fontSize = TnType.Body)
+                    Text("Voice memos are large. Turn this off to also upload them on mobile data.", color = TextSecondary, fontSize = TnType.Caption)
                 }
                 Switch(
                     checked = state.voiceWifiOnly,
@@ -128,13 +132,13 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
             TextButton(onClick = { viewModel.turnOff() }) { Text("Turn off sync", color = TextPrimary) }
             Text(
                 "Your timenotes stay on this phone, and the copy in Google Drive is not touched.",
-                color = TextSecondary, fontSize = 12.sp
+                color = TextSecondary, fontSize = TnType.Caption
             )
             TextButton(onClick = { confirmDelete = true }) { Text("Delete my data from Google Drive...", color = Red) }
         }
         // not enabled: show why connecting did not work
-        if (!state.enabled) state.problem?.let { Text(it.text, color = Red, fontSize = 12.sp) }
-        if (!state.enabled) (state.connection as? DriveStatus.Problem)?.let { Text(it.message, color = Red, fontSize = 12.sp) }
+        if (!state.enabled) state.problem?.let { Text(it.text, color = Red, fontSize = TnType.Caption) }
+        if (!state.enabled) (state.connection as? DriveStatus.Problem)?.let { Text(it.message, color = Red, fontSize = TnType.Caption) }
     }
 
     // ---- what connecting will do

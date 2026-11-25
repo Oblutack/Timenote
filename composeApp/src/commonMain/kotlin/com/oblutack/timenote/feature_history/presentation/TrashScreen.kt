@@ -1,5 +1,8 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -27,10 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.di.trashViewModel
 
 @Composable
@@ -50,7 +53,7 @@ fun TrashScreen(
             title = { Text("Empty the trash?", color = TextPrimary) },
             text = { Text("Everything in it is removed for good, also from your Google Drive copy if sync is on. This cannot be undone.", color = TextSecondary) },
             confirmButton = {
-                TextButton(onClick = { confirmEmpty = false; viewModel.emptyTrash() }) { Text("Empty trash", color = Color(0xFFE53935)) }
+                TextButton(onClick = { confirmEmpty = false; viewModel.emptyTrash() }) { Text("Empty trash", color = TnTheme.colors.danger) }
             },
             dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Cancel", color = TextSecondary) } }
         )
@@ -75,12 +78,12 @@ fun TrashScreen(
                     Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
                 }
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Recently Deleted", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Recently Deleted", color = TextPrimary, fontSize = TnType.Title, fontWeight = FontWeight.Bold)
             }
 
             if (deletedFolders.isNotEmpty() || deletedTimenotes.isNotEmpty()) {
                 TextButton(onClick = { confirmEmpty = true }) {
-                    Text("Empty Trash", color = Color(0xFFE53935), fontWeight = FontWeight.Medium)
+                    Text("Empty Trash", color = TnTheme.colors.danger, fontWeight = FontWeight.Medium)
                 }
             }
         }
@@ -89,14 +92,14 @@ fun TrashScreen(
             Text(
                 text = "Deleted sessions and folders are removed for good after $TRASH_RETENTION_DAYS days.",
                 color = TextSecondary,
-                fontSize = 13.sp,
+                fontSize = TnType.Label,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
         }
 
         if (deletedFolders.isEmpty() && deletedTimenotes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Trash is empty.", color = TextSecondary, fontSize = 16.sp)
+                Text("Trash is empty.", color = TextSecondary, fontSize = TnType.BodyLarge)
             }
         } else {
             LazyColumn(
@@ -105,29 +108,29 @@ fun TrashScreen(
             ) {
                 if (deletedFolders.isNotEmpty()) {
                     item {
-                        Text("Folders", color = TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Text("Folders", color = TextSecondary, fontSize = TnType.Body, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     items(deletedFolders, key = { "folder_${it.id}" }) { folder ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(TnShape.Card)
                                 .background(SurfaceDark)
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = folder.name, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                Text(text = folder.name, color = TextPrimary, fontSize = TnType.BodyLarge, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = "Folder · ${describeTrashItem(now, folder.deletedAt)}", color = TextSecondary, fontSize = 12.sp)
+                                Text(text = "Folder · ${describeTrashItem(now, folder.deletedAt)}", color = TextSecondary, fontSize = TnType.Caption)
                             }
                             Row {
                                 IconButton(onClick = { viewModel.restoreFolder(folder.id) }) {
                                     Icon(imageVector = Icons.Default.Refresh, contentDescription = "Restore", tint = TextPrimary)
                                 }
                                 IconButton(onClick = { viewModel.hardDeleteFolder(folder.id) }) {
-                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Permanently", tint = Color(0xFFE53935))
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Permanently", tint = TnTheme.colors.danger)
                                 }
                             }
                         }
@@ -137,29 +140,29 @@ fun TrashScreen(
                 if (deletedTimenotes.isNotEmpty()) {
                     item {
                         Spacer(Modifier.height(8.dp))
-                        Text("Sessions", color = TextSecondary, fontSize = 14.sp, modifier = Modifier.padding(bottom = 8.dp))
+                        Text("Sessions", color = TextSecondary, fontSize = TnType.Body, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     items(deletedTimenotes, key = { "note_${it.id}" }) { note ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
+                                .clip(TnShape.Card)
                                 .background(SurfaceDark)
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
-                                Text(text = note.title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                                Text(text = note.title, color = TextPrimary, fontSize = TnType.BodyLarge, fontWeight = FontWeight.Medium)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = "${note.duration} · ${describeTrashItem(now, note.deletedAt)}", color = TextSecondary, fontSize = 12.sp)
+                                Text(text = "${note.duration} · ${describeTrashItem(now, note.deletedAt)}", color = TextSecondary, fontSize = TnType.Caption)
                             }
                             Row {
                                 IconButton(onClick = { viewModel.restoreTimenote(note.id) }) {
                                     Icon(imageVector = Icons.Default.Refresh, contentDescription = "Restore", tint = TextPrimary)
                                 }
                                 IconButton(onClick = { viewModel.hardDeleteTimenote(note.id) }) {
-                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Permanently", tint = Color(0xFFE53935))
+                                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete Permanently", tint = TnTheme.colors.danger)
                                 }
                             }
                         }

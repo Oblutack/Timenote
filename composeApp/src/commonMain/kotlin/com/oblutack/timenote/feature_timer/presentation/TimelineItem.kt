@@ -1,4 +1,6 @@
 package com.oblutack.timenote.feature_timer.presentation
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -11,10 +13,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
 import androidx.compose.ui.draw.alpha
 import com.oblutack.timenote.feature_timer.domain.EventType
@@ -33,11 +35,12 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean, useMonochrome: Boole
     val isStartOrEnd = event.type == EventType.START || event.type == EventType.END
     val circleRadius = if (isStartOrEnd) 7.dp else 5.dp
     val nodeColor = when (event.type) {
-        EventType.START -> if (useMonochrome) TextPrimary else Color(0xFF4CAF50)
-        EventType.END -> if (useMonochrome) TextSecondary else Color(0xFFE53935)
+        EventType.START -> if (useMonochrome) TextPrimary else TnTheme.colors.success
+        EventType.END -> if (useMonochrome) TextSecondary else TnTheme.colors.danger
         else -> event.color ?: DefaultAccentColor
     }
 
+    val connectorColor = SurfaceDark
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -50,7 +53,7 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean, useMonochrome: Boole
                     val lineStartY = circleCenterY + circleRadius.toPx() + 4.dp.toPx()
                     // Draw line straight down based on the actual height of the text column
                     drawLine(
-                        color = SurfaceDark,
+                        color = connectorColor,
                         start = Offset(12.dp.toPx(), lineStartY),
                         end = Offset(12.dp.toPx(), size.height + 8.dp.toPx()),
                         strokeWidth = 2.dp.toPx()
@@ -90,13 +93,13 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean, useMonochrome: Boole
             Text(
                 text = event.title,
                 color = TextPrimary,
-                fontSize = 16.sp
+                fontSize = TnType.BodyLarge
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = event.timestamp,
                 color = TextSecondary,
-                fontSize = 14.sp
+                fontSize = TnType.Body
             )
         }
     }

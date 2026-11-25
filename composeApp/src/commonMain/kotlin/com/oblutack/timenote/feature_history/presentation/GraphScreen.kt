@@ -1,5 +1,8 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -24,11 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.feature_history.domain.Timenote
 import kotlin.math.sqrt
 import androidx.compose.ui.draw.blur
@@ -151,7 +154,7 @@ fun GraphScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Timenote Graph", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text("Timenote Graph", color = TextPrimary, fontSize = TnType.Title, fontWeight = FontWeight.Bold)
         }
 
         // --- THE CANVAS ---
@@ -186,6 +189,12 @@ fun GraphScreen(
                     )
                 }
         ) {
+            // Read once here: the canvas below draws outside composition
+            val gridColor = TextSecondary
+            val accentColor = DefaultAccentColor
+            val branchColor = TnTheme.colors.branch
+            val backgroundColor = BackgroundDark
+            val labelColor = TextPrimary
             Canvas(modifier = Modifier.fillMaxSize()) {
                 withTransform({
                     translate(pan.x, pan.y)
@@ -196,7 +205,7 @@ fun GraphScreen(
                     for (x in -2000..2000 step dotSpacing.toInt()) {
                         for (y in -2000..2000 step dotSpacing.toInt()) {
                             drawCircle(
-                                color = TextSecondary.copy(alpha = 0.1f),
+                                color = gridColor.copy(alpha = 0.1f),
                                 radius = 2f,
                                 center = Offset(x.toFloat(), y.toFloat())
                             )
@@ -220,7 +229,7 @@ fun GraphScreen(
                                 }
                                 drawPath(
                                     path = path,
-                                    color = DefaultAccentColor.copy(alpha = 0.3f),
+                                    color = accentColor.copy(alpha = 0.3f),
                                     style = Stroke(width = 4f)
                                 )
 
@@ -245,7 +254,7 @@ fun GraphScreen(
                                 val particleY = (uuu * p0y) + (3 * uu * t * p1y) + (3 * u * tt * p2y) + (ttt * p3y)
 
                                 // C. Draw the Glowing Particle
-                                val particleColor = node.note.tags.firstOrNull()?.color ?: DefaultAccentColor
+                                val particleColor = node.note.tags.firstOrNull()?.color ?: accentColor
 
                                 // Outer Particle Glow
                                 drawCircle(
@@ -277,7 +286,7 @@ fun GraphScreen(
                                 }
                                 drawPath(
                                     path = path,
-                                    color = Color(0xFF9C27B0).copy(alpha = 0.5f),
+                                    color = branchColor.copy(alpha = 0.5f),
                                     style = Stroke(
                                         width = 3f,
                                         pathEffect = PathEffect.dashPathEffect(floatArrayOf(15f, 15f))
@@ -289,16 +298,16 @@ fun GraphScreen(
 
                     // 4. DRAW NODES (Glowing Orbs + Titles)
                     nodes.forEach { node ->
-                        val nodeColor = node.note.tags.firstOrNull()?.color ?: DefaultAccentColor
+                        val nodeColor = node.note.tags.firstOrNull()?.color ?: accentColor
 
                         drawCircle(color = nodeColor.copy(alpha = glowAlpha), radius = glowRadius, center = Offset(node.x, node.y))
                         drawCircle(color = nodeColor, radius = 18f, center = Offset(node.x, node.y))
-                        drawCircle(color = BackgroundDark, radius = 8f, center = Offset(node.x, node.y))
+                        drawCircle(color = backgroundColor, radius = 8f, center = Offset(node.x, node.y))
 
                         val title = node.note.title.ifBlank { "Untitled" }
                         val textLayoutResult = textMeasurer.measure(
                             text = title,
-                            style = TextStyle(color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                            style = TextStyle(color = labelColor, fontSize = TnType.Body, fontWeight = FontWeight.Medium)
                         )
 
                         drawText(
@@ -339,10 +348,10 @@ fun GraphScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         Box(
                             modifier = Modifier
-                                .background(firstTag.color.copy(alpha = 0.2f), shape = RoundedCornerShape(50))
+                                .background(firstTag.color.copy(alpha = 0.2f), shape = TnShape.Pill)
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
                         ) {
-                            Text(firstTag.name, color = firstTag.color, fontSize = 12.sp)
+                            Text(firstTag.name, color = firstTag.color, fontSize = TnType.Caption)
                         }
                     }
 
@@ -351,14 +360,14 @@ fun GraphScreen(
                     Card(
                         colors = CardDefaults.cardColors(containerColor = SurfaceDark),
                         border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.3f)),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = TnShape.Medium,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(1.dp, TextSecondary.copy(alpha=0.3f), RoundedCornerShape(12.dp))
+                                .clip(TnShape.Medium)
+                                .border(1.dp, TextSecondary.copy(alpha=0.3f), TnShape.Medium)
                                 .padding(16.dp)
                         ) {
                             Column(modifier = Modifier.fillMaxWidth()) {
@@ -366,17 +375,17 @@ fun GraphScreen(
                                 // ROW 1: Total Times
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Column {
-                                        Text("Focus time", color = TextSecondary, fontSize = 12.sp)
+                                        Text("Focus time", color = TextSecondary, fontSize = TnType.Caption)
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(com.oblutack.timenote.core.formatDuration(note.activeSeconds), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text(com.oblutack.timenote.core.formatDuration(note.activeSeconds), color = TextPrimary, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
                                     }
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
                                             when (childCount) { 0 -> "With branches"; 1 -> "With 1 branch"; else -> "With $childCount branches" },
-                                            color = TextSecondary, fontSize = 12.sp
+                                            color = TextSecondary, fontSize = TnType.Caption
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(familyTime, color = DefaultAccentColor, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                                        Text(familyTime, color = DefaultAccentColor, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
                                     }
                                 }
 
@@ -395,21 +404,21 @@ fun GraphScreen(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(tagColor))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("$workPercent% Work", color = TextSecondary, fontSize = 12.sp)
+                                        Text("$workPercent% Work", color = TextSecondary, fontSize = TnType.Caption)
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(Color(0xFF333333)))
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(TnTheme.colors.surfaceHigh))
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("$pausePercent% Pause", color = TextSecondary, fontSize = 12.sp)
+                                        Text("$pausePercent% Pause", color = TextSecondary, fontSize = TnType.Caption)
                                     }
                                 }
 
                                 Spacer(modifier = Modifier.height(8.dp))
 
                                 // The actual Progress Bar
-                                Row(modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(50))) {
+                                Row(modifier = Modifier.fillMaxWidth().height(4.dp).clip(TnShape.Pill)) {
                                     Box(modifier = Modifier.weight(workRatio.coerceAtLeast(0.01f)).fillMaxHeight().background(tagColor))
-                                    Box(modifier = Modifier.weight((1f - workRatio).coerceAtLeast(0.01f)).fillMaxHeight().background(Color(0xFF333333)))
+                                    Box(modifier = Modifier.weight((1f - workRatio).coerceAtLeast(0.01f)).fillMaxHeight().background(TnTheme.colors.surfaceHigh))
                                 }
                             }
                         }

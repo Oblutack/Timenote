@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.domain
 
+import com.oblutack.timenote.ui.theme.Palette
 import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.core.ColorSerializer
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent
@@ -60,10 +61,10 @@ data class Timenote(
 )
 
 val mockFolders = listOf(
-    TimenoteFolder("1", "Work", null, 12, Color(0xFF4FA8F9)),    // <-- Added 'null,'
-    TimenoteFolder("2", "Study", null, 8, Color(0xFF4CAF50)),    // <-- Added 'null,'
-    TimenoteFolder("3", "Fitness", null, 5, Color(0xFFFF9800)),  // <-- Added 'null,'
-    TimenoteFolder("4", "Personal", null, 3, Color(0xFF9C27B0))  // <-- Added 'null,'
+    TimenoteFolder("1", "Work", null, 12, Palette.Blue),    // <-- Added 'null,'
+    TimenoteFolder("2", "Study", null, 8, Palette.Green),    // <-- Added 'null,'
+    TimenoteFolder("3", "Fitness", null, 5, Palette.Orange),  // <-- Added 'null,'
+    TimenoteFolder("4", "Personal", null, 3, Palette.Purple)  // <-- Added 'null,'
 )
 
 data class DailySummary(

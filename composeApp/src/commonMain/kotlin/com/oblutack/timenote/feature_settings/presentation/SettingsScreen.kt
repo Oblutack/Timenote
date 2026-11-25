@@ -1,5 +1,9 @@
 package com.oblutack.timenote.feature_settings.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.Palette
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -26,11 +30,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -67,7 +71,8 @@ fun SettingsScreen(
 
     var isColorPickerOpen by remember { mutableStateOf(false) }
     var colorToRemove by remember { mutableStateOf<Long?>(null) }
-    var tempPickedColor by remember { mutableStateOf(DefaultAccentColor) }
+    val pickerStartColor = DefaultAccentColor
+    var tempPickedColor by remember { mutableStateOf(pickerStartColor) }
 
     val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
@@ -107,26 +112,26 @@ fun SettingsScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Settings", color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("Settings", color = TextPrimary, fontSize = TnType.Headline, fontWeight = FontWeight.Bold)
         }
 
         // --- PREFERENCES ---
-        Text("TIMELINE APPEARANCE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("TIMELINE APPEARANCE", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(TnShape.Card)
                 .background(SurfaceDark)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("Monochrome Start/End Nodes", color = TextPrimary, fontSize = 16.sp)
+                Text("Monochrome Start/End Nodes", color = TextPrimary, fontSize = TnType.BodyLarge)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Forces start/end nodes to be white/gray.", color = TextSecondary, fontSize = 12.sp)
+                Text("Forces start/end nodes to be white/gray.", color = TextSecondary, fontSize = TnType.Caption)
             }
             Switch(
                 checked = useMonochromeNodes,
@@ -140,16 +145,16 @@ fun SettingsScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(TnShape.Card)
                 .background(SurfaceDark)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(Modifier.weight(1f).padding(end = 16.dp)) {
-                Text("Dynamic Background Blur", color = TextPrimary, fontSize = 16.sp)
+                Text("Dynamic Background Blur", color = TextPrimary, fontSize = TnType.BodyLarge)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Smoothly blurs the app background when menus open.", color = TextSecondary, fontSize = 12.sp)
+                Text("Smoothly blurs the app background when menus open.", color = TextSecondary, fontSize = TnType.Caption)
             }
             Switch(
                 checked = enableBackgroundBlur,
@@ -163,16 +168,16 @@ fun SettingsScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(TnShape.Card)
                 .background(SurfaceDark)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Haptic Feedback", color = TextPrimary, fontSize = 16.sp)
+                Text("Haptic Feedback", color = TextPrimary, fontSize = TnType.BodyLarge)
                 Spacer(modifier = Modifier.height(4.dp))
-                Text("Vibrate on button presses and timer actions.", color = TextSecondary, fontSize = 12.sp)
+                Text("Vibrate on button presses and timer actions.", color = TextSecondary, fontSize = TnType.Caption)
             }
             Switch(
                 checked = enableHaptics,
@@ -184,10 +189,10 @@ fun SettingsScreen(
         Spacer(modifier = Modifier.height(32.dp))
 
         // --- CUSTOM COLOR PALETTE ---
-        Text("CUSTOM COLOR PALETTE", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+        Text("CUSTOM COLOR PALETTE", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
         if (customColors.isNotEmpty()) {
             Spacer(modifier = Modifier.height(4.dp))
-            Text("Press and hold a colour to remove it.", color = TextSecondary.copy(alpha = 0.7f), fontSize = 12.sp)
+            Text("Press and hold a colour to remove it.", color = TextSecondary.copy(alpha = 0.7f), fontSize = TnType.Caption)
         }
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -235,16 +240,16 @@ fun SettingsScreen(
             }
 
             // --- BACKUP ---
-            Text("BACKUP", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("BACKUP", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
             val lastBackupAt by settingsRepository.lastBackupAtFlow.collectAsState(initial = null)
             Spacer(modifier = Modifier.height(4.dp))
-            Text(describeLastBackup(getCurrentTimeMillis(), lastBackupAt), color = TextSecondary.copy(alpha = 0.7f), fontSize = 12.sp)
+            Text(describeLastBackup(getCurrentTimeMillis(), lastBackupAt), color = TextSecondary.copy(alpha = 0.7f), fontSize = TnType.Caption)
             Spacer(modifier = Modifier.height(16.dp))
 
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
+                    .clip(TnShape.Card)
                     .background(SurfaceDark)
                     .padding(8.dp)
             ) {
@@ -255,9 +260,9 @@ fun SettingsScreen(
                     Icon(Icons.Default.Share, contentDescription = null, tint = TextPrimary)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("Export backup", color = TextPrimary, fontSize = 16.sp)
+                        Text("Export backup", color = TextPrimary, fontSize = TnType.BodyLarge)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Save all timenotes, folders, tags and voice memos to one file. Keep it safe, for example in Google Drive.", color = TextSecondary, fontSize = 12.sp)
+                        Text("Save all timenotes, folders, tags and voice memos to one file. Keep it safe, for example in Google Drive.", color = TextSecondary, fontSize = TnType.Caption)
                     }
                 }
 
@@ -270,9 +275,9 @@ fun SettingsScreen(
                     Icon(Icons.Default.Add, contentDescription = null, tint = TextPrimary)
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("Import backup", color = TextPrimary, fontSize = 16.sp)
+                        Text("Import backup", color = TextPrimary, fontSize = TnType.BodyLarge)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text("Add everything from a backup file. Nothing on this device is deleted.", color = TextSecondary, fontSize = 12.sp)
+                        Text("Add everything from a backup file. Nothing on this device is deleted.", color = TextSecondary, fontSize = TnType.Caption)
                     }
                 }
             }
@@ -286,7 +291,7 @@ fun SettingsScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            Text("SUPPORT & FEEDBACK", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Text("SUPPORT & FEEDBACK", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
             Spacer(modifier = Modifier.height(16.dp))
 
             // THE FIX: Wrap it all in a LazyColumn (or Column with weight) so it doesn't get squished!
@@ -296,7 +301,7 @@ fun SettingsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(TnShape.Card)
                         .background(SurfaceDark)
                         .padding(8.dp)
                 ) {
@@ -307,7 +312,7 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Info, contentDescription = "Help", tint = TextPrimary)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("Help & Tutorials", color = TextPrimary, fontSize = 16.sp)
+                        Text("Help & Tutorials", color = TextPrimary, fontSize = TnType.BodyLarge)
                     }
 
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BackgroundDark))
@@ -322,19 +327,19 @@ fun SettingsScreen(
                     ) {
                         Icon(Icons.Default.Build, contentDescription = "Bug", tint = TextPrimary)
                         Spacer(modifier = Modifier.width(16.dp))
-                        Text("Report a Bug", color = TextPrimary, fontSize = 16.sp)
+                        Text("Report a Bug", color = TextPrimary, fontSize = TnType.BodyLarge)
                     }
                 }
 
                 Spacer(modifier = Modifier.height(32.dp))
 
                 // --- ABOUT ---
-                Text("ABOUT", color = TextSecondary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("ABOUT", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(TnShape.Card)
                         .background(SurfaceDark)
                         .padding(8.dp)
                 ) {
@@ -343,8 +348,8 @@ fun SettingsScreen(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Version", color = TextPrimary, fontSize = 16.sp)
-                        Text(appInfo.versionName.ifBlank { "unknown" }, color = TextSecondary, fontSize = 16.sp)
+                        Text("Version", color = TextPrimary, fontSize = TnType.BodyLarge)
+                        Text(appInfo.versionName.ifBlank { "unknown" }, color = TextSecondary, fontSize = TnType.BodyLarge)
                     }
                     if (PRIVACY_POLICY_URL.isNotBlank()) {
                         Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BackgroundDark))
@@ -352,7 +357,7 @@ fun SettingsScreen(
                             modifier = Modifier.fillMaxWidth().clickable { uriHandler.openUri(PRIVACY_POLICY_URL) }.padding(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("Privacy policy", color = TextPrimary, fontSize = 16.sp)
+                            Text("Privacy policy", color = TextPrimary, fontSize = TnType.BodyLarge)
                         }
                     }
                     Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(BackgroundDark))
@@ -360,7 +365,7 @@ fun SettingsScreen(
                         modifier = Modifier.fillMaxWidth().clickable { isLicensesOpen = true }.padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text("Open-source libraries", color = TextPrimary, fontSize = 16.sp)
+                        Text("Open-source libraries", color = TextPrimary, fontSize = TnType.BodyLarge)
                     }
                 }
 
@@ -370,12 +375,12 @@ fun SettingsScreen(
                 Button(
                     onClick = { uriHandler.openUri("https://ko-fi.com/oblutack") },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = TnShape.Card,
                     colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
                 ) {
                     Icon(Icons.Default.Favorite, contentDescription = "Heart", modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Buy me a coffee", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("Buy me a coffee", fontSize = TnType.BodyLarge, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(modifier = Modifier.height(24.dp)) // Extra padding at the very bottom
@@ -399,7 +404,7 @@ fun SettingsScreen(
             },
             confirmButton = {
                 TextButton(onClick = { viewModel.deleteCustomColor(colorLong); colorToRemove = null }) {
-                    Text("Remove", color = Color(0xFFE53935))
+                    Text("Remove", color = TnTheme.colors.danger)
                 }
             },
             dismissButton = { TextButton(onClick = { colorToRemove = null }) { Text("Cancel", color = TextSecondary) } }
@@ -420,9 +425,9 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 16.dp).padding(bottom = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Create Custom Color", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Create Custom Color", color = TextPrimary, fontSize = TnType.Title, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Drag to pick a shade. Saturation fades toward the center.", color = TextSecondary, fontSize = 12.sp)
+                Text("Drag to pick a shade. Saturation fades toward the center.", color = TextSecondary, fontSize = TnType.Caption)
 
                 Spacer(modifier = Modifier.height(32.dp))
 
@@ -456,13 +461,13 @@ fun SettingsScreen(
                         isColorPickerOpen = false
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = TnShape.Medium,
                     colors = ButtonDefaults.buttonColors(
                         containerColor = tempPickedColor, // The button matches the wheel!
                         contentColor = Color.White
                     )
                 ) {
-                    Text("Save to Palette", fontSize = 16.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
+                    Text("Save to Palette", fontSize = TnType.BodyLarge, fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 4.dp))
                 }
             }
         }
@@ -502,11 +507,11 @@ fun SettingsScreen(
             title = { Text("Open-source libraries", color = TextPrimary) },
             text = {
                 Column(modifier = Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Timenote is built with the work of many people. Thank you.", color = TextSecondary, fontSize = 14.sp)
+                    Text("Timenote is built with the work of many people. Thank you.", color = TextSecondary, fontSize = TnType.Body)
                     OPEN_SOURCE_LIBRARIES.forEach { (name, licence) ->
                         Column {
-                            Text(name, color = TextPrimary, fontSize = 14.sp)
-                            Text(licence, color = TextSecondary, fontSize = 12.sp)
+                            Text(name, color = TextPrimary, fontSize = TnType.Body)
+                            Text(licence, color = TextSecondary, fontSize = TnType.Caption)
                         }
                     }
                 }
@@ -532,7 +537,7 @@ fun SettingsScreen(
                     .padding(horizontal = 24.dp)
                     .padding(bottom = 24.dp)
             ) {
-                Text("How to use Timenote", color = TextPrimary, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("How to use Timenote", color = TextPrimary, fontSize = TnType.Headline, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 // Scrollable Manual
@@ -561,7 +566,7 @@ fun SettingsScreen(
                 Button(
                     onClick = { isHelpSheetOpen = false },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2C2C2C))
+                    colors = ButtonDefaults.buttonColors(containerColor = TnTheme.colors.surfaceRaised)
                 ) {
                     Text("Got it", color = TextPrimary)
                 }

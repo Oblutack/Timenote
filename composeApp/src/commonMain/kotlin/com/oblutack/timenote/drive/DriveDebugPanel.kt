@@ -1,5 +1,7 @@
 package com.oblutack.timenote.drive
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,10 +30,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.getCurrentTimeMillis
 import kotlinx.coroutines.launch
 import com.oblutack.timenote.di.LocalAppContainer
@@ -54,10 +56,10 @@ fun DriveDebugPanel(session: DriveSession) {
     LaunchedEffect(status) { account = if (status == DriveStatus.Connected) session.accountId() else null }
 
     Column(
-        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(SurfaceDark).padding(16.dp),
+        modifier = Modifier.fillMaxWidth().clip(TnShape.Card).background(SurfaceDark).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("Google Drive test (debug build only)", color = TextPrimary, fontSize = 16.sp)
+        Text("Google Drive test (debug build only)", color = TextPrimary, fontSize = TnType.BodyLarge)
         Text(
             when (val s = status) {
                 DriveStatus.Unknown -> "Checking..."
@@ -65,7 +67,7 @@ fun DriveDebugPanel(session: DriveSession) {
                 DriveStatus.Connected -> "Connected" + (account?.let { " (account id $it)" } ?: " (account unknown)")
                 is DriveStatus.Problem -> "Problem: ${s.message}"
             },
-            color = TextSecondary, fontSize = 13.sp
+            color = TextSecondary, fontSize = TnType.Label
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { scope.launch { session.check() } }) { Text("Check") }
@@ -105,7 +107,7 @@ fun DriveDebugPanel(session: DriveSession) {
             ) { Text("Sync now (notes and voice memos)") }
         }
 
-        Text("Cross-app check", color = TextSecondary, fontSize = 13.sp)
+        Text("Cross-app check", color = TextSecondary, fontSize = TnType.Label)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(
                 enabled = status == DriveStatus.Connected && !running,
@@ -155,7 +157,7 @@ fun DriveDebugPanel(session: DriveSession) {
 
         if (log.isNotEmpty()) {
             Spacer(Modifier.height(4.dp))
-            Text(log.joinToString("\n"), color = TextPrimary, fontSize = 12.sp, fontFamily = FontFamily.Monospace)
+            Text(log.joinToString("\n"), color = TextPrimary, fontSize = TnType.Caption, fontFamily = FontFamily.Monospace)
         }
     }
 }

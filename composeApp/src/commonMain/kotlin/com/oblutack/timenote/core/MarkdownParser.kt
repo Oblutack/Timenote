@@ -1,5 +1,6 @@
 package com.oblutack.timenote.core
 
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -18,10 +19,10 @@ fun parseMarkdownToAnnotatedString(text: String, accentColor: Color): AnnotatedS
             addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color.White), match.range.first, match.range.last + 1)
         }
         Regex("(?m)^## (.*)$").findAll(text).forEach { match ->
-            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 18.sp, color = Color.White), match.range.first, match.range.last + 1)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = TnType.Subtitle, color = Color.White), match.range.first, match.range.last + 1)
         }
         Regex("(?m)^### (.*)$").findAll(text).forEach { match ->
-            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, color = Color.White), match.range.first, match.range.last + 1)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = TnType.BodyLarge, color = Color.White), match.range.first, match.range.last + 1)
         }
 
         // 2. BOLD & ITALIC & STRIKETHROUGH

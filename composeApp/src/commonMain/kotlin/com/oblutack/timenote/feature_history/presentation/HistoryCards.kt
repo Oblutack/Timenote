@@ -1,4 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,10 +21,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.setValue
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
 import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import androidx.compose.material.icons.filled.List
@@ -43,10 +46,10 @@ fun FolderCard(
         modifier = Modifier
             .fillMaxWidth()
             .height(90.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(TnShape.Card)
             .background(SurfaceDark)
             // --- NEW: The thin color-coded border ---
-            .border(1.dp, folder.color, RoundedCornerShape(16.dp))
+            .border(1.dp, folder.color, TnShape.Card)
             .clickable { onClick() }, // Left side (75%) clicks the folder
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -60,7 +63,7 @@ fun FolderCard(
             Text(
                 text = folder.name,
                 color = TextPrimary,
-                fontSize = 16.sp,
+                fontSize = TnType.BodyLarge,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
@@ -79,7 +82,7 @@ fun FolderCard(
                 Text(
                     text = folder.description?.takeIf { it.isNotBlank() } ?: if (sessionCount == 1) "1 session" else "$sessionCount sessions",
                     color = TextSecondary,
-                    fontSize = 12.sp,
+                    fontSize = TnType.Caption,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -129,7 +132,7 @@ fun SessionCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(TnShape.Card)
             .background(SurfaceDark)
             .clickable { onClick() }
             .padding(16.dp),
@@ -145,7 +148,7 @@ fun SessionCard(
             Text(
                 text = session.title,
                 color = TextPrimary,
-                fontSize = 16.sp,
+                fontSize = TnType.BodyLarge,
                 fontWeight = FontWeight.Medium
             )
 
@@ -156,7 +159,7 @@ fun SessionCard(
                 Text(
                     text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(session.description, dynamicAccentColor),
                     color = TextSecondary,
-                    fontSize = 14.sp,
+                    fontSize = TnType.Body,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -170,14 +173,14 @@ fun SessionCard(
                 if (isChild) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, Color(0xFF9C27B0), RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
+                            .border(1.dp, TnTheme.colors.branch, TnShape.Pill)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "↳ Child",
-                            color = Color(0xFF9C27B0),
-                            fontSize = 12.sp
+                            color = TnTheme.colors.branch,
+                            fontSize = TnType.Caption
                         )
                     }
                 }
@@ -185,14 +188,14 @@ fun SessionCard(
                 if (childCount > 0) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, Color(0xFF4CAF50), RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
+                            .border(1.dp, TnTheme.colors.success, TnShape.Pill)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = "Branches: $childCount",
-                            color = Color(0xFF4CAF50),
-                            fontSize = 12.sp
+                            color = TnTheme.colors.success,
+                            fontSize = TnType.Caption
                         )
                     }
                 }
@@ -200,14 +203,14 @@ fun SessionCard(
                 session.tags.take(MAX_TAGS_ON_CARD).forEach { tag ->
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, tag.color, RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
+                            .border(1.dp, tag.color, TnShape.Pill)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
                         Text(
                             text = tag.name,
                             color = tag.color,
-                            fontSize = 12.sp
+                            fontSize = TnType.Caption
                         )
                     }
                 }
@@ -215,11 +218,11 @@ fun SessionCard(
                 if (hiddenTags > 0) {
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(50))
-                            .border(1.dp, TextSecondary.copy(alpha = 0.5f), RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
+                            .border(1.dp, TextSecondary.copy(alpha = 0.5f), TnShape.Pill)
                             .padding(horizontal = 12.dp, vertical = 4.dp)
                     ) {
-                        Text(text = "+$hiddenTags", color = TextSecondary, fontSize = 12.sp)
+                        Text(text = "+$hiddenTags", color = TextSecondary, fontSize = TnType.Caption)
                     }
                 }
             }
@@ -241,20 +244,20 @@ fun SessionCard(
             Text(
                 text = session.duration,
                 color = TextSecondary,
-                fontSize = 14.sp
+                fontSize = TnType.Body
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = dateString,
                 color = TextSecondary.copy(alpha = 0.7f), // Make date slightly dimmer
-                fontSize = 12.sp,
+                fontSize = TnType.Caption,
                 fontWeight = FontWeight.Medium
             )
             Spacer(modifier = Modifier.height(2.dp))
             Text(
                 text = yearString,
                 color = TextSecondary.copy(alpha = 0.5f), // Make year even dimmer for hierarchy
-                fontSize = 12.sp
+                fontSize = TnType.Caption
             )
         }
     }

@@ -1,5 +1,8 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -32,11 +35,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import com.oblutack.timenote.feature_timer.domain.EventType
 import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
@@ -196,7 +199,7 @@ fun TimenoteDetailScreen(
                 Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = TextPrimary)
             }
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Timenote Details", color = TextSecondary, fontSize = 18.sp, modifier = Modifier.weight(1f))
+            Text("Timenote Details", color = TextSecondary, fontSize = TnType.Subtitle, modifier = Modifier.weight(1f))
             IconButton(onClick = { viewModel.toggleTimenotePin(timenote.id) }) {
                 Icon(
                     imageVector = Icons.Default.PushPin,
@@ -225,8 +228,8 @@ fun TimenoteDetailScreen(
                         value = titleText,
                         onValueChange = { titleText = it },
                         modifier = Modifier.fillMaxWidth().focusRequester(titleFocusRequester),
-                        textStyle = TextStyle(fontSize = 24.sp, fontWeight = FontWeight.Bold, color = TextPrimary),
-                        shape = RoundedCornerShape(12.dp),
+                        textStyle = TextStyle(fontSize = TnType.Headline, fontWeight = FontWeight.Bold, color = TextPrimary),
+                        shape = TnShape.Medium,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = SurfaceDark, unfocusedContainerColor = SurfaceDark,
                             focusedBorderColor = Color.Transparent, unfocusedBorderColor = Color.Transparent,
@@ -252,7 +255,7 @@ fun TimenoteDetailScreen(
         // Folder Pill
         Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(50))
+                .clip(TnShape.Pill)
                 .clickable { isFolderDialogOpen = true }
                 .background(currentFolder?.color?.copy(alpha = 0.2f) ?: SurfaceDark)
                 .padding(horizontal = 12.dp, vertical = 6.dp)
@@ -260,7 +263,7 @@ fun TimenoteDetailScreen(
             Text(
                 text = if (currentFolder == null) "Unassigned" else currentFolder.name,
                 color = currentFolder?.color ?: TextSecondary,
-                fontSize = 14.sp,
+                fontSize = TnType.Body,
                 fontWeight = FontWeight.Medium
             )
         }
@@ -270,27 +273,27 @@ fun TimenoteDetailScreen(
         Text(
             text = displayDate,
             color = TextSecondary,
-            fontSize = 14.sp,
+            fontSize = TnType.Body,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Text(text = timenote.duration, color = TextSecondary, fontSize = 16.sp)
+        Text(text = timenote.duration, color = TextSecondary, fontSize = TnType.BodyLarge)
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // 1. Work vs Pause Breakdown Bar
         // --- Define the Colors ---
         val workColor = timenote.tags.firstOrNull()?.color ?: DefaultAccentColor
-        val pauseColor = Color(0xFF333333) // Muted Dark Gray for the Pause segment
+        val pauseColor = TnTheme.colors.surfaceHigh // Muted Dark Gray for the Pause segment
 
         // --- 1. The Progress Bar ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(8.dp)
-                .clip(RoundedCornerShape(50))
+                .clip(TnShape.Pill)
         ) {
             // Work Segment
             Box(
@@ -315,14 +318,14 @@ fun TimenoteDetailScreen(
             // Work Legend
             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(workColor))
             Spacer(modifier = Modifier.width(6.dp))
-            Text("$workPercent% Work", color = TextSecondary, fontSize = 12.sp)
+            Text("$workPercent% Work", color = TextSecondary, fontSize = TnType.Caption)
 
             Spacer(modifier = Modifier.width(12.dp))
 
             // Pause Legend
             Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(pauseColor)) // <-- Make sure this uses pauseColor!
             Spacer(modifier = Modifier.width(6.dp))
-            Text("$pausePercent% Pause", color = TextSecondary, fontSize = 12.sp)
+            Text("$pausePercent% Pause", color = TextSecondary, fontSize = TnType.Caption)
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -392,7 +395,7 @@ fun TimenoteDetailScreen(
                                     ClickableText(
                                         text = annotatedText,
                                         modifier = Modifier.fillMaxWidth(),
-                                        style = TextStyle(color = if (isChecked) TextSecondary else TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                        style = TextStyle(color = if (isChecked) TextSecondary else TextPrimary, fontSize = TnType.BodyLarge, lineHeight = 24.sp),
                                         onClick = { offset ->
                                             val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
                                             if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
@@ -406,12 +409,12 @@ fun TimenoteDetailScreen(
                             isBullet -> {
                                 val content = line.substringAfter("- ")
                                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
-                                    Text("•", color = TextPrimary, fontSize = 18.sp, modifier = Modifier.padding(end = 8.dp))
+                                    Text("•", color = TextPrimary, fontSize = TnType.Subtitle, modifier = Modifier.padding(end = 8.dp))
                                     val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(content, dynamicAccentColor)
                                     ClickableText(
                                         text = annotatedText,
                                         modifier = Modifier.fillMaxWidth(),
-                                        style = TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                        style = TextStyle(color = TextPrimary, fontSize = TnType.BodyLarge, lineHeight = 24.sp),
                                         onClick = { offset ->
                                             val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
                                             if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
@@ -427,7 +430,7 @@ fun TimenoteDetailScreen(
                                 ClickableText(
                                     text = annotatedText,
                                     modifier = Modifier.fillMaxWidth(),
-                                    style = TextStyle(color = TextPrimary, fontSize = 16.sp, lineHeight = 24.sp),
+                                    style = TextStyle(color = TextPrimary, fontSize = TnType.BodyLarge, lineHeight = 24.sp),
                                     onClick = { offset ->
                                         val annotations = annotatedText.getStringAnnotations(tag = "MENTION", start = offset, end = offset)
                                         if (annotations.isNotEmpty()) onTimenoteClick(annotations.first().item)
@@ -470,11 +473,11 @@ fun TimenoteDetailScreen(
             items(timenote.tags) { tag ->
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(50))
-                        .border(1.dp, tag.color, RoundedCornerShape(50))
+                        .clip(TnShape.Pill)
+                        .border(1.dp, tag.color, TnShape.Pill)
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Text(text = tag.name, color = tag.color, fontSize = 14.sp)
+                    Text(text = tag.name, color = tag.color, fontSize = TnType.Body)
                 }
             }
             // The tiny Edit Button at the end of the row!
@@ -504,7 +507,7 @@ fun TimenoteDetailScreen(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(8.dp))
+                .clip(TnShape.Small)
                 .clickable { isTimelineExpanded = !isTimelineExpanded }
                 .padding(horizontal = 8.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -513,7 +516,7 @@ fun TimenoteDetailScreen(
             Text(
                 text = "SESSION TIMELINE",
                 color = TextSecondary,
-                fontSize = 12.sp,
+                fontSize = TnType.Caption,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.sp
             )
@@ -522,7 +525,7 @@ fun TimenoteDetailScreen(
                 Text(
                     text = "${timenote.timelineEvents.size} WAYPOINTS",
                     color = TextSecondary,
-                    fontSize = 12.sp,
+                    fontSize = TnType.Caption,
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 1.sp
                 )
@@ -547,17 +550,17 @@ fun TimenoteDetailScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 24.dp)
-                        .clip(RoundedCornerShape(50)) // Fully rounded pill
-                        .border(1.dp, TextSecondary.copy(alpha = 0.2f), RoundedCornerShape(50)) // Ghost border
+                        .clip(TnShape.Pill) // Fully rounded pill
+                        .border(1.dp, TextSecondary.copy(alpha = 0.2f), TnShape.Pill) // Ghost border
                         .padding(4.dp), // Padding inside the border so the active tab floats
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
-                    val activeBg = SurfaceDark // Or Color(0xFF2C2C2C) if you want it slightly lighter
+                    val activeBg = SurfaceDark // Or TnTheme.colors.surfaceRaised if you want it slightly lighter
 
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
                             .background(if (!isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable {
                                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -569,14 +572,14 @@ fun TimenoteDetailScreen(
                         Text(
                             text = "Timeline",
                             color = if (!isNotesOnlyView) TextPrimary else TextSecondary,
-                            fontSize = 13.sp,
+                            fontSize = TnType.Label,
                             fontWeight = FontWeight.Medium
                         )
                     }
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .clip(RoundedCornerShape(50))
+                            .clip(TnShape.Pill)
                             .background(if (isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable {
                                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -588,7 +591,7 @@ fun TimenoteDetailScreen(
                         Text(
                             text = "Notes Only",
                             color = if (isNotesOnlyView) TextPrimary else TextSecondary,
-                            fontSize = 13.sp,
+                            fontSize = TnType.Label,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -625,17 +628,18 @@ fun TimenoteDetailScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
+                            val stripeFallback = DefaultAccentColor
                             textNotes.forEach { note ->
                                 Column(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .background(color = SurfaceDark, shape = RoundedCornerShape(8.dp))
+                                        .background(color = SurfaceDark, shape = TnShape.Small)
                                         .padding(start = 2.dp) // Space for the solid border
                                         .background(color = SurfaceDark)
                                         .drawBehind {
                                             val strokeWidth = 4.dp.toPx()
                                             drawLine(
-                                                color = note.color ?: DefaultAccentColor,
+                                                color = note.color ?: stripeFallback,
                                                 start = Offset(x = 0f, y = 0f),
                                                 end = Offset(x = 0f, y = size.height),
                                                 strokeWidth = strokeWidth
@@ -643,9 +647,9 @@ fun TimenoteDetailScreen(
                                         }
                                         .padding(12.dp)
                                 ) {
-                                    Text(text = note.title, color = TextPrimary, fontSize = 16.sp)
+                                    Text(text = note.title, color = TextPrimary, fontSize = TnType.BodyLarge)
                                     Spacer(modifier = Modifier.height(4.dp))
-                                    Text(text = note.timestamp, color = TextSecondary, fontSize = 12.sp)
+                                    Text(text = note.timestamp, color = TextSecondary, fontSize = TnType.Caption)
                                 }
                             }
                         }

@@ -1,4 +1,8 @@
 package com.oblutack.timenote.feature_history.presentation
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TagColorChoices
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -28,11 +32,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.setValue
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
-import com.oblutack.timenote.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
 import com.oblutack.timenote.feature_history.domain.TimenoteFolder
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import androidx.compose.material.icons.filled.List
@@ -90,7 +94,7 @@ fun FolderEditorSheet(
                     onValueChange = onNameChange,
                     placeholder = { Text("Folder name...", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = TnShape.Medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = BackgroundDark,
                         unfocusedContainerColor = BackgroundDark,
@@ -108,7 +112,7 @@ fun FolderEditorSheet(
                     onValueChange = onDescriptionChange,
                     placeholder = { Text("Description (Optional)", color = TextSecondary) },
                     modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = TnShape.Medium,
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = BackgroundDark,
                         unfocusedContainerColor = BackgroundDark,
@@ -126,10 +130,7 @@ fun FolderEditorSheet(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    val defaultColors = listOf(
-                        Color(0xFF4FA8F9), Color(0xFF4CAF50), Color(0xFFFF9800),
-                        Color(0xFF9C27B0), Color(0xFFE53935), Color(0xFF00BCD4)
-                    )
+                    val defaultColors = TagColorChoices
                     val allColors = defaultColors + customColors.map { Color(it.toULong()) }
 
                     allColors.forEach { color ->
@@ -191,7 +192,7 @@ fun FolderOptionsSheet(
                 Text(
                     text = folder.name,
                     color = TextSecondary,
-                    fontSize = 14.sp,
+                    fontSize = TnType.Body,
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -207,7 +208,7 @@ fun FolderOptionsSheet(
                 ) {
                     Icon(imageVector = Icons.Default.PushPin, contentDescription = if (folder.isPinned) "Unpin" else "Pin", tint = TextPrimary)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text(text = if (folder.isPinned) "Unpin Folder" else "Pin Folder", color = TextPrimary, fontSize = 16.sp)
+                    Text(text = if (folder.isPinned) "Unpin Folder" else "Pin Folder", color = TextPrimary, fontSize = TnType.BodyLarge)
                 }
 
                 Row(
@@ -219,9 +220,9 @@ fun FolderOptionsSheet(
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = TnTheme.colors.danger)
                     Spacer(modifier = Modifier.width(16.dp))
-                    Text(text = "Delete Folder", color = Color(0xFFE53935), fontSize = 16.sp)
+                    Text(text = "Delete Folder", color = TnTheme.colors.danger, fontSize = TnType.BodyLarge)
                 }
             }
         }
@@ -248,7 +249,7 @@ fun SortSheet(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(option.displayName, color = if (isSelected) DefaultAccentColor else TextPrimary, fontSize = 16.sp)
+                        Text(option.displayName, color = if (isSelected) DefaultAccentColor else TextPrimary, fontSize = TnType.BodyLarge)
                         if (isSelected) Icon(Icons.Default.Check, contentDescription = "Selected", tint = DefaultAccentColor)
                     }
                 }
@@ -288,7 +289,7 @@ fun TagFilterSheet(
                         ) {
                             Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(tag.color))
                             Spacer(modifier = Modifier.width(16.dp))
-                            Text(tag.name, color = TextPrimary, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                            Text(tag.name, color = TextPrimary, fontSize = TnType.BodyLarge, modifier = Modifier.weight(1f))
                             Checkbox(
                                 checked = isSelected, onCheckedChange = { onToggle(tag.id) },
                                 colors = CheckboxDefaults.colors(checkedColor = DefaultAccentColor, uncheckedColor = TextSecondary)
@@ -313,17 +314,17 @@ fun DeleteBranchSheet(
             containerColor = SurfaceDark
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(Icons.Default.Warning, contentDescription = "Warning", tint = Color(0xFFE53935), modifier = Modifier.size(48.dp))
+                Icon(Icons.Default.Warning, contentDescription = "Warning", tint = TnTheme.colors.danger, modifier = Modifier.size(48.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Delete Branch?", color = TextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(if (descendantCount == 1) "This session has 1 connected branch." else "This session has $descendantCount connected branches.", color = TextSecondary, fontSize = 14.sp, textAlign = TextAlign.Center)
+                Text(if (descendantCount == 1) "This session has 1 connected branch." else "This session has $descendantCount connected branches.", color = TextSecondary, fontSize = TnType.Body, textAlign = TextAlign.Center)
                 Spacer(modifier = Modifier.height(32.dp))
 
                 Button(
                     onClick = { onDeleteAll() },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE53935))
+                    colors = ButtonDefaults.buttonColors(containerColor = TnTheme.colors.danger)
                 ) { Text("Delete all ${descendantCount + 1} sessions", color = Color.White) }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -331,8 +332,8 @@ fun DeleteBranchSheet(
                 OutlinedButton(
                     onClick = { onDeleteOnly() },
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, Color(0xFFE53935)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
+                    border = BorderStroke(1.dp, TnTheme.colors.danger),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TnTheme.colors.danger)
                 ) { Text("Delete just this session") }
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -365,7 +366,7 @@ fun DailySummarySheet(
                 Text(
                     text = "$monthStr ${summary.date.dayOfMonth}, ${summary.date.year}",
                     color = TextSecondary,
-                    fontSize = 14.sp,
+                    fontSize = TnType.Body,
                     fontWeight = FontWeight.Medium
                 )
 
@@ -390,23 +391,23 @@ fun DailySummarySheet(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Sessions: ${summary.sessionCount}", color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Medium)
+                    Text("Sessions: ${summary.sessionCount}", color = TextPrimary, fontSize = TnType.BodyLarge, fontWeight = FontWeight.Medium)
 
                     if (topTag != null) {
                         Spacer(modifier = Modifier.width(16.dp))
                         Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha=0.3f)))
                         Spacer(modifier = Modifier.width(16.dp))
 
-                        Text("Top Tag:", color = TextSecondary, fontSize = 14.sp)
+                        Text("Top Tag:", color = TextSecondary, fontSize = TnType.Body)
                         Spacer(modifier = Modifier.width(8.dp))
 
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(50))
-                                .border(1.dp, topTag.color, RoundedCornerShape(50))
+                                .clip(TnShape.Pill)
+                                .border(1.dp, topTag.color, TnShape.Pill)
                                 .padding(horizontal = 12.dp, vertical = 4.dp)
                         ) {
-                            Text(topTag.name, color = topTag.color, fontSize = 12.sp)
+                            Text(topTag.name, color = topTag.color, fontSize = TnType.Caption)
                         }
                     }
                 }

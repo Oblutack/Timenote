@@ -1,4 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
+import com.oblutack.timenote.ui.theme.TnShape
+import com.oblutack.timenote.ui.theme.TnTheme
+import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -29,11 +32,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.oblutack.timenote.BackgroundDark
-import com.oblutack.timenote.DefaultAccentColor
-import com.oblutack.timenote.SurfaceDark
-import com.oblutack.timenote.TextPrimary
-import com.oblutack.timenote.TextSecondary
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -84,7 +87,7 @@ fun VoiceNotesSection(
             title = { Text("Delete this voice note?", color = TextPrimary) },
             text = { Text("The recording is removed from this session.", color = TextSecondary) },
             confirmButton = {
-                TextButton(onClick = { onDelete(path); voiceNoteToDelete = null }) { Text("Delete", color = Color(0xFFE53935)) }
+                TextButton(onClick = { onDelete(path); voiceNoteToDelete = null }) { Text("Delete", color = TnTheme.colors.danger) }
             },
             dismissButton = { TextButton(onClick = { voiceNoteToDelete = null }) { Text("Cancel", color = TextSecondary) } }
         )
@@ -104,9 +107,9 @@ fun VoiceNotesSection(
             Row(
                 modifier = Modifier
                     // REMOVED: .fillMaxWidth()
-                    .clip(RoundedCornerShape(50))
+                    .clip(TnShape.Pill)
                     .background(SurfaceDark)
-                    .border(1.dp, DefaultAccentColor.copy(alpha = 0.5f), RoundedCornerShape(50))
+                    .border(1.dp, DefaultAccentColor.copy(alpha = 0.5f), TnShape.Pill)
                     .clickable { onPlay(path) }
                     .padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp), // Tighter padding for a sleek pill
                 verticalAlignment = Alignment.CenterVertically
@@ -129,7 +132,7 @@ fun VoiceNotesSection(
                 Text(
                     text = "Voice Note $absoluteIndex",
                     color = DefaultAccentColor,
-                    fontSize = 14.sp,
+                    fontSize = TnType.Body,
                     fontWeight = FontWeight.Medium
                 )
                 Spacer(modifier = Modifier.width(12.dp))
@@ -145,7 +148,7 @@ fun VoiceNotesSection(
                     Icon(
                         imageVector = Icons.Default.Delete,
                         contentDescription = "Delete",
-                        tint = Color(0xFFE53935),
+                        tint = TnTheme.colors.danger,
                         modifier = Modifier.size(16.dp) // Tiny trash icon
                     )
                 }
@@ -156,8 +159,8 @@ fun VoiceNotesSection(
         if (audioMessage != null) {
             Text(
                 text = audioMessage,
-                color = Color(0xFFE53935),
-                fontSize = 12.sp,
+                color = TnTheme.colors.danger,
+                fontSize = TnType.Caption,
                 modifier = Modifier.fillMaxWidth().clickable { onDismissAudioMessage() }.padding(bottom = 8.dp)
             )
         }
@@ -167,7 +170,7 @@ fun VoiceNotesSection(
             Text(
                 text = if (isExpanded) "Show Less" else "+ ${voiceNotes.size - 3} More",
                 color = TextSecondary,
-                fontSize = 12.sp,
+                fontSize = TnType.Caption,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -183,11 +186,11 @@ fun VoiceNotesSection(
             Button(
                 onClick = { onStopRecording() },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFFE53935).copy(alpha = 0.2f),
-                    contentColor = Color(0xFFE53935)
+                    containerColor = TnTheme.colors.danger.copy(alpha = 0.2f),
+                    contentColor = TnTheme.colors.danger
                 ),
-                border = BorderStroke(1.dp, Color(0xFFE53935)),
-                shape = RoundedCornerShape(50)
+                border = BorderStroke(1.dp, TnTheme.colors.danger),
+                shape = TnShape.Pill
                 // REMOVED: modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Stop, contentDescription = "Stop", modifier = Modifier.size(16.dp))
@@ -199,7 +202,7 @@ fun VoiceNotesSection(
                 onClick = { onStartRecording() },
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
                 border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
-                shape = RoundedCornerShape(50)
+                shape = TnShape.Pill
                 // REMOVED: modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(Icons.Default.Mic, contentDescription = "Mic", modifier = Modifier.size(16.dp))
@@ -210,8 +213,8 @@ fun VoiceNotesSection(
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Voice notes need microphone permission. Allow it in the app's system settings.",
-                    color = Color(0xFFE53935),
-                    fontSize = 12.sp
+                    color = TnTheme.colors.danger,
+                    fontSize = TnType.Caption
                 )
             }
         }
@@ -235,7 +238,7 @@ fun FolderPickerSheet(
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
-                Text("Move to Folder", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Move to Folder", color = TextPrimary, fontSize = TnType.Title, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 if (currentFolderId != null) {
@@ -244,8 +247,8 @@ fun FolderPickerSheet(
                             onAssign(null)
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        border = BorderStroke(1.dp, Color(0xFFE53935)),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFE53935))
+                        border = BorderStroke(1.dp, TnTheme.colors.danger),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = TnTheme.colors.danger)
                     ) {
                         Text("Remove from Folder")
                     }
@@ -268,7 +271,7 @@ fun FolderPickerSheet(
                         ) {
                             Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(folder.color))
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(folder.name, color = TextPrimary, fontSize = 16.sp)
+                            Text(folder.name, color = TextPrimary, fontSize = TnType.BodyLarge)
                         }
                     }
                 }
@@ -292,7 +295,7 @@ fun EditTagsSheet(
             containerColor = SurfaceDark
         ) {
             Column(modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp)) {
-                Text("Edit Tags", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Edit Tags", color = TextPrimary, fontSize = TnType.Title, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(16.dp))
 
                 LazyColumn(modifier = Modifier.fillMaxWidth().heightIn(max = 400.dp)) {
@@ -301,7 +304,7 @@ fun EditTagsSheet(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(TnShape.Small)
                                 .clickable { onToggle(tag) }
                                 .padding(vertical = 12.dp, horizontal = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -310,7 +313,7 @@ fun EditTagsSheet(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(modifier = Modifier.size(12.dp).clip(CircleShape).background(tag.color))
                                 Spacer(modifier = Modifier.width(12.dp))
-                                Text(tag.name, color = TextPrimary, fontSize = 16.sp)
+                                Text(tag.name, color = TextPrimary, fontSize = TnType.BodyLarge)
                             }
                             if (isSelected) {
                                 Icon(Icons.Default.CheckCircle, contentDescription = "Selected", tint = tag.color)
@@ -357,7 +360,7 @@ fun DescriptionEditorSheet(
             title = { Text("Discard your changes?", color = TextPrimary) },
             text = { Text("What you typed in this note will be lost.", color = TextSecondary) },
             confirmButton = {
-                TextButton(onClick = { confirmDiscard = false; onCancel() }) { Text("Discard", color = Color(0xFFE53935)) }
+                TextButton(onClick = { confirmDiscard = false; onCancel() }) { Text("Discard", color = TnTheme.colors.danger) }
             },
             dismissButton = {
                 TextButton(onClick = { confirmDiscard = false }) { Text("Keep editing", color = DefaultAccentColor) }
@@ -381,7 +384,7 @@ fun DescriptionEditorSheet(
                     TextButton(onClick = { if (hasChanges) confirmDiscard = true else onCancel() }) {
                         Text("Cancel", color = TextSecondary)
                     }
-                    Text("Edit Note", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Edit Note", color = TextPrimary, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
                     TextButton(onClick = {
                         if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         onSave()
@@ -398,7 +401,7 @@ fun DescriptionEditorSheet(
                     horizontalArrangement = Arrangement.Center, // Centers the buttons!
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    val btnModifier = Modifier.size(44.dp).clip(RoundedCornerShape(12.dp)).background(BackgroundDark).border(1.dp, TextSecondary.copy(alpha=0.15f), RoundedCornerShape(12.dp))
+                    val btnModifier = Modifier.size(44.dp).clip(TnShape.Medium).background(BackgroundDark).border(1.dp, TextSecondary.copy(alpha=0.15f), TnShape.Medium)
 
                     Box(
                         modifier = btnModifier.clickable {
@@ -409,7 +412,7 @@ fun DescriptionEditorSheet(
                             onTextChange(text.copy(text = newText, selection = TextRange(e + 4)))
                         },
                         contentAlignment = Alignment.Center
-                    ) { Text("B", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                    ) { Text("B", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = TnType.Subtitle) }
 
                     Spacer(modifier = Modifier.width(16.dp)) // Nice gap between buttons
 
@@ -422,7 +425,7 @@ fun DescriptionEditorSheet(
                             onTextChange(text.copy(text = newText, selection = TextRange(e + 2)))
                         },
                         contentAlignment = Alignment.Center
-                    ) { Text("I", color = TextPrimary, fontStyle = FontStyle.Italic, fontSize = 18.sp) }
+                    ) { Text("I", color = TextPrimary, fontStyle = FontStyle.Italic, fontSize = TnType.Subtitle) }
 
                     Spacer(modifier = Modifier.width(16.dp))
 
@@ -434,7 +437,7 @@ fun DescriptionEditorSheet(
                             onTextChange(text.copy(text = newText, selection = TextRange(s + 2)))
                         },
                         contentAlignment = Alignment.Center
-                    ) { Text("H1", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp) }
+                    ) { Text("H1", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = TnType.BodyLarge) }
 
                     Spacer(modifier = Modifier.width(16.dp))
 
@@ -447,7 +450,7 @@ fun DescriptionEditorSheet(
                             onTextChange(text.copy(text = newText, selection = TextRange(s + 6)))
                         },
                         contentAlignment = Alignment.Center
-                    ) { Text("[ ]", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp) }
+                    ) { Text("[ ]", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = TnType.Body) }
 
                     Spacer(modifier = Modifier.width(16.dp))
 
@@ -460,7 +463,7 @@ fun DescriptionEditorSheet(
                             onTextChange(text.copy(text = newText, selection = TextRange(s + 2)))
                         },
                         contentAlignment = Alignment.Center
-                    ) { Text("•", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp) }
+                    ) { Text("•", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = TnType.Subtitle) }
                 }
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -489,9 +492,9 @@ fun DescriptionEditorSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 8.dp, vertical = 4.dp)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(TnShape.Small)
                                 .background(BackgroundDark)
-                                .border(1.dp, DefaultAccentColor.copy(alpha=0.5f), RoundedCornerShape(8.dp))
+                                .border(1.dp, DefaultAccentColor.copy(alpha=0.5f), TnShape.Small)
                         ) {
                             items(suggestions) { suggestion ->
                                 Row(
@@ -509,7 +512,7 @@ fun DescriptionEditorSheet(
                                         }
                                         .padding(12.dp)
                                 ) {
-                                    Text(suggestion.title, color = TextPrimary, fontSize = 14.sp)
+                                    Text(suggestion.title, color = TextPrimary, fontSize = TnType.Body)
                                 }
                             }
                         }
@@ -527,7 +530,7 @@ fun DescriptionEditorSheet(
                     onValueChange = onTextChange,
                     modifier = Modifier.fillMaxWidth().weight(1f).padding(horizontal = 8.dp).focusRequester(focusRequester),
                     placeholder = { Text("Start typing...", color = TextSecondary) },
-                    textStyle = TextStyle(fontSize = 18.sp, color = TextPrimary, lineHeight = 28.sp),
+                    textStyle = TextStyle(fontSize = TnType.Subtitle, color = TextPrimary, lineHeight = 28.sp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = Color.Transparent,
                         unfocusedContainerColor = Color.Transparent,

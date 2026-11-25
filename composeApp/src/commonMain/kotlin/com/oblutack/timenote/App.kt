@@ -1,5 +1,12 @@
 package com.oblutack.timenote
 
+import com.oblutack.timenote.ui.theme.BackgroundDark
+import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.SurfaceDark
+import com.oblutack.timenote.ui.theme.TextPrimary
+import com.oblutack.timenote.ui.theme.TextSecondary
+import com.oblutack.timenote.ui.theme.TimenoteTheme
+import com.oblutack.timenote.ui.theme.TnTheme
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -29,32 +36,6 @@ import com.oblutack.timenote.di.LocalAppContainer
 import com.oblutack.timenote.di.historyViewModel
 import com.oblutack.timenote.di.timerViewModel
 import com.oblutack.timenote.getCurrentTimeMillis
-
-// ==========================================
-// 1. THEME DEFINITION
-// ==========================================
-val BackgroundDark = Color(0xFF121212)
-val SurfaceDark = Color(0xFF1E1E1E)
-val TextPrimary = Color(0xFFFFFFFF)
-val TextSecondary = Color(0xFFAAAAAA)
-val DefaultAccentColor = Color(0xFF4FA8F9)
-
-private val TimenoteColorScheme = darkColorScheme(
-    background = BackgroundDark,
-    surface = SurfaceDark,
-    primary = DefaultAccentColor,
-    onPrimary = Color.White,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary
-)
-
-@Composable
-fun TimenoteTheme(content: @Composable () -> Unit) {
-    MaterialTheme(
-        colorScheme = TimenoteColorScheme,
-        content = content
-    )
-}
 
 /** Where screens show short messages with an action ("Moved to trash", Undo). One host for the whole app. */
 val LocalSnackbarHost = staticCompositionLocalOf<SnackbarHostState> { error("No snackbar host provided") }
@@ -95,7 +76,7 @@ private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
         Scaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
-                    Snackbar(data, containerColor = Color(0xFF2C2C2C), contentColor = TextPrimary, actionColor = DefaultAccentColor)
+                    Snackbar(data, containerColor = TnTheme.colors.surfaceRaised, contentColor = TextPrimary, actionColor = DefaultAccentColor)
                 }
             },
             bottomBar = {
