@@ -40,6 +40,10 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
 import com.oblutack.timenote.di.timerViewModel
 import com.oblutack.timenote.di.LocalAppContainer
 
@@ -53,6 +57,7 @@ fun TimerScreen(
 
     val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
+    val focusManager = LocalFocusManager.current
 
     val useMonochromeNodes by settingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
     val customColors by settingsRepository.customColorsFlow.collectAsState(initial = emptyList())
@@ -167,6 +172,9 @@ fun TimerScreen(
             value = state.sessionTitle,
             onValueChange = { viewModel.onAction(TimerAction.UpdateSessionTitle(it)) },
             placeholder = { Text("Session Title", color = TextSecondary) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }), // Done closes the keyboard
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = OutlinedTextFieldDefaults.colors(

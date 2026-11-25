@@ -56,12 +56,16 @@ fun TimenoteTheme(content: @Composable () -> Unit) {
     )
 }
 
+/** Where screens show short messages with an action ("Moved to trash", Undo). One host for the whole app. */
+val LocalSnackbarHost = staticCompositionLocalOf<SnackbarHostState> { error("No snackbar host provided") }
+
 // ==========================================
 // 2. MAIN APP ENTRY POINT (Using NavHost)
 // ==========================================
 @Composable
 fun App(container: AppContainer) {
-    CompositionLocalProvider(LocalAppContainer provides container) {
+    val snackbarHostState = remember { SnackbarHostState() }
+    CompositionLocalProvider(LocalAppContainer provides container, LocalSnackbarHost provides snackbarHostState) {
         AppContent()
     }
 }
@@ -77,7 +81,13 @@ private fun AppContent() {
         // We only need to remember the History Tab state now!
         var historyTab by remember { mutableStateOf(0) }
 
+        val snackbarHostState = LocalSnackbarHost.current
         Scaffold(
+            snackbarHost = {
+                SnackbarHost(snackbarHostState) { data ->
+                    Snackbar(data, containerColor = Color(0xFF2C2C2C), contentColor = TextPrimary, actionColor = DefaultAccentColor)
+                }
+            },
             bottomBar = {
                 NavigationBar(
                     containerColor = SurfaceDark,
@@ -132,8 +142,9 @@ private fun AppContent() {
                 modifier = Modifier.padding(innerPadding).fillMaxSize().background(BackgroundDark)
             ) {
                 composable(
-                    route = "timer?parentId={parentId}&waypointId={waypointId}&token={token}",
+                    route = "timer?parentId={parentId}&waypointId={waypointId}&folderId={folderId}&token={token}",
                     arguments = listOf(
+                        androidx.navigation.navArgument("folderId") { nullable = true; defaultValue = null },
                         androidx.navigation.navArgument("parentId") { nullable = true; defaultValue = null },
                         androidx.navigation.navArgument("waypointId") { nullable = true; defaultValue = null },
                         // Unique per "branch" navigation. The arguments stay on the back stack entry, so without
@@ -144,6 +155,7 @@ private fun AppContent() {
                     val parentId = backStackEntry.arguments?.getString("parentId")
                     val waypointId = backStackEntry.arguments?.getString("waypointId")
                     val branchToken = backStackEntry.arguments?.getString("token")
+                    val folderId = backStackEntry.arguments?.getString("folderId")
 
                     val timerViewModel: TimerViewModel = timerViewModel()
 
@@ -151,6 +163,10 @@ private fun AppContent() {
                         if (parentId != null && waypointId != null) {
                             timerViewModel.onAction(TimerAction.SetParentLinks(parentId, waypointId, branchToken))
                         }
+                    }
+
+                    LaunchedEffect(folderId, branchToken) {
+                        if (folderId != null) timerViewModel.onAction(TimerAction.PrepareInFolder(folderId, branchToken))
                     }
 
                     TimerScreen(viewModel = timerViewModel)
@@ -201,7 +217,7 @@ private fun AppContent() {
                             onBackClick = { navController.popBackStack() },
                             onTimenoteClick = { noteId -> navController.navigate("details/$noteId") },
                             onStartSessionClick = {
-                                navController.navigate("timer") {
+                                navController.navigate("timer?folderId=$id&token=${getCurrentTimeMillis()}") {
                                     popUpTo("timer") { inclusive = false }
                                 }
                             }

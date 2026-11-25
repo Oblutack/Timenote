@@ -112,6 +112,9 @@ class TimerViewModel(
     // Token of the last branch navigation that was applied (see SetParentLinks)
     private var lastBranchToken: String? = null
 
+    // Token of the last "start in this folder" navigation that was applied (see PrepareInFolder)
+    private var lastFolderToken: String? = null
+
     // Skips redundant notification updates (the loop ticks 4x/sec, the text changes 1x/sec)
     private var lastNotificationKey: String? = null
 
@@ -259,6 +262,8 @@ class TimerViewModel(
                 if (_state.value.isRunning) _state.update { it.copy(isAddNoteDialogOpen = true) }
             }
             is TimerAction.CloseAddNoteDialog -> _state.update { it.copy(isAddNoteDialogOpen = false, dialogNoteText = "") }
+            // Closed without choosing (swipe down, tap outside, Back): the draft stays for next time
+            is TimerAction.DismissAddNoteDialog -> _state.update { it.copy(isAddNoteDialogOpen = false) }
             is TimerAction.UpdateDialogNoteText -> _state.update { it.copy(dialogNoteText = action.text) }
             is TimerAction.UpdateDialogNoteColor -> _state.update { it.copy(dialogNoteColor = action.color) }
             is TimerAction.SaveNote -> saveNote()
@@ -309,6 +314,17 @@ class TimerViewModel(
                 if (_state.value.isRunning) backupCurrentState()
             }
 
+            is TimerAction.PrepareInFolder -> {
+                // The same navigation can deliver its arguments again (tab re-entry, rotation): apply each once
+                if (action.token != null) {
+                    if (action.token == lastFolderToken) return
+                    lastFolderToken = action.token
+                }
+                if (_state.value.isRunning || _state.value.isPaused) return // a running session keeps its folder
+                val folder = sessionRepository.folders.value.find { it.id == action.folderId }
+                pendingRestoreFolderId = if (folder == null) action.folderId else null // picked up when folders load
+                _state.update { it.copy(selectedFolder = folder) }
+            }
             is TimerAction.OpenManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = true) }
             is TimerAction.CloseManageTagsSheet -> _state.update { it.copy(isManageTagsSheetOpen = false) }
             is TimerAction.DeleteTag -> sessionRepository.deleteTag(action.tagId)
@@ -632,6 +648,7 @@ sealed class TimerAction {
     data class UpdateSessionTitle(val text: String) : TimerAction()
     data object OpenAddNoteDialog : TimerAction()
     data object CloseAddNoteDialog : TimerAction()
+    data object DismissAddNoteDialog : TimerAction()
     data class UpdateDialogNoteText(val text: String) : TimerAction()
     data class UpdateDialogNoteColor(val color: Color) : TimerAction()
     data object SaveNote : TimerAction()
@@ -647,6 +664,8 @@ sealed class TimerAction {
     data object ToggleTagMenu : TimerAction()
     data object ToggleTagsRowVisibility : TimerAction()
     data class SelectFolder(val folder: ProjectFolder?) : TimerAction()
+    /** Opens the timer ready to record into this folder (from the folder's "Start Session" button). */
+    data class PrepareInFolder(val folderId: String, val token: String? = null) : TimerAction()
     data object OpenManageTagsSheet : TimerAction()
     data object CloseManageTagsSheet : TimerAction()
     data class DeleteTag(val tagId: String) : TimerAction()

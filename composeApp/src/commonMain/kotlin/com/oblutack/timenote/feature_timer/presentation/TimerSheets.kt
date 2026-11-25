@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.style.TextOverflow
 
 // Bottom sheets used by TimerScreen. Everything is driven by TimerState and reported back
@@ -42,8 +44,11 @@ fun AddNoteSheet(
     customColors: List<Long>,
     onAction: (TimerAction) -> Unit
 ) {
+        val noteFocus = remember { FocusRequester() }
+        LaunchedEffect(Unit) { noteFocus.requestFocus() } // ready to type as soon as the sheet opens
+
         ModalBottomSheet(
-            onDismissRequest = { onAction(TimerAction.CloseAddNoteDialog) },
+            onDismissRequest = { onAction(TimerAction.DismissAddNoteDialog) },
             containerColor = SurfaceDark
         ) {
             Column(
@@ -57,7 +62,7 @@ fun AddNoteSheet(
                     value = state.dialogNoteText,
                     onValueChange = { onAction(TimerAction.UpdateDialogNoteText(it)) },
                     placeholder = { Text("Write note here...", color = TextSecondary) },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().focusRequester(noteFocus),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = BackgroundDark,
@@ -385,6 +390,22 @@ fun ManageTagsSheet(
     state: TimerState,
     onAction: (TimerAction) -> Unit
 ) {
+        var tagToDelete by remember { mutableStateOf<com.oblutack.timenote.feature_history.domain.TimenoteFolder?>(null) }
+        tagToDelete?.let { tag ->
+            AlertDialog(
+                onDismissRequest = { tagToDelete = null },
+                containerColor = SurfaceDark,
+                title = { Text("Delete \"${tag.name}\"?", color = TextPrimary) },
+                text = { Text("This tag is removed from your list of tags.", color = TextSecondary) },
+                confirmButton = {
+                    TextButton(onClick = { onAction(TimerAction.DeleteTag(tag.id)); tagToDelete = null }) {
+                        Text("Delete", color = Color(0xFFE53935))
+                    }
+                },
+                dismissButton = { TextButton(onClick = { tagToDelete = null }) { Text("Cancel", color = TextSecondary) } }
+            )
+        }
+
         ModalBottomSheet(
             onDismissRequest = { onAction(TimerAction.CloseManageTagsSheet) },
             containerColor = SurfaceDark
@@ -448,7 +469,7 @@ fun ManageTagsSheet(
                                     IconButton(onClick = { onAction(TimerAction.EditTag(tag)) }) {
                                         Icon(Icons.Default.Edit, contentDescription = "Edit", tint = TextSecondary)
                                     }
-                                    IconButton(onClick = { onAction(TimerAction.DeleteTag(tag.id)) }) {
+                                    IconButton(onClick = { tagToDelete = tag }) {
                                         Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(0xFFE53935))
                                     }
                                 }

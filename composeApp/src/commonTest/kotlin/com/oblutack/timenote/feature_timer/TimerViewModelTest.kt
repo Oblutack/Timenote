@@ -463,4 +463,75 @@ class TimerViewModelTest {
             assertNull(settings.activeSessionBackupFlow.first())
         }
     }
+
+    // --- starting from a folder (B7) ---
+
+    @Test fun startSessionInAFolderSelectsThatFolder() = runAppTest {
+        timerTest {
+            sessions.saveFolder(testFolder("thesis"))
+            vm.onAction(TimerAction.PrepareInFolder("thesis", "t1"))
+            assertEquals("thesis", state.selectedFolder?.id)
+        }
+    }
+
+    @Test fun theFolderIsOnlyAppliedOncePerNavigation() = runAppTest {
+        timerTest {
+            sessions.saveFolder(testFolder("thesis"))
+            vm.onAction(TimerAction.PrepareInFolder("thesis", "t1"))
+            vm.onAction(TimerAction.SelectFolder(sessions.folders.value.single())) // the user unselects it
+            assertNull(state.selectedFolder)
+
+            vm.onAction(TimerAction.PrepareInFolder("thesis", "t1")) // the same navigation delivered again (rotation, tab)
+            assertNull(state.selectedFolder, "an old navigation must not undo the user's choice")
+
+            vm.onAction(TimerAction.PrepareInFolder("thesis", "t2")) // a new tap on "Start Session"
+            assertEquals("thesis", state.selectedFolder?.id)
+        }
+    }
+
+    @Test fun aRunningSessionKeepsItsFolder() = runAppTest {
+        timerTest {
+            sessions.saveFolder(testFolder("thesis")); sessions.saveFolder(testFolder("gym"))
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.SelectFolder(sessions.folders.value.first { it.id == "gym" }))
+            vm.onAction(TimerAction.PrepareInFolder("thesis", "t1"))
+            assertEquals("gym", state.selectedFolder?.id)
+        }
+    }
+
+    @Test fun aFolderThatLoadsLaterIsStillSelected() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.PrepareInFolder("late", "t1"))
+            assertNull(state.selectedFolder)
+            sessions.saveFolder(testFolder("late"))
+            assertEquals("late", state.selectedFolder?.id)
+        }
+    }
+
+    // --- the quick note sheet keeps what was typed (B1) ---
+
+    @Test fun closingTheNoteSheetWithoutChoosingKeepsTheDraft() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.OpenAddNoteDialog)
+            vm.onAction(TimerAction.UpdateDialogNoteText("half a thought"))
+
+            vm.onAction(TimerAction.DismissAddNoteDialog) // swipe down, tap outside, Back
+
+            assertFalse(state.isAddNoteDialogOpen)
+            assertEquals("half a thought", state.dialogNoteText)
+            vm.onAction(TimerAction.OpenAddNoteDialog)
+            assertEquals("half a thought", state.dialogNoteText, "it is there when the sheet opens again")
+        }
+    }
+
+    @Test fun cancellingTheNoteSheetThrowsTheDraftAway() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.OpenAddNoteDialog)
+            vm.onAction(TimerAction.UpdateDialogNoteText("never mind"))
+            vm.onAction(TimerAction.CloseAddNoteDialog)
+            assertEquals("", state.dialogNoteText)
+        }
+    }
 }
