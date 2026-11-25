@@ -14,7 +14,7 @@ const val SUPPORT_EMAIL = "timenotesupport@gmail.com"
  * The public privacy policy page. While this is empty, the About section does not show the link (a link that goes
  * nowhere is worse than none). Set it to the address of the published page.
  */
-const val PRIVACY_POLICY_URL = ""
+const val PRIVACY_POLICY_URL = "https://tide-tanker-4ac.notion.site/Privacy-Policy-376c4478d91080efbe71ee7dd4ded2c6"
 
 /** A "new email" link to the support address, with the app and system version already in the text. */
 fun bugReportLink(info: AppInfo): String {
