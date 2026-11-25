@@ -3,6 +3,10 @@ package com.oblutack.timenote.feature_history.presentation
 import androidx.lifecycle.ViewModel
 import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.data.repository.SessionRepository
+import com.oblutack.timenote.data.repository.SettingsRepository
+import com.oblutack.timenote.core.backupReminderDue
+import com.oblutack.timenote.core.describeBackupReminder
+import kotlinx.coroutines.flow.combine
 import com.oblutack.timenote.feature_history.domain.ProjectFolder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,9 +52,25 @@ class HistoryViewModel(
     private val audioFiles: AudioFiles,
     /** Downloads voice memos recorded on other devices; null when cloud sync is not available. */
     private val audioFetcher: AudioFetcher? = null,
+    /** For the backup reminder; null in tests that do not need it. */
+    private val settings: SettingsRepository? = null,
     private val now: () -> Long = ::getCurrentTimeMillis
 ) : ViewModel() {
     val sessions = sessionRepository.timenotes
+
+    // --- BACKUP REMINDER: text to show when sync is off and the last backup is old, else null ---
+    val backupReminder: StateFlow<String?> = if (settings == null) MutableStateFlow(null) else combine(
+        sessions, settings.lastBackupAtFlow, settings.backupReminderDismissedAtFlow, settings.syncEnabledFlow
+    ) { notes, lastBackupAt, dismissedAt, syncOn ->
+        val at = now()
+        val oldest = notes.map { it.createdAt }.filter { it > 0 }.minOrNull()
+        if (backupReminderDue(at, lastBackupAt, oldest, dismissedAt, syncOn, notes.size)) describeBackupReminder(at, lastBackupAt) else null
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun dismissBackupReminder() {
+        val store = settings ?: return
+        viewModelScope.launch { store.dismissBackupReminder(now()) }
+    }
 
     val heatmapData: StateFlow<Map<String, Int>> = sessions.map { allSessions ->
         val map = mutableMapOf<String, Int>()

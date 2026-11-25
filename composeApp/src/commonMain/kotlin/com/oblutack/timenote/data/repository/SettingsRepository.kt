@@ -29,6 +29,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val LAST_SYNC_AT = longPreferencesKey("last_sync_at")
     private val SYNC_PAGE_TOKEN = stringPreferencesKey("sync_page_token")
     private val SYNC_ACCOUNT = stringPreferencesKey("sync_linked_account")
+    private val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
+    private val BACKUP_REMINDER_DISMISSED_AT = longPreferencesKey("backup_reminder_dismissed_at")
 
     // --- DEFAULT TAGS (see DefaultTagsState) ---
     override suspend fun isSeeded(): Boolean = dataStore.data
@@ -64,6 +66,23 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     override suspend fun setVoiceWifiOnly(enabled: Boolean) {
         dataStore.edit { it[VOICE_WIFI_ONLY] = enabled }
+    }
+
+    // --- BACKUP FILE: when one was last exported, and when the reminder was last dismissed ---
+    val lastBackupAtFlow: Flow<Long?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[LAST_BACKUP_AT] }
+
+    suspend fun setLastBackupAt(time: Long) {
+        dataStore.edit { it[LAST_BACKUP_AT] = time }
+    }
+
+    val backupReminderDismissedAtFlow: Flow<Long?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[BACKUP_REMINDER_DISMISSED_AT] }
+
+    suspend fun dismissBackupReminder(time: Long) {
+        dataStore.edit { it[BACKUP_REMINDER_DISMISSED_AT] = time }
     }
 
     // --- SYNC CHECKPOINT (see SyncCheckpoint) ---

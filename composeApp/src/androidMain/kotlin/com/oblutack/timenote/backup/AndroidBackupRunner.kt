@@ -18,7 +18,9 @@ class AndroidBackupRunner(
     private val context: Context,
     private val service: BackupService,
     private val scope: CoroutineScope,
-    private val audioDir: File
+    private val audioDir: File,
+    /** Called after a backup file was written completely (used to remember when the last backup was made). */
+    private val onExported: suspend () -> Unit = {}
 ) : BackupRunner {
 
     private val _status = MutableStateFlow<BackupStatus>(BackupStatus.Idle)
@@ -36,6 +38,7 @@ class AndroidBackupRunner(
             try {
                 val output = context.contentResolver.openOutputStream(uri, "w") ?: error("Cannot open the destination")
                 val result = ZipBackupSink(output, audioDir).use { service.export(it) }
+                onExported() // only now: the file is complete (a failed export must not count as a backup)
                 _status.value = BackupStatus.Finished("Backup saved", describeExport(result), success = true)
             } catch (e: Exception) {
                 logError("Backup", "Export failed", e)

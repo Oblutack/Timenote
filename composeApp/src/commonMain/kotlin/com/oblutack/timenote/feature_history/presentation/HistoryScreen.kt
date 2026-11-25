@@ -31,6 +31,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.draw.drawBehind
@@ -48,7 +49,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.AccountTree
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.GridOn
@@ -171,6 +172,7 @@ fun HistoryScreen(
     val descendantCount by viewModel.descendantCount.collectAsState()
     val streaks by viewModel.streaks.collectAsState()
     val selectedDailySummary by viewModel.selectedDailySummary.collectAsState()
+    val backupReminder by viewModel.backupReminder.collectAsState()
 
     // selectedTab (0 = Timenotes, 1 = Folders) is hoisted into App.kt so it survives navigation
 
@@ -321,7 +323,7 @@ fun HistoryScreen(
                         onClick = onGraphClick,
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(Icons.Default.Share, contentDescription = "Graph View", tint = DefaultAccentColor, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.AccountTree, contentDescription = "Graph View", tint = DefaultAccentColor, modifier = Modifier.size(18.dp))
                     }
 
                     Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
@@ -484,6 +486,29 @@ fun HistoryScreen(
                             drawRect(brush = fadeBrush, blendMode = BlendMode.DstIn)
                         }
                 ) {
+                            // A quiet reminder (only when sync is off and the last backup is old)
+                            val reminder = backupReminder
+                            if (reminder != null) {
+                                item(key = "backup_reminder") {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(RoundedCornerShape(16.dp))
+                                            .background(DefaultAccentColor.copy(alpha = 0.12f))
+                                            .padding(16.dp)
+                                    ) {
+                                        Text("Back up your timenotes", color = TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Medium)
+                                        Spacer(modifier = Modifier.height(4.dp))
+                                        Text(reminder, color = TextSecondary, fontSize = 13.sp)
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        Row {
+                                            TextButton(onClick = onSettingsClick) { Text("Back up now", color = DefaultAccentColor) }
+                                            TextButton(onClick = { viewModel.dismissBackupReminder() }) { Text("Not now", color = TextSecondary) }
+                                        }
+                                    }
+                                }
+                            }
+
                             item {
                                 AnimatedVisibility(
                                     visible = isCalendarView,
