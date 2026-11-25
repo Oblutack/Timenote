@@ -58,6 +58,7 @@ fun TimerScreen(
     val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
     val focusManager = LocalFocusManager.current
+    val permissions = com.oblutack.timenote.core.LocalPermissionAsker.current
 
     val useMonochromeNodes by settingsRepository.useMonochromeNodesFlow.collectAsState(initial = true)
     val customColors by settingsRepository.customColorsFlow.collectAsState(initial = emptyList())
@@ -119,7 +120,7 @@ fun TimerScreen(
 
         // 3. Always draw the text to reserve the space, but apply the animated alpha!
         Text(
-            text = "YOUR LAST TIMENOTE",
+            text = "LAST SESSION",
             color = TextSecondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
@@ -130,7 +131,8 @@ fun TimerScreen(
         // --- NEW: Display the actual name of the last session ---
         Spacer(modifier = Modifier.height(4.dp))
         Text(
-            text = state.lastSessionTitle.ifEmpty { "Untitled Session" }.uppercase(), // <-- Uppercase added here!
+            // While idle, displayTime holds how long that last session was: shown here, in small type
+            text = "${state.lastSessionTitle.ifEmpty { "Untitled Session" }.uppercase()} · ${state.displayTime}",
             color = TextSecondary,             // <-- Changed to Gray
             fontSize = 14.sp,                  // <-- Matched size
             fontWeight = FontWeight.SemiBold,  // <-- Matched weight
@@ -142,7 +144,8 @@ fun TimerScreen(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = state.displayTime,
+            // Idle: the big clock is a clock at zero, ready to start; it no longer looks like a timer that is still running
+            text = if (showLastLabel) "00:00:00" else state.displayTime,
             fontSize = 64.sp,
             fontWeight = FontWeight.Light,
             color = TextPrimary
@@ -317,14 +320,15 @@ fun TimerScreen(
                 Button(
                     onClick = {
                         if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.onAction(TimerAction.Start)
+                        // The timer notification needs permission on newer Android; asked here, the first time, then it starts
+                        permissions.notifications { viewModel.onAction(TimerAction.Start) }
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
                         contentColor = Color.White
                     ),
-                    shape = RoundedCornerShape(24.dp),
-                    modifier = Modifier.padding(end = 16.dp)
+                    shape = RoundedCornerShape(24.dp)
+                    // no End button next to it while idle, so no gap on its side: Start stays centred
                 ) {
                     Icon(Icons.Default.PlayArrow, contentDescription = "Start")
                     Spacer(Modifier.width(8.dp))
@@ -363,19 +367,22 @@ fun TimerScreen(
                 }
             }
 
-            OutlinedButton(
-                onClick = {
-                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.onAction(TimerAction.End)
-                },
-                colors = ButtonDefaults.outlinedButtonColors(
-                    contentColor = TextSecondary,
-                    containerColor = SurfaceDark
-                ),
-                border = null,
-                shape = RoundedCornerShape(24.dp)
-            ) {
-                Text("End")
+            // Only while there is a session to end (while idle it did nothing)
+            if (state.isRunning) {
+                OutlinedButton(
+                    onClick = {
+                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.onAction(TimerAction.End)
+                    },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = TextSecondary,
+                        containerColor = SurfaceDark
+                    ),
+                    border = null,
+                    shape = RoundedCornerShape(24.dp)
+                ) {
+                    Text("End")
+                }
             }
         }
 
@@ -400,7 +407,8 @@ fun TimerScreen(
 
             if (!state.isRecordingVoiceMemo) {
                 OutlinedButton(
-                    onClick = { viewModel.onAction(TimerAction.StartVoiceMemo) },
+                    // The microphone is asked for here, the first time; a "no" ends in the usual hint below
+                    onClick = { permissions.microphone { viewModel.onAction(TimerAction.StartVoiceMemo) } },
                     colors = ButtonDefaults.outlinedButtonColors(
                         contentColor = TextSecondary
                     ),

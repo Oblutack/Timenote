@@ -84,6 +84,7 @@ fun TimenoteDetailScreen(
     val downloadingAudio by viewModel.downloadingAudio.collectAsState()
     val audioMessage by viewModel.audioMessage.collectAsState()
     val scope = rememberCoroutineScope()
+    val permissions = com.oblutack.timenote.core.LocalPermissionAsker.current
 
     val folders by sessionRepository.folders.collectAsState()
     var isFolderDialogOpen by remember { mutableStateOf(false) }
@@ -449,7 +450,8 @@ fun TimenoteDetailScreen(
             enableHaptics = enableHaptics,
             onPlay = { viewModel.playAudio(it) },
             onDelete = { viewModel.deleteVoiceNote(timenote.id, it) },
-            onStartRecording = { viewModel.startRecordingForTimenote(timenote.id) },
+            // The microphone is asked for here, the first time; a "no" ends in the usual hint below the button
+            onStartRecording = { permissions.microphone { viewModel.startRecordingForTimenote(timenote.id) } },
             onStopRecording = { viewModel.stopRecordingForTimenote() },
             micUnavailable = micUnavailable,
             downloadingAudio = downloadingAudio,
