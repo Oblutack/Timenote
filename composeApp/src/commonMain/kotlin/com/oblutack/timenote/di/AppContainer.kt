@@ -10,6 +10,7 @@ import com.oblutack.timenote.feature_timer.domain.TimerServiceManager
 import kotlinx.coroutines.flow.MutableSharedFlow
 import com.oblutack.timenote.core.AppInfo
 import com.oblutack.timenote.core.AudioFiles
+import com.oblutack.timenote.core.BackupReminderCheck
 import com.oblutack.timenote.backup.BackupRunner
 import com.oblutack.timenote.drive.DriveSession
 import com.oblutack.timenote.sync.SyncEngine
@@ -38,6 +39,8 @@ class AppContainer(
     val syncManager: SyncManager? = null,
     /** Downloads voice memos recorded elsewhere when they are played (null when there is no sync). */
     val audioFetcher: AudioFetcher? = null,
+    /** Decides when the system notification about backing up is due (Android's daily background check uses it). */
+    val backupReminderCheck: BackupReminderCheck? = null,
     /** App and system version, for the About section and bug reports. */
     val appInfo: AppInfo = AppInfo(),
     /** The timer notification buttons emit here; TimerViewModel collects. */

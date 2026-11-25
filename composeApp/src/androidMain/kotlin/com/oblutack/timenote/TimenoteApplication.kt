@@ -22,7 +22,9 @@ import kotlinx.coroutines.launch
 import com.oblutack.timenote.core.DirectoryAudioFiles
 import java.io.File
 import com.oblutack.timenote.backup.AndroidBackupRunner
+import com.oblutack.timenote.backup.BackupReminderScheduler
 import com.oblutack.timenote.backup.BackupService
+import com.oblutack.timenote.core.BackupReminderCheck
 import com.oblutack.timenote.drive.AndroidDriveSession
 import com.oblutack.timenote.sync.AndroidAudioNetworkPolicy
 import com.oblutack.timenote.sync.AndroidAudioStorage
@@ -100,12 +102,16 @@ class TimenoteApplication : Application() {
                 service = BackupService(database.timenoteDao(), settingsRepository),
                 scope = appScope,
                 audioDir = audioDir,
-                onExported = { settingsRepository.setLastBackupAt(System.currentTimeMillis()) }
+                onExported = {
+                    settingsRepository.setLastBackupAt(System.currentTimeMillis())
+                    BackupReminderScheduler.clearNotification(this@TimenoteApplication)
+                }
             ),
             driveSession = drive,
             syncEngine = syncEngine,
             syncManager = syncManager,
             audioFetcher = audioSync,
+            backupReminderCheck = BackupReminderCheck(dao, settingsRepository),
             appInfo = AppInfo(
                 versionName = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull().orEmpty(),
                 platformSummary = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.MANUFACTURER} ${Build.MODEL}"
@@ -114,6 +120,9 @@ class TimenoteApplication : Application() {
 
         // What has been in the trash for 30 days is removed for good (and from the cloud copy, when sync is on)
         sessionRepository.purgeOldTrash()
+
+        // A quiet daily check for the backup reminder notification (only people without cloud sync ever get one)
+        BackupReminderScheduler.schedule(this)
 
         // Move memos recorded by older versions out of the OS-clearable cache directory
         appScope.launch(Dispatchers.IO) {

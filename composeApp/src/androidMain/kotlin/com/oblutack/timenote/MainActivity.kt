@@ -7,11 +7,19 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import android.content.Intent
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.oblutack.timenote.backup.EXTRA_OPEN_ROUTE
 import com.oblutack.timenote.core.LocalPermissionAsker
 import com.oblutack.timenote.core.PermissionAsker
 
 class MainActivity : ComponentActivity() {
+
+    // A screen a tapped notification asked for; the app opens it once and clears this
+    private var launchRoute by mutableStateOf<String?>(null)
 
     // What to do once the permission question that is open right now has been answered
     private var afterPermissionQuestion: (() -> Unit)? = null
@@ -54,10 +62,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val container = (application as TimenoteApplication).container
+        launchRoute = intent?.getStringExtra(EXTRA_OPEN_ROUTE)
         setContent {
             CompositionLocalProvider(LocalPermissionAsker provides permissionAsker) {
-                App(container)
+                App(container, launchRoute = launchRoute, onLaunchRouteHandled = { launchRoute = null })
             }
         }
+    }
+
+    // A tapped notification while the app is already open
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        launchRoute = intent.getStringExtra(EXTRA_OPEN_ROUTE)
     }
 }

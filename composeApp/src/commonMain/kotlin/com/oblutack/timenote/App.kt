@@ -63,18 +63,25 @@ val LocalSnackbarHost = staticCompositionLocalOf<SnackbarHostState> { error("No 
 // 2. MAIN APP ENTRY POINT (Using NavHost)
 // ==========================================
 @Composable
-fun App(container: AppContainer) {
+fun App(container: AppContainer, launchRoute: String? = null, onLaunchRouteHandled: () -> Unit = {}) {
     val snackbarHostState = remember { SnackbarHostState() }
     CompositionLocalProvider(LocalAppContainer provides container, LocalSnackbarHost provides snackbarHostState) {
-        AppContent()
+        AppContent(launchRoute, onLaunchRouteHandled)
     }
 }
 
 @Composable
-private fun AppContent() {
+private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
     TimenoteTheme {
         // --- NEW: Official Navigation Controller ---
         val navController = rememberNavController()
+        // A screen the app was asked to open (a tapped notification)
+        LaunchedEffect(launchRoute) {
+            if (launchRoute != null) {
+                navController.navigate(launchRoute) { launchSingleTop = true }
+                onLaunchRouteHandled()
+            }
+        }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
 

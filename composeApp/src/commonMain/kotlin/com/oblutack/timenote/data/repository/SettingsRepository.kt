@@ -31,6 +31,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val SYNC_ACCOUNT = stringPreferencesKey("sync_linked_account")
     private val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
     private val BACKUP_REMINDER_DISMISSED_AT = longPreferencesKey("backup_reminder_dismissed_at")
+    private val BACKUP_REMINDER_NOTIFIED_AT = longPreferencesKey("backup_reminder_notified_at")
 
     // --- DEFAULT TAGS (see DefaultTagsState) ---
     override suspend fun isSeeded(): Boolean = dataStore.data
@@ -83,6 +84,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     suspend fun dismissBackupReminder(time: Long) {
         dataStore.edit { it[BACKUP_REMINDER_DISMISSED_AT] = time }
+    }
+
+    /** When the system notification about backing up was last sent (kept apart from the card's "Not now"). */
+    val backupReminderNotifiedAtFlow: Flow<Long?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[BACKUP_REMINDER_NOTIFIED_AT] }
+
+    suspend fun markBackupReminderNotified(time: Long) {
+        dataStore.edit { it[BACKUP_REMINDER_NOTIFIED_AT] = time }
     }
 
     // --- SYNC CHECKPOINT (see SyncCheckpoint) ---
