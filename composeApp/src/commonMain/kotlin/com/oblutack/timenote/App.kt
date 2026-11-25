@@ -1,5 +1,13 @@
 package com.oblutack.timenote
 
+import com.oblutack.timenote.ui.theme.resolveTnColors
+import com.oblutack.timenote.ui.theme.isDarkTheme
+import com.oblutack.timenote.ui.theme.TnColors
+import com.oblutack.timenote.ui.theme.ThemeMode
+import com.oblutack.timenote.ui.theme.PlatformTheme
+import com.oblutack.timenote.ui.theme.NoPlatformTheme
+import com.oblutack.timenote.ui.theme.LocalPlatformTheme
+import androidx.compose.foundation.isSystemInDarkTheme
 import com.oblutack.timenote.ui.theme.BackgroundDark
 import com.oblutack.timenote.ui.theme.DefaultAccentColor
 import com.oblutack.timenote.ui.theme.SurfaceDark
@@ -44,16 +52,41 @@ val LocalSnackbarHost = staticCompositionLocalOf<SnackbarHostState> { error("No 
 // 2. MAIN APP ENTRY POINT (Using NavHost)
 // ==========================================
 @Composable
-fun App(container: AppContainer, launchRoute: String? = null, onLaunchRouteHandled: () -> Unit = {}) {
+fun App(
+    container: AppContainer,
+    launchRoute: String? = null,
+    onLaunchRouteHandled: () -> Unit = {},
+    platformTheme: PlatformTheme = NoPlatformTheme
+) {
     val snackbarHostState = remember { SnackbarHostState() }
-    CompositionLocalProvider(LocalAppContainer provides container, LocalSnackbarHost provides snackbarHostState) {
+    CompositionLocalProvider(
+        LocalAppContainer provides container,
+        LocalSnackbarHost provides snackbarHostState,
+        LocalPlatformTheme provides platformTheme
+    ) {
         AppContent(launchRoute, onLaunchRouteHandled)
     }
 }
 
+/** The theme the person chose, with the phone's own colours when they asked for them. Dark until the choice is read. */
+@Composable
+private fun rememberTnColors(): TnColors {
+    val settings = LocalAppContainer.current.settingsRepository
+    val mode by settings.themeModeFlow.collectAsState(initial = null)
+    val wantsDynamic by settings.dynamicColorsFlow.collectAsState(initial = false)
+    val platform = LocalPlatformTheme.current
+    val systemDark = isSystemInDarkTheme()
+    val chosen = mode ?: ThemeMode.Dark
+    val dynamic = if (wantsDynamic) platform.dynamicColors(isDarkTheme(chosen, systemDark)) else null
+    val colors = resolveTnColors(chosen, systemDark, dynamic)
+    // The status and navigation bars follow the theme
+    SideEffect { platform.applySystemBars(colors.background, colors.isLight) }
+    return colors
+}
+
 @Composable
 private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
-    TimenoteTheme {
+    TimenoteTheme(rememberTnColors()) {
         // --- NEW: Official Navigation Controller ---
         val navController = rememberNavController()
         // A screen the app was asked to open (a tapped notification)

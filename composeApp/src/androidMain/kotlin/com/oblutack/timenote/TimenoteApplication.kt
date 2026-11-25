@@ -118,6 +118,12 @@ class TimenoteApplication : Application() {
             )
         )
 
+        // The first run of this version picks the theme: people who already use the app keep their dark look, a new
+        // installation follows the phone. (An installation that was never updated is a new one.)
+        val installInfo = runCatching { packageManager.getPackageInfo(packageName, 0) }.getOrNull()
+        val existingUser = installInfo != null && installInfo.firstInstallTime != installInfo.lastUpdateTime
+        appScope.launch { settingsRepository.ensureThemeDefault(existingUser) }
+
         // What has been in the trash for 30 days is removed for good (and from the cloud copy, when sync is on)
         sessionRepository.purgeOldTrash()
 

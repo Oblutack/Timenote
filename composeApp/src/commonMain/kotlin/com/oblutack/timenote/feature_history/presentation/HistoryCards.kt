@@ -159,7 +159,7 @@ fun SessionCard(
                 // links and mentions in the text are pressable, so without a tag they use the accent
                 val dynamicAccentColor = session.tags.identityColor(DefaultAccentColor)
                 Text(
-                    text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(session.description, dynamicAccentColor),
+                    text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(session.description, dynamicAccentColor, TextPrimary),
                     color = TextSecondary,
                     fontSize = TnType.Body,
                     maxLines = 2,

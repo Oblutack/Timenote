@@ -10,24 +10,24 @@ class MarkdownParserTest {
     private val accent = Color(0xFF4FA8F9)
 
     @Test fun plainTextIsUnchanged() =
-        assertEquals("hello world", parseMarkdownToAnnotatedString("hello world", accent).text)
+        assertEquals("hello world", parseMarkdownToAnnotatedString("hello world", accent, Color.White).text)
 
     @Test fun mentionIsAnnotatedWithTargetId() {
-        val result = parseMarkdownToAnnotatedString("see @[Other note](abc123) now", accent)
+        val result = parseMarkdownToAnnotatedString("see @[Other note](abc123) now", accent, Color.White)
         val annotations = result.getStringAnnotations("MENTION", 0, result.length)
         assertEquals(1, annotations.size)
         assertEquals("abc123", annotations.first().item)
     }
 
     @Test fun boldGetsBoldWeightAndAccentColor() {
-        val result = parseMarkdownToAnnotatedString("a **bold** b", accent)
+        val result = parseMarkdownToAnnotatedString("a **bold** b", accent, Color.White)
         assertTrue(result.spanStyles.any {
             it.item.fontWeight == FontWeight.Bold && it.item.color == accent
         })
     }
 
     @Test fun strikethroughSpanIsAdded() {
-        val result = parseMarkdownToAnnotatedString("~~gone~~", accent)
+        val result = parseMarkdownToAnnotatedString("~~gone~~", accent, Color.White)
         assertTrue(result.spanStyles.any { it.item.textDecoration != null })
     }
 }

@@ -21,6 +21,8 @@ class MainActivity : ComponentActivity() {
     // A screen a tapped notification asked for; the app opens it once and clears this
     private var launchRoute by mutableStateOf<String?>(null)
 
+    private val platformTheme by lazy { AndroidPlatformTheme(this) }
+
     // What to do once the permission question that is open right now has been answered
     private var afterPermissionQuestion: (() -> Unit)? = null
 
@@ -65,7 +67,7 @@ class MainActivity : ComponentActivity() {
         launchRoute = intent?.getStringExtra(EXTRA_OPEN_ROUTE)
         setContent {
             CompositionLocalProvider(LocalPermissionAsker provides permissionAsker) {
-                App(container, launchRoute = launchRoute, onLaunchRouteHandled = { launchRoute = null })
+                App(container, launchRoute = launchRoute, onLaunchRouteHandled = { launchRoute = null }, platformTheme = platformTheme)
             }
         }
     }

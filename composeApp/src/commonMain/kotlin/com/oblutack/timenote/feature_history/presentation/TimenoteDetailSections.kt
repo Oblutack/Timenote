@@ -327,7 +327,7 @@ fun EditTagsSheet(
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor)
                 ) {
-                    Text("Save Tags", color = Color.White)
+                    Text("Save Tags", color = TnTheme.colors.onAccent)
                 }
             }
         }

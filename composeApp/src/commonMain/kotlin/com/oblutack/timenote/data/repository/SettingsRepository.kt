@@ -1,5 +1,6 @@
 package com.oblutack.timenote.data.repository
 
+import com.oblutack.timenote.ui.theme.ThemeMode
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
 import kotlinx.coroutines.flow.Flow
@@ -32,6 +33,8 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
     private val BACKUP_REMINDER_DISMISSED_AT = longPreferencesKey("backup_reminder_dismissed_at")
     private val BACKUP_REMINDER_NOTIFIED_AT = longPreferencesKey("backup_reminder_notified_at")
+    private val THEME_MODE = stringPreferencesKey("theme_mode")
+    private val DYNAMIC_COLORS = booleanPreferencesKey("dynamic_colors")
 
     // --- DEFAULT TAGS (see DefaultTagsState) ---
     override suspend fun isSeeded(): Boolean = dataStore.data
@@ -67,6 +70,32 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     override suspend fun setVoiceWifiOnly(enabled: Boolean) {
         dataStore.edit { it[VOICE_WIFI_ONLY] = enabled }
+    }
+
+    // --- THEME: dark, AMOLED, light or follow the phone; optionally the wallpaper colours ---
+    /** Null until the first choice is stored: the app shows the dark theme meanwhile. */
+    val themeModeFlow: Flow<ThemeMode?> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { prefs -> prefs[THEME_MODE]?.let { ThemeMode.fromKey(it) } }
+
+    suspend fun setThemeMode(mode: ThemeMode) {
+        dataStore.edit { it[THEME_MODE] = mode.key }
+    }
+
+    /**
+     * Decides the theme the first time this version runs: people who already use the app keep the dark look they know, a new
+     * installation follows the phone. Never overwrites a choice.
+     */
+    suspend fun ensureThemeDefault(existingUser: Boolean) {
+        dataStore.edit { if (it[THEME_MODE] == null) it[THEME_MODE] = (if (existingUser) ThemeMode.Dark else ThemeMode.System).key }
+    }
+
+    val dynamicColorsFlow: Flow<Boolean> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { it[DYNAMIC_COLORS] ?: false }
+
+    suspend fun setDynamicColors(enabled: Boolean) {
+        dataStore.edit { it[DYNAMIC_COLORS] = enabled }
     }
 
     // --- BACKUP FILE: when one was last exported, and when the reminder was last dismissed ---

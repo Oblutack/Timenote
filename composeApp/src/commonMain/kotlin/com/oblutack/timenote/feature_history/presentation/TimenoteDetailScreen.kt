@@ -392,7 +392,7 @@ fun TimenoteDetailScreen(
 
                                     // Auto-strikethrough if checked!
                                     val textToParse = if (isChecked) "~~$content~~" else content
-                                    val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(textToParse, dynamicAccentColor)
+                                    val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(textToParse, dynamicAccentColor, TextPrimary)
 
                                     ClickableText(
                                         text = annotatedText,
@@ -412,7 +412,7 @@ fun TimenoteDetailScreen(
                                 val content = line.substringAfter("- ")
                                 Row(verticalAlignment = Alignment.Top, modifier = Modifier.padding(vertical = 2.dp)) {
                                     Text("•", color = TextPrimary, fontSize = TnType.Subtitle, modifier = Modifier.padding(end = 8.dp))
-                                    val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(content, dynamicAccentColor)
+                                    val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(content, dynamicAccentColor, TextPrimary)
                                     ClickableText(
                                         text = annotatedText,
                                         modifier = Modifier.fillMaxWidth(),
@@ -428,7 +428,7 @@ fun TimenoteDetailScreen(
 
                             // 3. RENDER NORMAL TEXT
                             else -> {
-                                val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(line, dynamicAccentColor)
+                                val annotatedText = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(line, dynamicAccentColor, TextPrimary)
                                 ClickableText(
                                     text = annotatedText,
                                     modifier = Modifier.fillMaxWidth(),

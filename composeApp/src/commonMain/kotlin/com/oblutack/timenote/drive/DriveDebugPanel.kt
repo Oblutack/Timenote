@@ -1,5 +1,6 @@
 package com.oblutack.timenote.drive
 
+import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.background
@@ -74,7 +75,7 @@ fun DriveDebugPanel(session: DriveSession) {
             Button(
                 onClick = connect,
                 enabled = status != DriveStatus.Connected,
-                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
             ) { Text("Connect Drive") }
         }
         Button(
@@ -88,7 +89,7 @@ fun DriveDebugPanel(session: DriveSession) {
                 }
             },
             enabled = status == DriveStatus.Connected && !running,
-            colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+            colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
         ) { Text(if (running) "Running..." else "Run round-trip test") }
 
         val engine = LocalAppContainer.current.syncEngine
@@ -103,7 +104,7 @@ fun DriveDebugPanel(session: DriveSession) {
                     }
                 },
                 enabled = status == DriveStatus.Connected && !running,
-                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
             ) { Text("Sync now (notes and voice memos)") }
         }
 

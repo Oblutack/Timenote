@@ -334,7 +334,7 @@ fun TimerScreen(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
-                        contentColor = Color.White
+                        contentColor = TnTheme.colors.onAccent
                     ),
                     shape = TnShape.Large
                     // no End button next to it while idle, so no gap on its side: Start stays centred
@@ -351,7 +351,7 @@ fun TimerScreen(
                     },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
-                        contentColor = Color.White
+                        contentColor = TnTheme.colors.onAccent
                     ),
                     shape = TnShape.Large,
                     modifier = Modifier.padding(end = 16.dp)
@@ -365,7 +365,7 @@ fun TimerScreen(
                     onClick = { viewModel.onAction(TimerAction.Resume) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
-                        contentColor = Color.White
+                        contentColor = TnTheme.colors.onAccent
                     ),
                     shape = TnShape.Large,
                     modifier = Modifier.padding(end = 16.dp)

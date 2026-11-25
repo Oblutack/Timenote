@@ -9,7 +9,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -24,7 +26,7 @@ import androidx.compose.ui.unit.sp
  * the same roles, so a screen never needs to know which theme is active.
  */
 @Immutable
-class TnColors(
+data class TnColors(
     /** The screen behind everything. */
     val background: Color,
     /** Cards, sheets, bars. */
@@ -48,7 +50,11 @@ class TnColors(
     /** Time off the task: pauses, the break clock, the pause part of a bar. */
     val pause: Color,
     /** A session without a tag. Neutral on purpose: the accent colour only ever means "you can press this". */
-    val untagged: Color
+    val untagged: Color,
+    /** Text and icons on top of [accent] (a filled button). */
+    val onAccent: Color = Color.White,
+    /** True when the background is light: the status bar needs dark icons and Material needs its light scheme. */
+    val isLight: Boolean = false
 )
 
 val DarkTnColors = TnColors(
@@ -64,6 +70,34 @@ val DarkTnColors = TnColors(
     branch = Palette.Purple,
     pause = Palette.Sand,
     untagged = Palette.Grey
+)
+
+/** Black background: on an OLED screen the pixels are off. Raised steps stay close to black. */
+val AmoledTnColors = DarkTnColors.copy(
+    background = Color(0xFF000000),
+    surface = Color(0xFF0B0B0B),
+    surfaceRaised = Color(0xFF1A1A1A),
+    surfaceHigh = Color(0xFF262626)
+)
+
+/**
+ * Light. The accent, the pause colour and the greys are darker than on the dark themes: the dark-theme values are too faint
+ * to read as text on white (see ThemeContrastTest).
+ */
+val LightTnColors = TnColors(
+    background = Color(0xFFF3F4F6),
+    surface = Color(0xFFFFFFFF),
+    surfaceRaised = Color(0xFFE9EBEF),
+    surfaceHigh = Color(0xFFDADDE3),
+    onBackground = Color(0xFF14171A),
+    onBackgroundMuted = Color(0xFF5A626D),
+    accent = Color(0xFF1A6FC4),
+    success = Color(0xFF2E7D32),
+    danger = Color(0xFFC62828),
+    branch = Color(0xFF7B1FA2),
+    pause = Color(0xFFA56A00),
+    untagged = Color(0xFF7E858F),
+    isLight = true
 )
 
 val LocalTnColors = staticCompositionLocalOf { DarkTnColors }
@@ -122,14 +156,18 @@ object TnSpace {
     val Xxl = 32.dp
 }
 
-private fun TnColors.toMaterial() = darkColorScheme(
-    background = background,
-    surface = surface,
-    primary = accent,
-    onPrimary = Color.White,
-    onBackground = onBackground,
-    onSurface = onBackground
-)
+private fun TnColors.toMaterial(): ColorScheme =
+    if (isLight) lightColorScheme(
+        background = background, surface = surface, primary = accent, onPrimary = onAccent,
+        onBackground = onBackground, onSurface = onBackground, onSurfaceVariant = onBackgroundMuted,
+        surfaceVariant = surfaceRaised, surfaceContainer = surface, surfaceContainerHigh = surfaceRaised,
+        surfaceContainerHighest = surfaceHigh, outlineVariant = surfaceHigh, error = danger
+    ) else darkColorScheme(
+        background = background, surface = surface, primary = accent, onPrimary = onAccent,
+        onBackground = onBackground, onSurface = onBackground, onSurfaceVariant = onBackgroundMuted,
+        surfaceVariant = surfaceRaised, surfaceContainer = surface, surfaceContainerHigh = surfaceRaised,
+        surfaceContainerHighest = surfaceHigh, outlineVariant = surfaceHigh, error = danger
+    )
 
 @Composable
 private fun rememberMonoFamily(): FontFamily = FontFamily(

@@ -89,7 +89,7 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
                     if (connected) viewModel.showLinkPreview() else { awaitingConsent = true; connect() }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
             ) { Text(if (connected) "Review and start syncing" else "Connect Google Drive") }
         } else {
             Text(
@@ -112,7 +112,7 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
             if (state.problem?.needsUser == true && state.connection != DriveStatus.Connected) {
                 Button(
                     onClick = { connect() },
-                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                 ) { Text("Connect again") }
             }
             OutlinedButton(onClick = { viewModel.syncNow() }, enabled = !state.syncing, modifier = Modifier.fillMaxWidth()) {
@@ -126,7 +126,7 @@ fun SyncSettingsSection(viewModel: SyncSettingsViewModel, session: DriveSession)
                 Switch(
                     checked = state.voiceWifiOnly,
                     onCheckedChange = { viewModel.setVoiceWifiOnly(it) },
-                    colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
+                    colors = SwitchDefaults.colors(checkedThumbColor = TnTheme.colors.onAccent, checkedTrackColor = DefaultAccentColor)
                 )
             }
             TextButton(onClick = { viewModel.turnOff() }) { Text("Turn off sync", color = TextPrimary) }

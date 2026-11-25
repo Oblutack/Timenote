@@ -10,19 +10,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.sp
 
-fun parseMarkdownToAnnotatedString(text: String, accentColor: Color): AnnotatedString {
+/** [headingColor] is the colour of the headings (the main text colour of the theme); [accentColor] marks bold text, links and ticks. */
+fun parseMarkdownToAnnotatedString(text: String, accentColor: Color, headingColor: Color): AnnotatedString {
     return buildAnnotatedString {
         append(text)
 
         // 1. HEADERS (# H1, ## H2, ### H3)
         Regex("(?m)^# (.*)$").findAll(text).forEach { match ->
-            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, color = Color.White), match.range.first, match.range.last + 1)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = 22.sp, color = headingColor), match.range.first, match.range.last + 1)
         }
         Regex("(?m)^## (.*)$").findAll(text).forEach { match ->
-            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = TnType.Subtitle, color = Color.White), match.range.first, match.range.last + 1)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = TnType.Subtitle, color = headingColor), match.range.first, match.range.last + 1)
         }
         Regex("(?m)^### (.*)$").findAll(text).forEach { match ->
-            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = TnType.BodyLarge, color = Color.White), match.range.first, match.range.last + 1)
+            addStyle(SpanStyle(fontWeight = FontWeight.Bold, fontSize = TnType.BodyLarge, color = headingColor), match.range.first, match.range.last + 1)
         }
 
         // 2. BOLD & ITALIC & STRIKETHROUGH

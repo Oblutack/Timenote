@@ -435,7 +435,7 @@ fun GraphScreen(
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor)
                     ) {
-                        Text("View Details", color = Color.White, fontWeight = FontWeight.SemiBold)
+                        Text("View Details", color = TnTheme.colors.onAccent, fontWeight = FontWeight.SemiBold)
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }

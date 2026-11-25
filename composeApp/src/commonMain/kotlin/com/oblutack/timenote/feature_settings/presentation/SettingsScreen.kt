@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.oblutack.timenote.ui.theme.BackgroundDark
 import com.oblutack.timenote.ui.theme.DefaultAccentColor
+import com.oblutack.timenote.ui.theme.LocalPlatformTheme
+import com.oblutack.timenote.ui.theme.ThemeMode
 import com.oblutack.timenote.ui.theme.SurfaceDark
 import com.oblutack.timenote.ui.theme.TextPrimary
 import com.oblutack.timenote.ui.theme.TextSecondary
@@ -115,6 +117,17 @@ fun SettingsScreen(
             Text("Settings", color = TextPrimary, fontSize = TnType.Headline, fontWeight = FontWeight.Bold)
         }
 
+        // --- APPEARANCE: theme ---
+        val themeMode by viewModel.themeMode.collectAsState()
+        val dynamicColors by viewModel.dynamicColors.collectAsState()
+        AppearanceSection(
+            themeMode = themeMode ?: ThemeMode.Dark,
+            onThemeMode = viewModel::setThemeMode,
+            dynamicColors = dynamicColors,
+            onDynamicColors = viewModel::setDynamicColors,
+            dynamicColorsAvailable = LocalPlatformTheme.current.supportsDynamicColors
+        )
+
         // --- PREFERENCES ---
         Text("TIMELINE APPEARANCE", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
@@ -136,7 +149,7 @@ fun SettingsScreen(
             Switch(
                 checked = useMonochromeNodes,
                 onCheckedChange = { viewModel.toggleMonochromeNodes(it) },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
+                colors = SwitchDefaults.colors(checkedThumbColor = TnTheme.colors.onAccent, checkedTrackColor = DefaultAccentColor)
             )
         }
 
@@ -159,7 +172,7 @@ fun SettingsScreen(
             Switch(
                 checked = enableBackgroundBlur,
                 onCheckedChange = { viewModel.toggleBackgroundBlur(it) },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
+                colors = SwitchDefaults.colors(checkedThumbColor = TnTheme.colors.onAccent, checkedTrackColor = DefaultAccentColor)
             )
         }
 
@@ -182,7 +195,7 @@ fun SettingsScreen(
             Switch(
                 checked = enableHaptics,
                 onCheckedChange = { viewModel.toggleHaptics(it) },
-                colors = SwitchDefaults.colors(checkedThumbColor = Color.White, checkedTrackColor = DefaultAccentColor)
+                colors = SwitchDefaults.colors(checkedThumbColor = TnTheme.colors.onAccent, checkedTrackColor = DefaultAccentColor)
             )
         }
 
@@ -376,7 +389,7 @@ fun SettingsScreen(
                     onClick = { uriHandler.openUri("https://ko-fi.com/oblutack") },
                     modifier = Modifier.fillMaxWidth().height(56.dp),
                     shape = TnShape.Card,
-                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                 ) {
                     Icon(Icons.Default.Favorite, contentDescription = "Heart", modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))

@@ -93,7 +93,7 @@ fun AddNoteSheet(
                                 .background(color, CircleShape)
                                 .let {
                                     if (color == state.dialogNoteColor) {
-                                        it.border(2.dp, Color.White, CircleShape)
+                                        it.border(2.dp, TnTheme.colors.onBackground, CircleShape)
                                     } else it
                                 }
                                 .clickable { onAction(TimerAction.UpdateDialogNoteColor(color)) }
@@ -114,7 +114,7 @@ fun AddNoteSheet(
                     Button(
                         onClick = { onAction(TimerAction.SaveNote) },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                     ) {
                         Text("Save Note")
                     }
@@ -271,7 +271,7 @@ fun SaveTimenoteSheet(
                     Button(
                         onClick = { onAction(TimerAction.ConfirmCategoriesAndSave) },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                     ) {
                         Text("Save")
                     }
@@ -350,7 +350,7 @@ fun CreateTagSheet(
                                 .background(color, CircleShape)
                                 .let {
                                     if (color == state.newTagColor) {
-                                        it.border(2.dp, Color.White, CircleShape)
+                                        it.border(2.dp, TnTheme.colors.onBackground, CircleShape)
                                     } else it
                                 }
                                 .clickable { onAction(TimerAction.UpdateNewTagColor(color)) }
@@ -373,7 +373,7 @@ fun CreateTagSheet(
                     Button(
                         onClick = { onAction(TimerAction.SaveNewTag) },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                     ) {
                         Text("Save")
                     }

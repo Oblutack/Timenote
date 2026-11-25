@@ -1,5 +1,6 @@
 package com.oblutack.timenote.data
 
+import com.oblutack.timenote.ui.theme.ThemeMode
 import com.oblutack.timenote.data.repository.SettingsRepository
 import com.oblutack.timenote.testutil.FakeDataStore
 import com.oblutack.timenote.testutil.runAppTest
@@ -18,6 +19,30 @@ class SettingsRepositoryTest {
         assertEquals(true, repo.useMonochromeNodesFlow.first())
         assertEquals(emptyList(), repo.customColorsFlow.first())
         assertNull(repo.activeSessionBackupFlow.first())
+    }
+
+    @Test fun noThemeIsStoredUntilTheFirstRun() = runAppTest {
+        assertNull(newRepository().themeModeFlow.first())
+    }
+
+    @Test fun peopleWhoAlreadyUseTheAppKeepTheDarkThemeAndNewOnesFollowThePhone() = runAppTest {
+        val existing = newRepository().also { it.ensureThemeDefault(existingUser = true) }
+        assertEquals(ThemeMode.Dark, existing.themeModeFlow.first())
+        val fresh = newRepository().also { it.ensureThemeDefault(existingUser = false) }
+        assertEquals(ThemeMode.System, fresh.themeModeFlow.first())
+    }
+
+    @Test fun theDefaultNeverOverwritesAChoice() = runAppTest {
+        val repo = newRepository()
+        repo.setThemeMode(ThemeMode.Light)
+        repo.ensureThemeDefault(existingUser = true)
+        assertEquals(ThemeMode.Light, repo.themeModeFlow.first())
+        repo.setDynamicColors(true)
+        assertEquals(true, repo.dynamicColorsFlow.first())
+    }
+
+    @Test fun phoneColoursAreOffByDefault() = runAppTest {
+        assertEquals(false, newRepository().dynamicColorsFlow.first())
     }
 
     @Test fun togglesPersist() = runAppTest {

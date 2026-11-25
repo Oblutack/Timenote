@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_settings
 
+import com.oblutack.timenote.ui.theme.ThemeMode
 import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.data.repository.SettingsRepository
 import com.oblutack.timenote.feature_settings.presentation.SettingsViewModel
@@ -23,6 +24,14 @@ class SettingsViewModelTest {
         assertEquals(false, repo.enableBackgroundBlurFlow.first())
         assertEquals(false, repo.enableHapticsFlow.first())
         assertEquals(false, repo.useMonochromeNodesFlow.first())
+    }
+
+    @Test fun theThemeChoiceIsWrittenToTheRepository() = runAppTest {
+        val (repo, vm) = newEnv()
+        vm.setThemeMode(ThemeMode.Amoled)
+        vm.setDynamicColors(true)
+        assertEquals(ThemeMode.Amoled, repo.themeModeFlow.first())
+        assertEquals(true, repo.dynamicColorsFlow.first())
     }
 
     @Test fun hexColorIsStoredAsOpaqueComposeColor() = runAppTest {

@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_settings.presentation
 
+import com.oblutack.timenote.ui.theme.ThemeMode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.oblutack.timenote.data.repository.SettingsRepository
@@ -38,6 +39,21 @@ class SettingsViewModel(private val settingsRepository: SettingsRepository) : Vi
         viewModelScope.launch {
             settingsRepository.setHaptics(enabled)
         }
+    }
+
+    /** Null while it is being read; the screen shows the dark theme until it is known. */
+    val themeMode = settingsRepository.themeModeFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch { settingsRepository.setThemeMode(mode) }
+    }
+
+    val dynamicColors = settingsRepository.dynamicColorsFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    fun setDynamicColors(enabled: Boolean) {
+        viewModelScope.launch { settingsRepository.setDynamicColors(enabled) }
     }
 
     fun addCustomColor(hexString: String) {

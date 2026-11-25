@@ -155,7 +155,7 @@ fun FlowHeatmap(
                                         .size(16.dp)
                                         .clip(RoundedCornerShape(4.dp))
                                         .background(boxColor)
-                                        .then(if (isSelected) Modifier.border(1.dp, Color.White, RoundedCornerShape(4.dp)) else Modifier)
+                                        .then(if (isSelected) Modifier.border(1.dp, TnTheme.colors.onBackground, RoundedCornerShape(4.dp)) else Modifier)
                                         .clickable { onDateSelected(date) }
                                 )
                             }

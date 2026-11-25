@@ -140,7 +140,7 @@ fun FolderEditorSheet(
                                 .background(color, CircleShape)
                                 .let {
                                     if (color == selectedColor) {
-                                        it.border(2.dp, Color.White, CircleShape)
+                                        it.border(2.dp, TnTheme.colors.onBackground, CircleShape)
                                     } else it
                                 }
                                 .clickable { onColorChange(color) }
@@ -163,7 +163,7 @@ fun FolderEditorSheet(
                     Button(
                         onClick = { if (name.isNotBlank()) onSave() },
                         modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = Color.White)
+                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                     ) {
                         Text("Save")
                     }
