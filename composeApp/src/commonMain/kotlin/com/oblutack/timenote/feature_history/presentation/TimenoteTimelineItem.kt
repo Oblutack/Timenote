@@ -59,7 +59,8 @@ fun TimenoteTimelineItem(
         ) {
             val startColor = if (useMonochrome) TextPrimary else TnTheme.colors.success
             val endColor = if (useMonochrome) TextSecondary else TnTheme.colors.danger
-            val noteFallback = DefaultAccentColor
+            val noteFallback = TnTheme.colors.untagged
+            val breakColor = TnTheme.colors.pause
             val connectorColor = SurfaceDark
             Canvas(modifier = Modifier.fillMaxSize()) {
                 // 1. Determine size and color based on EventType
@@ -70,6 +71,7 @@ fun TimenoteTimelineItem(
                 val nodeColor = when (event.type) {
                     EventType.START -> startColor
                     EventType.END -> endColor
+                    EventType.PAUSE, EventType.RESUME -> breakColor
                     else -> event.color ?: noteFallback
                 }
 

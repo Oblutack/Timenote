@@ -28,6 +28,9 @@ data class TimenoteFolder(
     @Serializable(with = ColorSerializer::class) val color: Color,
 )
 
+/** The colour that stands for a session: the colour of its first tag, or [untagged] when it has none. */
+fun List<TimenoteFolder>.identityColor(untagged: Color): Color = firstOrNull()?.color ?: untagged
+
 /** A text of a note that lost a merge between devices and can be viewed, restored or dismissed. */
 data class TextConflict(
     val noteId: String,

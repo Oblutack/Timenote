@@ -164,7 +164,7 @@ fun TimerScreen(
 
         Text(
             text = "PAUSED: ${state.currentPauseTime}",
-            color = TextSecondary,
+            color = TnTheme.colors.pause,
             fontSize = TnType.Body,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.5.sp,

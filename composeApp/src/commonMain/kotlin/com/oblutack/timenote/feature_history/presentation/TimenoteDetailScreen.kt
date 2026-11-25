@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.identityColor
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnType
@@ -285,8 +286,8 @@ fun TimenoteDetailScreen(
 
         // 1. Work vs Pause Breakdown Bar
         // --- Define the Colors ---
-        val workColor = timenote.tags.firstOrNull()?.color ?: DefaultAccentColor
-        val pauseColor = TnTheme.colors.surfaceHigh // Muted Dark Gray for the Pause segment
+        val workColor = timenote.tags.identityColor(TnTheme.colors.untagged)
+        val pauseColor = TnTheme.colors.pause
 
         // --- 1. The Progress Bar ---
         Row(
@@ -352,7 +353,8 @@ fun TimenoteDetailScreen(
             if (displayDescription.isBlank()) {
                 Text("Tap to add a description...", color = TextSecondary)
             } else {
-                val dynamicAccentColor = timenote?.tags?.firstOrNull()?.color ?: DefaultAccentColor
+                // links, mentions and ticked boxes are pressable, so without a tag they use the accent
+                val dynamicAccentColor = timenote?.tags.orEmpty().identityColor(DefaultAccentColor)
                 val lines = displayDescription.split("\n")
 
                 // THE FIX: Render line-by-line as Compose Blocks!
@@ -628,7 +630,7 @@ fun TimenoteDetailScreen(
                             modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
-                            val stripeFallback = DefaultAccentColor
+                            val stripeFallback = TnTheme.colors.untagged
                             textNotes.forEach { note ->
                                 Column(
                                     modifier = Modifier

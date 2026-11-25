@@ -37,7 +37,8 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean, useMonochrome: Boole
     val nodeColor = when (event.type) {
         EventType.START -> if (useMonochrome) TextPrimary else TnTheme.colors.success
         EventType.END -> if (useMonochrome) TextSecondary else TnTheme.colors.danger
-        else -> event.color ?: DefaultAccentColor
+        EventType.PAUSE, EventType.RESUME -> TnTheme.colors.pause
+        else -> event.color ?: TnTheme.colors.untagged
     }
 
     val connectorColor = SurfaceDark

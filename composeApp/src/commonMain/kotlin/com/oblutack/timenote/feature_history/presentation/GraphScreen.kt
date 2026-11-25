@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.identityColor
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnType
@@ -191,7 +192,7 @@ fun GraphScreen(
         ) {
             // Read once here: the canvas below draws outside composition
             val gridColor = TextSecondary
-            val accentColor = DefaultAccentColor
+            val untaggedColor = TnTheme.colors.untagged
             val branchColor = TnTheme.colors.branch
             val backgroundColor = BackgroundDark
             val labelColor = TextPrimary
@@ -229,7 +230,7 @@ fun GraphScreen(
                                 }
                                 drawPath(
                                     path = path,
-                                    color = accentColor.copy(alpha = 0.3f),
+                                    color = untaggedColor.copy(alpha = 0.3f),
                                     style = Stroke(width = 4f)
                                 )
 
@@ -254,7 +255,7 @@ fun GraphScreen(
                                 val particleY = (uuu * p0y) + (3 * uu * t * p1y) + (3 * u * tt * p2y) + (ttt * p3y)
 
                                 // C. Draw the Glowing Particle
-                                val particleColor = node.note.tags.firstOrNull()?.color ?: accentColor
+                                val particleColor = node.note.tags.identityColor(untaggedColor)
 
                                 // Outer Particle Glow
                                 drawCircle(
@@ -298,7 +299,7 @@ fun GraphScreen(
 
                     // 4. DRAW NODES (Glowing Orbs + Titles)
                     nodes.forEach { node ->
-                        val nodeColor = node.note.tags.firstOrNull()?.color ?: accentColor
+                        val nodeColor = node.note.tags.identityColor(untaggedColor)
 
                         drawCircle(color = nodeColor.copy(alpha = glowAlpha), radius = glowRadius, center = Offset(node.x, node.y))
                         drawCircle(color = nodeColor, radius = 18f, center = Offset(node.x, node.y))
@@ -385,7 +386,7 @@ fun GraphScreen(
                                             color = TextSecondary, fontSize = TnType.Caption
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
-                                        Text(familyTime, color = DefaultAccentColor, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
+                                        Text(familyTime, color = TextPrimary, fontSize = TnType.Subtitle, fontWeight = FontWeight.Bold)
                                     }
                                 }
 
@@ -398,7 +399,7 @@ fun GraphScreen(
                                 val workRatio = if (totalSeconds > 0) note.activeSeconds.toFloat() / totalSeconds.toFloat() else 1f
                                 val workPercent = if (totalSeconds > 0) kotlin.math.round(workRatio * 100).toInt() else 100
                                 val pausePercent = if (totalSeconds > 0) 100 - workPercent else 0
-                                val tagColor = note.tags.firstOrNull()?.color ?: DefaultAccentColor
+                                val tagColor = note.tags.identityColor(TnTheme.colors.untagged)
 
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -407,7 +408,7 @@ fun GraphScreen(
                                         Text("$workPercent% Work", color = TextSecondary, fontSize = TnType.Caption)
                                     }
                                     Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(TnTheme.colors.surfaceHigh))
+                                        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(TnTheme.colors.pause))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text("$pausePercent% Pause", color = TextSecondary, fontSize = TnType.Caption)
                                     }
@@ -418,7 +419,7 @@ fun GraphScreen(
                                 // The actual Progress Bar
                                 Row(modifier = Modifier.fillMaxWidth().height(4.dp).clip(TnShape.Pill)) {
                                     Box(modifier = Modifier.weight(workRatio.coerceAtLeast(0.01f)).fillMaxHeight().background(tagColor))
-                                    Box(modifier = Modifier.weight((1f - workRatio).coerceAtLeast(0.01f)).fillMaxHeight().background(TnTheme.colors.surfaceHigh))
+                                    Box(modifier = Modifier.weight((1f - workRatio).coerceAtLeast(0.01f)).fillMaxHeight().background(TnTheme.colors.pause))
                                 }
                             }
                         }

@@ -71,7 +71,7 @@ fun SettingsScreen(
 
     var isColorPickerOpen by remember { mutableStateOf(false) }
     var colorToRemove by remember { mutableStateOf<Long?>(null) }
-    val pickerStartColor = DefaultAccentColor
+    val pickerStartColor = Palette.Blue
     var tempPickedColor by remember { mutableStateOf(pickerStartColor) }
 
     val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
@@ -545,19 +545,19 @@ fun SettingsScreen(
                     modifier = Modifier.fillMaxWidth().weight(1f).verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Text("1. The Knowledge Graph", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                    Text("1. The Knowledge Graph", color = TextPrimary, fontWeight = FontWeight.Bold)
                     Text("Timenote isn't just a timer, it's a visual workflow mapper. Tap the branch icon (➕) on any timeline waypoint to spawn a child timer. View how your sessions connect by tapping the Graph icon in the History tab.", color = TextSecondary)
 
-                    Text("2. Interactive Markdown", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                    Text("2. Interactive Markdown", color = TextPrimary, fontWeight = FontWeight.Bold)
                     Text("Make your notes actionable. Use the toolbar in the text editor to create checklists ([ ]). You can tap these checkboxes directly on the note's detail screen to check them off without opening the editor!", color = TextSecondary)
 
-                    Text("3. Smart Mentions", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                    Text("3. Smart Mentions", color = TextPrimary, fontWeight = FontWeight.Bold)
                     Text("Type '@' in the note editor to instantly search and link to past sessions. Tapping a highlighted mention jumps you directly to that session's details.", color = TextSecondary)
 
-                    Text("4. Voice Memos & Ducking", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                    Text("4. Voice Memos & Ducking", color = TextPrimary, fontWeight = FontWeight.Bold)
                     Text("You can record voice memos directly into your timeline. When you play them back, Timenote will automatically lower the volume of your background music (like Spotify) so you can hear your thoughts clearly.", color = TextSecondary)
 
-                    Text("5. The Flow-State Heatmap", color = DefaultAccentColor, fontWeight = FontWeight.Bold)
+                    Text("5. The Flow-State Heatmap", color = TextPrimary, fontWeight = FontWeight.Bold)
                     Text("In the History tab, tap the Heatmap icon to view your focus streaks. Darker squares mean more time spent in deep focus on that specific day.", color = TextSecondary)
 
                     Spacer(modifier = Modifier.height(8.dp))

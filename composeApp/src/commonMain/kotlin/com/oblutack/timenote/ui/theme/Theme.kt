@@ -37,7 +37,11 @@ class TnColors(
     /** Delete, discard, end, errors. */
     val danger: Color,
     /** A branch: a session started from another one. */
-    val branch: Color
+    val branch: Color,
+    /** Time off the task: pauses, the break clock, the pause part of a bar. */
+    val pause: Color,
+    /** A session without a tag. Neutral on purpose: the accent colour only ever means "you can press this". */
+    val untagged: Color
 )
 
 val DarkTnColors = TnColors(
@@ -50,7 +54,9 @@ val DarkTnColors = TnColors(
     accent = Palette.Blue,
     success = Palette.Green,
     danger = Palette.Red,
-    branch = Palette.Purple
+    branch = Palette.Purple,
+    pause = Palette.Sand,
+    untagged = Palette.Grey
 )
 
 val LocalTnColors = staticCompositionLocalOf { DarkTnColors }

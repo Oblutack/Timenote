@@ -15,6 +15,8 @@ object Palette {
     val Purple = Color(0xFF9C27B0)
     val Red = Color(0xFFE53935)
     val Cyan = Color(0xFF00BCD4)
+    /** A calm amber for time off the task. Kept apart from the saturated tag orange. */
+    val Sand = Color(0xFFE3B04B)
 
     val Ink0 = Color(0xFF121212)
     val Ink1 = Color(0xFF1E1E1E)

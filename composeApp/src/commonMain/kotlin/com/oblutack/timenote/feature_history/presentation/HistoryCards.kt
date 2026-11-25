@@ -1,4 +1,5 @@
 package com.oblutack.timenote.feature_history.presentation
+import com.oblutack.timenote.feature_history.domain.identityColor
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnType
@@ -155,7 +156,8 @@ fun SessionCard(
             // Description (Capped at 2 lines, respects the weight bounds)
             if (session.description.isNotBlank() && !isLegacyDesc) {
                 Spacer(modifier = Modifier.height(8.dp))
-                val dynamicAccentColor = session.tags.firstOrNull()?.color ?: DefaultAccentColor
+                // links and mentions in the text are pressable, so without a tag they use the accent
+                val dynamicAccentColor = session.tags.identityColor(DefaultAccentColor)
                 Text(
                     text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(session.description, dynamicAccentColor),
                     color = TextSecondary,

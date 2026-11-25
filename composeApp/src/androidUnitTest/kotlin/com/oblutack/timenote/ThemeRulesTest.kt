@@ -42,4 +42,14 @@ class ThemeRulesTest {
         }
         assertTrue(offenders.isEmpty(), "Use TnShape.… instead of a corner size:\n" + offenders.joinToString("\n"))
     }
+
+    @Test fun aSessionWithoutATagIsNeverBlue() {
+        // "first tag, else the accent" made blue mean both "tap me" and "no tag": use identityColor(untagged) instead
+        val offenders = sources.filterNot(::isTheme).flatMap { file ->
+            file.readLines().mapIndexedNotNull { i, line ->
+                if (Regex("""\.color\s*\?:\s*(DefaultAccentColor|TnTheme\.colors\.accent)""").containsMatchIn(line)) "${file.name}:${i + 1}: ${line.trim()}" else null
+            }
+        }
+        assertTrue(offenders.isEmpty(), "Use tags.identityColor(TnTheme.colors.untagged):\n" + offenders.joinToString("\n"))
+    }
 }
