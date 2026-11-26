@@ -45,5 +45,9 @@ class AndroidTimerServiceManager(private val context: Context) : TimerServiceMan
         } catch (e: Exception) { logError(TAG, "Could not update timer notification", e) }
     }
 
+    override fun scheduleForgottenCheck(delayMillis: Long) = ForgottenTimerScheduler.schedule(context, delayMillis)
+
+    override fun cancelForgottenCheck() = ForgottenTimerScheduler.cancel(context)
+
     private companion object { const val TAG = "TimerService" }
 }

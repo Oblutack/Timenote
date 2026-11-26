@@ -127,6 +127,54 @@ fun AddNoteSheet(
         }
 }
 
+/**
+ * Opened by the "still working?" notification. Closing it (swipe, Back) means "keep going": nothing is ever ended by accident.
+ * The three choices end up in the usual summary, where the session can still be checked or taken back.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun StillWorkingSheet(prompt: StillWorkingPrompt, onAction: (TimerAction) -> Unit) {
+    ModalBottomSheet(
+        onDismissRequest = { onAction(TimerAction.StillWorkingKeepGoing) },
+        containerColor = SurfaceDark
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
+        ) {
+            Text("Still working?", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "This session has been running for ${com.oblutack.timenote.core.humanDuration(prompt.totalSeconds)}." +
+                    if (prompt.canTrim) " The last note or break was ${com.oblutack.timenote.core.humanDuration(prompt.sinceLastActivitySeconds)} ago." else "",
+                color = TextSecondary,
+                fontSize = TnType.BodyLarge
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Button(
+                onClick = { onAction(TimerAction.StillWorkingKeepGoing) },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
+            ) { Text("Keep going") }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(onClick = { onAction(TimerAction.StillWorkingEndNow) }, modifier = Modifier.fillMaxWidth()) {
+                Text("End now", color = TextPrimary)
+            }
+            if (prompt.canTrim) {
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = { onAction(TimerAction.StillWorkingEndAtLastActivity) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("End at last activity", color = TextPrimary)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Ends the session where the last note or break was, so the time after it is not counted. You can still check it in the summary.",
+                    color = TextSecondary,
+                    fontSize = TnType.Caption
+                )
+            }
+        }
+    }
+}
+
 /** One number of the summary: a caption over a value. */
 @Composable
 private fun SummaryStat(label: String, value: String, modifier: Modifier = Modifier) {

@@ -674,6 +674,156 @@ class TimerViewModelTest {
         }
     }
 
+    // --- the forgotten timer (F33) ---
+
+    private val threeHours = 3 * 60 * 60 * 1000L
+
+    @Test fun startingASessionSchedulesTheQuestionForThreeHoursWithoutHistory() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            assertEquals(listOf(threeHours), service.scheduledChecks)
+        }
+    }
+
+    @Test fun peopleWhoWorkLongBlocksAreAskedLater() = runAppTest {
+        timerTest {
+            repeat(5) { i -> sessions.saveTimenote(com.oblutack.timenote.testutil.testNote("long$i", createdAt = 1_000L + i, activeSeconds = 5 * 3600)) }
+            vm.onAction(TimerAction.Start)
+            assertEquals(listOf(10 * 60 * 60 * 1000L), service.scheduledChecks, "twice the typical five hours")
+        }
+    }
+
+    @Test fun endingTheSessionCancelsTheQuestion() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            assertEquals(0, service.cancelCheckCalls)
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            assertEquals(1, service.cancelCheckCalls)
+        }
+    }
+
+    @Test fun aRestoredSessionIsAskedAboutAfterTheRestOfTheTime() = runAppTest {
+        timerTest {
+            // the session was started 10 s ago in the fake clock's terms; the backup helper uses a start 30 s earlier
+            settings.saveActiveSession(backup())
+            assertTrue(state.isRunning)
+            assertEquals(1, service.scheduledChecks.size)
+            assertTrue(service.scheduledChecks.single() < threeHours, "the time that already passed is taken off")
+            assertTrue(service.scheduledChecks.single() > threeHours - 10 * 60 * 1000L)
+        }
+    }
+
+    @Test fun askingOnlyWorksWhileASessionRuns() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.AskStillWorking)
+            assertNull(state.stillWorking)
+            vm.onAction(TimerAction.Start)
+            advance(1_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.AskStillWorking)
+            assertNull(state.stillWorking, "not while the summary of an ended session is open")
+        }
+    }
+
+    @Test fun thePromptSaysHowLongItRanAndHowLongAgoAnythingWasDone() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(60_000)
+            vm.addNote("last thing I wrote")
+            advance(3 * 60 * 60 * 1000L)
+
+            vm.onAction(TimerAction.AskStillWorking)
+            val prompt = state.stillWorking!!
+            assertEquals(60 + 3 * 3600, prompt.totalSeconds)
+            assertEquals(3 * 3600, prompt.sinceLastActivitySeconds)
+            assertTrue(prompt.canTrim)
+        }
+    }
+
+    @Test fun keepGoingClosesThePromptAndAsksAgainInTwoHours() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.onAction(TimerAction.AskStillWorking)
+            vm.onAction(TimerAction.StillWorkingKeepGoing)
+            assertNull(state.stillWorking)
+            assertTrue(state.isRunning)
+            assertEquals(2 * 60 * 60 * 1000L, service.scheduledChecks.last())
+        }
+    }
+
+    @Test fun endNowOpensTheSummaryWithAllTheTime() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(4 * 60 * 60 * 1000L)
+            vm.onAction(TimerAction.AskStillWorking)
+            vm.onAction(TimerAction.StillWorkingEndNow)
+            assertNull(state.stillWorking)
+            assertEquals(4 * 3600, state.summary!!.totalSeconds)
+        }
+    }
+
+    @Test fun endAtLastActivityDropsTheForgottenTime() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(60_000)
+            vm.addNote("the last thing")
+            advance(3 * 60 * 60 * 1000L + 30 * 60 * 1000L) // then it was forgotten for three and a half hours
+            vm.onAction(TimerAction.AskStillWorking)
+            vm.onAction(TimerAction.StillWorkingEndAtLastActivity)
+
+            val summary = state.summary!!
+            assertEquals(60, summary.activeSeconds, "only the minute before the last note counts")
+            assertEquals(0, summary.pauseSeconds)
+            assertEquals("00:01:00", state.timelineEvents.first { it.type == EventType.END }.timestamp, "the end is placed where the last activity was")
+
+            vm.onAction(TimerAction.SaveSession)
+            val saved = sessions.timenotes.value.single()
+            assertEquals(60, saved.activeSeconds)
+            assertEquals("00:01:00", saved.duration)
+            assertEquals(1, service.cancelCheckCalls)
+        }
+    }
+
+    @Test fun trimmingAfterAPauseKeepsThePauseAndDropsTheRest() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(120_000)
+            vm.onAction(TimerAction.Pause) // last activity: at 2 minutes
+            advance(5 * 60 * 60 * 1000L)   // forgotten while paused
+            vm.onAction(TimerAction.AskStillWorking)
+            vm.onAction(TimerAction.StillWorkingEndAtLastActivity)
+            val summary = state.summary!!
+            assertEquals(120, summary.activeSeconds)
+            assertEquals(0, summary.pauseSeconds, "the break had only just begun")
+        }
+    }
+
+    @Test fun keepGoingFromTheSummaryAfterATrimCountsTheForgottenTimeAsABreak() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(60_000)
+            vm.onAction(TimerAction.LogInterruption)
+            advance(2 * 60 * 60 * 1000L)
+            vm.onAction(TimerAction.AskStillWorking)
+            vm.onAction(TimerAction.StillWorkingEndAtLastActivity)
+            vm.onAction(TimerAction.KeepGoing)
+            vm.onAction(TimerAction.End)
+            assertEquals(60, state.summary!!.activeSeconds)
+            assertEquals(2 * 3600, state.summary!!.pauseSeconds, "the two hours are a break, nothing is lost")
+        }
+    }
+
+    @Test fun trimmingIsNotOfferedWhenTheLastActivityWasJustNow() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(30_000)
+            vm.onAction(TimerAction.AskStillWorking)
+            assertFalse(state.stillWorking!!.canTrim)
+        }
+    }
+
     @Test fun endingAnIdleTimerDoesNothing() = runAppTest {
         timerTest {
             vm.onAction(TimerAction.End)

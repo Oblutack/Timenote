@@ -195,6 +195,11 @@ class FakeTimerServiceManager : TimerServiceManager {
     var startCalls = 0
     var stopCalls = 0
     val notifications = mutableListOf<Notification>()
+    val scheduledChecks = mutableListOf<Long>()
+    var cancelCheckCalls = 0
+
+    override fun scheduleForgottenCheck(delayMillis: Long) { scheduledChecks += delayMillis }
+    override fun cancelForgottenCheck() { cancelCheckCalls++ }
 
     override fun startService() { startCalls++ }
     override fun stopService() { stopCalls++ }

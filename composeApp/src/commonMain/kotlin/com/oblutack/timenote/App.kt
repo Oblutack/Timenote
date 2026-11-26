@@ -13,6 +13,7 @@ import com.oblutack.timenote.ui.theme.DefaultAccentColor
 import com.oblutack.timenote.ui.theme.SurfaceDark
 import com.oblutack.timenote.ui.theme.TextPrimary
 import com.oblutack.timenote.ui.theme.TextSecondary
+import com.oblutack.timenote.core.STILL_WORKING_ROUTE
 import com.oblutack.timenote.ui.theme.TimenoteTheme
 import com.oblutack.timenote.ui.theme.TnTheme
 import androidx.compose.foundation.background
@@ -89,9 +90,17 @@ private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
     TimenoteTheme(rememberTnColors()) {
         // --- NEW: Official Navigation Controller ---
         val navController = rememberNavController()
+        // One timer for the whole app, not one per screen: a timer screen that is replaced (a branch, "Start Session"
+        // from a folder) must show the same session, not start a second timer with its own state
+        val timerViewModel: TimerViewModel = timerViewModel()
         // A screen the app was asked to open (a tapped notification)
         LaunchedEffect(launchRoute) {
-            if (launchRoute != null) {
+            if (launchRoute == STILL_WORKING_ROUTE) {
+                // The "still working?" reminder: show the timer and ask
+                navController.navigate("timer") { launchSingleTop = true }
+                timerViewModel.onAction(TimerAction.AskStillWorking)
+                onLaunchRouteHandled()
+            } else if (launchRoute != null) {
                 navController.navigate(launchRoute) { launchSingleTop = true }
                 onLaunchRouteHandled()
             }
@@ -103,9 +112,6 @@ private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
         var historyTab by remember { mutableStateOf(0) }
 
         val snackbarHostState = LocalSnackbarHost.current
-        // One timer for the whole app, not one per screen: a timer screen that is replaced (a branch, "Start Session"
-        // from a folder) must show the same session, not start a second timer with its own state
-        val timerViewModel: TimerViewModel = timerViewModel()
         Scaffold(
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->

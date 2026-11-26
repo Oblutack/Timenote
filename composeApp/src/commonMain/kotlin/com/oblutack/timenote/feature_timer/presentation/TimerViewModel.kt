@@ -39,6 +39,12 @@ data class SessionSummary(val activeSeconds: Int, val pauseSeconds: Int, val not
     val totalSeconds: Int get() = activeSeconds + pauseSeconds
 }
 
+/** What the "Still working?" sheet says: how long it has run, and how long ago anything was last done in it. */
+data class StillWorkingPrompt(val totalSeconds: Int, val sinceLastActivitySeconds: Int) {
+    /** Ending at the last activity only makes sense when that was a while ago. */
+    val canTrim: Boolean get() = sinceLastActivitySeconds >= com.oblutack.timenote.core.FORGOTTEN_MIN_TRIM_SECONDS
+}
+
 data class TimerState(
     val displayTime: String = "00:00:00",
     val currentPauseTime: String = "00:00:00",
@@ -58,6 +64,8 @@ data class TimerState(
     val dialogNoteColor: Color = Palette.Blue,
 
     val selectedCategories: List<TimenoteFolder> = emptyList(),
+    /** Set while the "Still working?" sheet is open (from the reminder notification). */
+    val stillWorking: StillWorkingPrompt? = null,
     /** Set while the summary is open: the session has ended but is not saved yet. */
     val summary: SessionSummary? = null,
     val availableTags: List<TimenoteFolder> = emptyList(),
@@ -261,6 +269,7 @@ class TimerViewModel(
                         )}
 
                         timerServiceManager.startService()
+                        scheduleForgottenCheck()
                         startTicking()
                     } catch (e: Exception) {
                         // If anything goes wrong, safely clear the corrupted data without crashing!
@@ -304,6 +313,10 @@ class TimerViewModel(
             is TimerAction.EditNote -> startEditingNote(action.id)
             is TimerAction.DeleteWaypoint -> deleteWaypoint(action.id)
             is TimerAction.LogInterruption -> logInterruption()
+            is TimerAction.AskStillWorking -> askStillWorking()
+            is TimerAction.StillWorkingKeepGoing -> stillWorkingKeepGoing()
+            is TimerAction.StillWorkingEndNow -> { _state.update { it.copy(stillWorking = null) }; endTimer(forceSave = false) }
+            is TimerAction.StillWorkingEndAtLastActivity -> endAtLastActivity()
             is TimerAction.UndoInterruption -> deleteWaypoint(action.id, offerUndo = false)
             is TimerAction.RestoreWaypoint -> restoreWaypoint(action.deleted)
             is TimerAction.UpdateDialogNoteText -> _state.update { it.copy(dialogNoteText = action.text) }
@@ -477,6 +490,7 @@ class TimerViewModel(
 
         clock.start(now())
         hasRestoredBackup = true
+        scheduleForgottenCheck()
 
         addEventToTimeline("Session Started", EventType.START)
 
@@ -514,14 +528,16 @@ class TimerViewModel(
         backupCurrentState()
     }
 
-    private fun endTimer(forceSave: Boolean = false) {
+    /** [atMillis] ends the session at an earlier moment ("End at last activity"); the time after it is not counted. */
+    private fun endTimer(forceSave: Boolean = false, atMillis: Long? = null) {
         if (!_state.value.isRunning && !_state.value.isPaused) return
 
         timerJob?.cancel()
         timerServiceManager.stopService()
+        timerServiceManager.cancelForgottenCheck()
 
         // --- THE FIX: Freeze the math right now, BEFORE we change the state! ---
-        val now = now()
+        val now = atMillis ?: now()
         frozenActiveSeconds = clock.activeSeconds(now)
         frozenPauseSeconds = clock.pauseSeconds(now)
         // -----------------------------------------------------------------------
@@ -533,7 +549,7 @@ class TimerViewModel(
 
         // 2. Add the timeline event (Now it won't back up)
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
-        addEventToTimeline("Session Ended: $title", EventType.END)
+        addEventToTimeline("Session Ended: $title", EventType.END, atMillis = atMillis)
 
         // The backup of the running session stays until the session is saved or discarded: if the app is killed while
         // the summary is open, the session comes back instead of being lost.
@@ -564,6 +580,7 @@ class TimerViewModel(
             addEventToTimeline("Resumed (Break was ${formatTime((gap / 1000).toInt())})", EventType.RESUME)
         }
         timerServiceManager.startService()
+        scheduleForgottenCheck()
         backupCurrentState()
         startTicking()
     }
@@ -660,6 +677,44 @@ class TimerViewModel(
             dialogNoteText = draft?.first ?: "",
             dialogNoteColor = draft?.second ?: Palette.Blue
         ) }
+    }
+
+    /** The time to wait before asking "still working?": the threshold for this person, minus what has already passed. */
+    private fun scheduleForgottenCheck(repeatAfterMillis: Long? = null) {
+        val delay = repeatAfterMillis ?: run {
+            val recent = sessionRepository.timenotes.value.sortedByDescending { it.createdAt }
+                .take(com.oblutack.timenote.core.FORGOTTEN_HISTORY_SIZE).map { it.activeSeconds + it.pauseSeconds }
+            val threshold = com.oblutack.timenote.core.forgottenTimerThresholdMillis(recent)
+            (threshold - clock.elapsedSeconds(now()) * 1000L).coerceAtLeast(60_000L)
+        }
+        timerServiceManager.scheduleForgottenCheck(delay)
+    }
+
+    /** The moment of the newest entry of the timeline (start, note, pause, ...): the last sign that the person was there. */
+    private fun lastActivityMillis(): Long {
+        val newest = _state.value.timelineEvents.firstOrNull() ?: return clock.startMillis
+        val seconds = com.oblutack.timenote.core.parseDurationSeconds(newest.timestamp) ?: return now()
+        return clock.startMillis + seconds * 1000L
+    }
+
+    private fun askStillWorking() {
+        val current = _state.value
+        if (!current.isRunning || current.summary != null) return
+        val t = now()
+        val sinceLast = ((t - lastActivityMillis()) / 1000).toInt().coerceAtLeast(0)
+        _state.update { it.copy(stillWorking = StillWorkingPrompt(clock.elapsedSeconds(t), sinceLast)) }
+    }
+
+    private fun stillWorkingKeepGoing() {
+        _state.update { it.copy(stillWorking = null) }
+        scheduleForgottenCheck(repeatAfterMillis = com.oblutack.timenote.core.FORGOTTEN_REPEAT_MILLIS)
+    }
+
+    /** Ends the session as of its last activity, so the forgotten time is not counted; the summary still opens. */
+    private fun endAtLastActivity() {
+        val at = lastActivityMillis()
+        _state.update { it.copy(stillWorking = null) }
+        endTimer(forceSave = false, atMillis = if (at < now()) at else null)
     }
 
     /**
@@ -782,8 +837,8 @@ class TimerViewModel(
         }
     }
 
-    private fun addEventToTimeline(title: String, type: EventType, color: Color? = null, audioPath: String? = null): String {
-        val now = now()
+    private fun addEventToTimeline(title: String, type: EventType, color: Color? = null, audioPath: String? = null, atMillis: Long? = null): String {
+        val now = atMillis ?: now()
         val totalElapsedSeconds = clock.elapsedSeconds(now)
 
         val newEvent = TimelineEvent(
@@ -875,6 +930,11 @@ sealed class TimerAction {
     data class DeleteWaypoint(val id: String) : TimerAction()
     /** The Interrupted button: a note at this moment, without pausing. */
     data object LogInterruption : TimerAction()
+    /** The reminder notification was tapped. */
+    data object AskStillWorking : TimerAction()
+    data object StillWorkingKeepGoing : TimerAction()
+    data object StillWorkingEndNow : TimerAction()
+    data object StillWorkingEndAtLastActivity : TimerAction()
     data class UndoInterruption(val id: String) : TimerAction()
     data class RestoreWaypoint(val deleted: DeletedWaypoint) : TimerAction()
 }

@@ -615,6 +615,10 @@ fun TimerScreen(
         AddNoteSheet(state = state, customColors = customColors, onAction = viewModel::onAction)
     }
 
+    state.stillWorking?.let { prompt ->
+        StillWorkingSheet(prompt = prompt, onAction = viewModel::onAction)
+    }
+
     state.summary?.let { summary ->
         SessionSummarySheet(state = state, summary = summary, onAction = viewModel::onAction)
     }
