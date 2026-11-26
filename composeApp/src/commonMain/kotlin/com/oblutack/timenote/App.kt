@@ -105,6 +105,15 @@ private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
                 onLaunchRouteHandled()
             }
         }
+        // After a delete, from any screen: a short message with Undo, instead of an instant, silent loss
+        val snackbar = LocalSnackbarHost.current
+        val sessions = LocalAppContainer.current.sessionRepository
+        LaunchedEffect(Unit) {
+            sessions.undoOffers.collect { undo ->
+                val result = snackbar.showSnackbar(message = undo.message, actionLabel = "Undo", duration = SnackbarDuration.Long)
+                if (result == SnackbarResult.ActionPerformed) undo.ids.forEach { sessions.restoreTimenote(it) }
+            }
+        }
         val navBackStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = navBackStackEntry?.destination?.route
 

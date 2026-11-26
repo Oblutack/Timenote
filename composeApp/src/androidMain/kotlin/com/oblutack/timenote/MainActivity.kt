@@ -1,5 +1,7 @@
 package com.oblutack.timenote
 
+import com.oblutack.timenote.core.TextSharer
+import com.oblutack.timenote.core.LocalTextSharer
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
@@ -22,6 +24,18 @@ class MainActivity : ComponentActivity() {
     private var launchRoute by mutableStateOf<String?>(null)
 
     private val platformTheme by lazy { AndroidPlatformTheme(this) }
+
+    /** The phone's share sheet for a piece of text (a session exported as text or Markdown). */
+    private val textSharer = object : TextSharer {
+        override fun share(title: String, text: String) {
+            val send = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_SUBJECT, title)
+                putExtra(Intent.EXTRA_TEXT, text)
+            }
+            startActivity(Intent.createChooser(send, title))
+        }
+    }
 
     // What to do once the permission question that is open right now has been answered
     private var afterPermissionQuestion: (() -> Unit)? = null
@@ -66,7 +80,7 @@ class MainActivity : ComponentActivity() {
         val container = (application as TimenoteApplication).container
         launchRoute = intent?.getStringExtra(EXTRA_OPEN_ROUTE)
         setContent {
-            CompositionLocalProvider(LocalPermissionAsker provides permissionAsker) {
+            CompositionLocalProvider(LocalPermissionAsker provides permissionAsker, LocalTextSharer provides textSharer) {
                 App(container, launchRoute = launchRoute, onLaunchRouteHandled = { launchRoute = null }, platformTheme = platformTheme)
             }
         }

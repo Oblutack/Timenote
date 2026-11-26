@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.data.repository.UndoDelete
 import androidx.lifecycle.ViewModel
 import androidx.compose.ui.graphics.Color
 import com.oblutack.timenote.data.repository.SessionRepository
@@ -284,16 +285,37 @@ class HistoryViewModel(
         sessionRepository.toggleFolderPin(id)
     }
 
+    /**
+     * A copy of a session to start from: the same title (with "(copy)"), folder, tags and description, but no time, no
+     * timeline and no voice memos. Returns the id of the copy.
+     */
+    fun duplicateTimenote(id: String): String? {
+        val source = sessionRepository.timenotes.value.find { it.id == id } ?: return null
+        val copy = source.copy(
+            id = newId(),
+            title = "${source.title.ifBlank { "Untitled Session" }} (copy)",
+            duration = "00:00:00",
+            activeSeconds = 0,
+            pauseSeconds = 0,
+            createdAt = now(),
+            timelineEvents = emptyList(),
+            voiceNotes = emptyList(),
+            audioPath = null,
+            parentTimenoteId = null,
+            parentWaypointId = null,
+            isPinned = false
+        )
+        sessionRepository.saveTimenote(copy)
+        return copy.id
+    }
+
     fun toggleTimenotePin(id: String) {
         sessionRepository.toggleTimenotePin(id)
     }
 
     // --- UNDO AFTER A DELETE ---
-    /** What the screen offers to bring back: the notes that were just moved to the trash. */
-    data class UndoDelete(val message: String, val ids: List<String>)
-
-    private val _undoDelete = MutableSharedFlow<UndoDelete>(extraBufferCapacity = 4)
-    val undoDelete = _undoDelete.asSharedFlow()
+    /** What the app offers to bring back: the notes that were just moved to the trash. */
+    val undoDelete = sessionRepository.undoOffers
 
     fun restoreTimenotes(ids: List<String>) {
         ids.forEach { sessionRepository.restoreTimenote(it) }
@@ -323,7 +345,7 @@ class HistoryViewModel(
         } else {
             // No children: delete right away, with a way back
             sessionRepository.deleteTimenote(session.id)
-            _undoDelete.tryEmit(UndoDelete("\"${session.title.ifBlank { "Untitled" }}\" moved to trash", listOf(session.id)))
+            sessionRepository.offerUndo(UndoDelete("\"${session.title.ifBlank { "Untitled" }}\" moved to trash", listOf(session.id)))
         }
     }
 
@@ -332,7 +354,7 @@ class HistoryViewModel(
         if (cascade) {
             val ids = listOf(session.id) + sessionRepository.getDescendantIds(session.id)
             sessionRepository.cascadeSoftDeleteTimenote(session.id)
-            _undoDelete.tryEmit(UndoDelete("${ids.size} sessions moved to trash", ids))
+            sessionRepository.offerUndo(UndoDelete("${ids.size} sessions moved to trash", ids))
         } else {
             sessionRepository.deleteAndOrphanChildren(session.id)
         }

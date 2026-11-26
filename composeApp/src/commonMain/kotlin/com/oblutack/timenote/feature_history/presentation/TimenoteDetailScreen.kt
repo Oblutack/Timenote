@@ -1,5 +1,10 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.material.icons.filled.MoreVert
+import com.oblutack.timenote.feature_history.domain.sessionAsMarkdown
+import com.oblutack.timenote.feature_history.domain.sessionAsText
+import com.oblutack.timenote.core.formatDuration
+import com.oblutack.timenote.core.sessionHeader
 import com.oblutack.timenote.feature_history.domain.identityColor
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
@@ -68,6 +73,9 @@ import com.oblutack.timenote.getCurrentTimeMillis
 import com.oblutack.timenote.di.historyViewModel
 import com.oblutack.timenote.di.LocalAppContainer
 
+/** A timeline with this many entries or fewer is shown open; a longer one starts folded. */
+const val SHORT_TIMELINE_ENTRIES = 6
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TimenoteDetailScreen(
@@ -103,7 +111,12 @@ fun TimenoteDetailScreen(
     LaunchedEffect(isEditingTitle) {
         if (isEditingTitle) titleFocusRequester.requestFocus()
     }
-    var isTimelineExpanded by remember { mutableStateOf(false) }
+    // A short timeline is open from the start; a long one stays folded until asked for
+    var isTimelineExpanded by remember(timenoteId) { mutableStateOf((timenote?.timelineEvents?.size ?: 0) <= SHORT_TIMELINE_ENTRIES) }
+    var isMenuOpen by remember { mutableStateOf(false) }
+    val sharer = com.oblutack.timenote.core.LocalTextSharer.current
+    val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
+    val descendantCount by viewModel.descendantCount.collectAsState()
 
     val cleanDescription = timenote?.description?.let { if (it.contains("waypoints recorded")) "" else it } ?: ""
     var optimisticDescription by remember(timenote?.id) { mutableStateOf<String?>(null) }
@@ -147,12 +160,14 @@ fun TimenoteDetailScreen(
     val instant = Instant.fromEpochMilliseconds(validTimestamp)
     val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
 
-    // Format manually to keep it perfectly KMP-safe across iOS/Android
-    val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-    val hour12 = if (dateTime.hour % 12 == 0) 12 else dateTime.hour % 12
-    val amPm = if (dateTime.hour >= 12) "PM" else "AM"
-    val minuteStr = dateTime.minute.toString().padStart(2, '0')
-    val displayDate = "$month ${dateTime.dayOfMonth}, ${dateTime.year} • $hour12:$minuteStr $amPm"
+    // "Wed 25 Nov · 6:40 – 7:28 PM": the session is saved when it ends, so the start is the end minus focus and breaks
+    val header = sessionHeader(
+        createdAtMillis = validTimestamp,
+        activeSeconds = timenote.activeSeconds,
+        pauseSeconds = timenote.pauseSeconds,
+        zone = TimeZone.currentSystemDefault(),
+        currentYear = Instant.fromEpochMilliseconds(getCurrentTimeMillis()).toLocalDateTime(TimeZone.currentSystemDefault()).year
+    )
 
     // --- 2. Work vs Pause Breakdown Math ---
     val totalSeconds = timenote.activeSeconds + timenote.pauseSeconds
@@ -208,6 +223,59 @@ fun TimenoteDetailScreen(
                     tint = if (timenote.isPinned) DefaultAccentColor else TextSecondary
                 )
             }
+            Box {
+                IconButton(onClick = { isMenuOpen = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "More", tint = TextSecondary)
+                }
+                DropdownMenu(expanded = isMenuOpen, onDismissRequest = { isMenuOpen = false }, containerColor = SurfaceDark) {
+                    DropdownMenuItem(
+                        text = { Text("Share as text", color = TextPrimary) },
+                        onClick = {
+                            isMenuOpen = false
+                            sharer.share(timenote.title, sessionAsText(timenote, currentFolder?.name, header))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Share as Markdown", color = TextPrimary) },
+                        onClick = {
+                            isMenuOpen = false
+                            sharer.share(timenote.title, sessionAsMarkdown(timenote, currentFolder?.name, header))
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Duplicate", color = TextPrimary) },
+                        onClick = {
+                            isMenuOpen = false
+                            viewModel.duplicateTimenote(timenote.id)?.let(onTimenoteClick)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Delete", color = TnTheme.colors.danger) },
+                        onClick = {
+                            isMenuOpen = false
+                            viewModel.requestDelete(timenote)
+                            // With branches the screen first asks what should happen to them (below); otherwise it is done
+                            if (viewModel.sessionPendingDelete.value == null) onBackClick()
+                        }
+                    )
+                }
+            }
+        }
+
+        // Where this session branched off from (F21)
+        val parent = timenote.parentTimenoteId?.let { parentId -> allTimenotes.find { it.id == parentId } }
+        if (timenote.parentTimenoteId != null) {
+            val fromWaypoint = parent?.timelineEvents?.find { it.id == timenote.parentWaypointId }
+            Text(
+                text = if (parent == null) "Branched from a session that is no longer here" else
+                    "\u21b3 Branched from \u201c${parent.title.ifBlank { "Untitled Session" }}\u201d" +
+                        (fromWaypoint?.let { " at ${it.timestamp}" } ?: ""),
+                color = if (parent == null) TextSecondary else TnTheme.colors.branch,
+                fontSize = TnType.Body,
+                modifier = Modifier
+                    .padding(bottom = 16.dp)
+                    .then(if (parent != null) Modifier.clickable { onTimenoteClick(parent.id) } else Modifier)
+            )
         }
 
         AnimatedContent(
@@ -272,7 +340,7 @@ fun TimenoteDetailScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = displayDate,
+            text = header.oneLine,
             color = TextSecondary,
             fontSize = TnType.Body,
             modifier = Modifier.padding(bottom = 8.dp)
@@ -281,6 +349,13 @@ fun TimenoteDetailScreen(
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(text = timenote.duration, color = TextSecondary, fontFamily = TnTheme.mono, fontSize = TnType.BodyLarge)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "Focus ${formatDuration(timenote.activeSeconds)} · Breaks ${formatDuration(timenote.pauseSeconds)}",
+            color = TextSecondary,
+            fontFamily = TnTheme.mono,
+            fontSize = TnType.Caption
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -660,7 +735,43 @@ fun TimenoteDetailScreen(
             }
         }
 
+        if (childTimenotes.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("BRANCHES", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+            childTimenotes.forEach { child ->
+                val fromWaypoint = timenote.timelineEvents.find { it.id == child.parentWaypointId }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .clip(TnShape.Small)
+                        .background(SurfaceDark)
+                        .clickable { onTimenoteClick(child.id) }
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
+                        Text(child.title.ifBlank { "Untitled Session" }, color = TextPrimary, fontSize = TnType.BodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        if (fromWaypoint != null) {
+                            Text("from ${fromWaypoint.timestamp}", color = TnTheme.colors.branch, fontSize = TnType.Caption)
+                        }
+                    }
+                    Text(child.duration, color = TextSecondary, fontFamily = TnTheme.mono, fontSize = TnType.Body)
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(8.dp))
+    }
+
+    if (sessionPendingDelete != null) {
+        DeleteBranchSheet(
+            descendantCount = descendantCount,
+            onDeleteAll = { viewModel.confirmDelete(cascade = true); onBackClick() },
+            onDeleteOnly = { viewModel.confirmDelete(cascade = false); onBackClick() },
+            onCancel = { viewModel.cancelDelete() }
+        )
     }
 
     if (isFolderDialogOpen) {

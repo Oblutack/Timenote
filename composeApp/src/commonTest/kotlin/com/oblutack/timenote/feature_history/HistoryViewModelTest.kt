@@ -279,12 +279,67 @@ class HistoryViewModelTest {
         assertTrue(trash.deletedFolders.value.isEmpty())
     }
 
+    // --- duplicating a session (F23) ---
+
+    @Test fun duplicatingCopiesTheFrameButNotTheTimeOrTheTimeline() = runAppTest {
+        val env = HistoryEnv(this)
+        val source = testNote("a", title = "Weekly review", activeSeconds = 3_000, pauseSeconds = 600).copy(
+            description = "Template text",
+            folderId = "f1",
+            tags = listOf(testTag("t1", "Admin")),
+            duration = "01:00:00",
+            isPinned = true,
+            parentTimenoteId = "p",
+            parentWaypointId = "w",
+            voiceNotes = listOf("memo.m4a"),
+            timelineEvents = listOf(com.oblutack.timenote.feature_timer.domain.TimelineEvent("e1", "Note: x", "00:01:00", com.oblutack.timenote.feature_timer.domain.EventType.NOTE))
+        )
+        env.sessions.saveTimenote(source)
+
+        val copyId = env.vm.duplicateTimenote("a")!!
+        val copy = env.sessions.getTimenoteById(copyId)!!
+
+        assertTrue(copyId != "a")
+        assertEquals("Weekly review (copy)", copy.title)
+        assertEquals("Template text", copy.description)
+        assertEquals("f1", copy.folderId)
+        assertEquals(listOf("Admin"), copy.tags.map { it.name })
+        assertEquals(0, copy.activeSeconds)
+        assertEquals(0, copy.pauseSeconds)
+        assertEquals("00:00:00", copy.duration)
+        assertEquals(NOW, copy.createdAt)
+        assertTrue(copy.timelineEvents.isEmpty())
+        assertTrue(copy.voiceNotes.isEmpty())
+        assertNull(copy.parentTimenoteId)
+        assertEquals(false, copy.isPinned)
+        assertEquals("Weekly review", env.sessions.getTimenoteById("a")!!.title, "the original is untouched")
+    }
+
+    @Test fun duplicatingASessionThatIsGoneDoesNothing() = runAppTest {
+        val env = HistoryEnv(this)
+        assertNull(env.vm.duplicateTimenote("missing"))
+        assertTrue(env.sessions.timenotes.value.isEmpty())
+    }
+
+    @Test fun anUndoOfferReachesWhoeverListensEvenFromAnotherScreensViewModel() = runAppTest {
+        // The details screen and the list each have their own view model; the app listens to the repository
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a", title = "From details"))
+        val offers = mutableListOf<com.oblutack.timenote.data.repository.UndoDelete>()
+        backgroundScope.launch { env.sessions.undoOffers.collect { offers += it } }
+        val otherScreensViewModel = HistoryViewModel(env.sessions, env.player, env.recorder, env.audioFiles, now = { NOW })
+
+        otherScreensViewModel.requestDelete(env.sessions.getTimenoteById("a")!!)
+
+        assertEquals(listOf("a"), offers.single().ids)
+    }
+
     // --- Undo after a delete (B4) ---
 
     @Test fun deletingANoteOffersUndoAndUndoBringsItBack() = runAppTest {
         val env = HistoryEnv(this)
         env.sessions.saveTimenote(testNote("a", title = "Morning pages"))
-        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        val offers = mutableListOf<com.oblutack.timenote.data.repository.UndoDelete>()
         backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
 
         env.vm.requestDelete(env.sessions.getTimenoteById("a")!!)
@@ -305,7 +360,7 @@ class HistoryViewModelTest {
         env.sessions.saveTimenote(testNote("parent"))
         env.sessions.saveTimenote(testNote("child", "parent"))
         env.sessions.saveTimenote(testNote("grandchild", "child"))
-        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        val offers = mutableListOf<com.oblutack.timenote.data.repository.UndoDelete>()
         backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
 
         env.vm.requestDelete(env.sessions.getTimenoteById("parent")!!)
@@ -321,7 +376,7 @@ class HistoryViewModelTest {
         val env = HistoryEnv(this)
         env.sessions.saveTimenote(testNote("parent"))
         env.sessions.saveTimenote(testNote("child", "parent"))
-        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        val offers = mutableListOf<com.oblutack.timenote.data.repository.UndoDelete>()
         backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
 
         env.vm.requestDelete(env.sessions.getTimenoteById("parent")!!)
@@ -335,7 +390,7 @@ class HistoryViewModelTest {
         val env = HistoryEnv(this)
         env.sessions.saveTimenote(testNote("a"))
         env.sessions.saveTimenote(testNote("b"))
-        val offers = mutableListOf<HistoryViewModel.UndoDelete>()
+        val offers = mutableListOf<com.oblutack.timenote.data.repository.UndoDelete>()
         backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
 
         val a = env.sessions.getTimenoteById("a")!!

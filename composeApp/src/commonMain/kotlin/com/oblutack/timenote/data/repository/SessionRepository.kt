@@ -141,6 +141,15 @@ class SessionRepository(
     // --- TIMENOTES ---
 
     /** Saves a newly recorded timenote. */
+    private val _undoOffers = MutableSharedFlow<UndoDelete>(extraBufferCapacity = 8)
+
+    /** Emits after sessions were moved to the trash. The app shows the message with Undo wherever the person is. */
+    val undoOffers: SharedFlow<UndoDelete> = _undoOffers.asSharedFlow()
+
+    fun offerUndo(offer: UndoDelete) {
+        _undoOffers.tryEmit(offer)
+    }
+
     fun saveTimenote(timenote: Timenote) {
         write {
             val time = now()

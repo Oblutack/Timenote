@@ -212,7 +212,8 @@ fun TimerScreen(
             }
         } else {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val ringSize = minOf(maxWidth, 260.dp, windowHeight * 0.24f)
+                // The "Branched from" banner above takes room too, so the ring is smaller then and the timeline keeps a place
+                val ringSize = minOf(maxWidth, 260.dp, windowHeight * (if (state.parentSessionTitle != null) 0.17f else 0.24f))
                 TimerRing(progress = ringProgress, color = ringColor, breathing = state.isRunning && !state.isPaused, size = ringSize) {
                     clockColumn(Modifier.width(ringSize * 0.74f))
                 }

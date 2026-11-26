@@ -196,19 +196,6 @@ fun HistoryScreen(
     val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
     val haptic = LocalHapticFeedback.current
 
-    // After a delete: a short message with Undo, instead of an instant, silent loss
-    val snackbar = com.oblutack.timenote.LocalSnackbarHost.current
-    LaunchedEffect(Unit) {
-        viewModel.undoDelete.collect { undo ->
-            val result = snackbar.showSnackbar(
-                message = undo.message,
-                actionLabel = "Undo",
-                duration = androidx.compose.material3.SnackbarDuration.Long
-            )
-            if (result == androidx.compose.material3.SnackbarResult.ActionPerformed) viewModel.restoreTimenotes(undo.ids)
-        }
-    }
-
     Column(
         modifier = Modifier
             .fillMaxSize()
