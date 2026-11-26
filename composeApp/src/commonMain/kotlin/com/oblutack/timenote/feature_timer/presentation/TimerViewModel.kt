@@ -126,6 +126,10 @@ class TimerViewModel(
     /** Emits after a waypoint was deleted, so the screen can offer Undo. */
     val waypointDeleted = _waypointDeleted.asSharedFlow()
 
+    private val _interruptionLogged = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 4)
+    /** Emits the id of an entry the Interrupted button just added, so the screen can offer a short Undo. */
+    val interruptionLogged = _interruptionLogged.asSharedFlow()
+
     // The folder and tags of the last saved session are put on the chips once, when the app opens
     private var prefilledFromLastSession = false
 
@@ -299,6 +303,8 @@ class TimerViewModel(
             is TimerAction.DismissAddNoteDialog -> if (_state.value.editingNoteId != null) finishEdit() else _state.update { it.copy(isAddNoteDialogOpen = false) }
             is TimerAction.EditNote -> startEditingNote(action.id)
             is TimerAction.DeleteWaypoint -> deleteWaypoint(action.id)
+            is TimerAction.LogInterruption -> logInterruption()
+            is TimerAction.UndoInterruption -> deleteWaypoint(action.id, offerUndo = false)
             is TimerAction.RestoreWaypoint -> restoreWaypoint(action.deleted)
             is TimerAction.UpdateDialogNoteText -> _state.update { it.copy(dialogNoteText = action.text) }
             is TimerAction.UpdateDialogNoteColor -> _state.update { it.copy(dialogNoteColor = action.color) }
@@ -656,7 +662,17 @@ class TimerViewModel(
         ) }
     }
 
-    private fun deleteWaypoint(id: String) {
+    /**
+     * "Interrupted" is an ordinary note with a fixed colour, so older versions of the app (on a second phone) show it as a
+     * note and the stored format does not change. Nothing is paused: the clock keeps running.
+     */
+    private fun logInterruption() {
+        if (!_state.value.isRunning) return
+        val id = addEventToTimeline("Note: Interrupted", EventType.NOTE, Palette.Coral)
+        _interruptionLogged.tryEmit(id)
+    }
+
+    private fun deleteWaypoint(id: String, offerUndo: Boolean = true) {
         val current = _state.value
         if (!current.isRunning) return
         val index = current.timelineEvents.indexOfFirst { it.id == id }
@@ -666,7 +682,7 @@ class TimerViewModel(
         val deleted = DeletedWaypoint(event, olderCount = current.timelineEvents.size - index - 1)
         _state.update { it.copy(timelineEvents = reflag(it.timelineEvents.filterNot { e -> e.id == id })) }
         backupCurrentState()
-        _waypointDeleted.tryEmit(deleted)
+        if (offerUndo) _waypointDeleted.tryEmit(deleted)
     }
 
     /** Puts a deleted waypoint back where it was, even when newer entries were added since. */
@@ -766,7 +782,7 @@ class TimerViewModel(
         }
     }
 
-    private fun addEventToTimeline(title: String, type: EventType, color: Color? = null, audioPath: String? = null) {
+    private fun addEventToTimeline(title: String, type: EventType, color: Color? = null, audioPath: String? = null): String {
         val now = now()
         val totalElapsedSeconds = clock.elapsedSeconds(now)
 
@@ -789,6 +805,7 @@ class TimerViewModel(
         }
 
         backupCurrentState()
+        return newEvent.id
     }
 
     private fun backupCurrentState() {
@@ -856,5 +873,8 @@ sealed class TimerAction {
     /** Long-press menu on a note of the running session. */
     data class EditNote(val id: String) : TimerAction()
     data class DeleteWaypoint(val id: String) : TimerAction()
+    /** The Interrupted button: a note at this moment, without pausing. */
+    data object LogInterruption : TimerAction()
+    data class UndoInterruption(val id: String) : TimerAction()
     data class RestoreWaypoint(val deleted: DeletedWaypoint) : TimerAction()
 }

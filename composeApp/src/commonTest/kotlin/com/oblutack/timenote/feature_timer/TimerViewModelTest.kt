@@ -583,6 +583,97 @@ class TimerViewModelTest {
         }
     }
 
+    // --- the Interrupted button (F31) ---
+
+    @Test fun interruptedAddsAFixedNoteAtThisMomentAndTheClockKeepsRunning() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(90_000)
+            vm.onAction(TimerAction.LogInterruption)
+
+            val entry = state.timelineEvents.first()
+            assertEquals("Note: Interrupted", entry.title)
+            assertEquals(EventType.NOTE, entry.type)
+            assertEquals(com.oblutack.timenote.ui.theme.Palette.Coral, entry.color)
+            assertEquals("00:01:30", entry.timestamp)
+            assertTrue(state.isRunning)
+            assertFalse(state.isPaused, "an interruption does not pause the session")
+
+            advance(30_000)
+            vm.onAction(TimerAction.End)
+            assertEquals(120, state.summary!!.activeSeconds, "all of it counts as work time")
+            assertEquals(1, state.summary!!.noteCount)
+        }
+    }
+
+    @Test fun interruptedDoesNothingWhenNoSessionRuns() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.LogInterruption)
+            assertTrue(state.timelineEvents.isEmpty())
+            vm.onAction(TimerAction.Start)
+            advance(1_000)
+            vm.onAction(TimerAction.End)
+            val before = state.timelineEvents
+            vm.onAction(TimerAction.LogInterruption)
+            assertEquals(before, state.timelineEvents, "not once the session has ended either")
+        }
+    }
+
+    @Test fun severalInterruptionsAreAllKept() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.LogInterruption)
+            advance(10_000)
+            vm.onAction(TimerAction.LogInterruption)
+            assertEquals(2, state.timelineEvents.count { it.title == "Note: Interrupted" })
+        }
+    }
+
+    @Test fun theUndoOfAnInterruptionRemovesItWithoutAnotherUndoOffer() = runAppTest {
+        timerTest {
+            val logged = mutableListOf<String>()
+            val deleted = mutableListOf<com.oblutack.timenote.feature_timer.domain.DeletedWaypoint>()
+            vm.interruptionLogged.onEach { logged += it }.launchIn(backgroundScope)
+            vm.waypointDeleted.onEach { deleted += it }.launchIn(backgroundScope)
+            advance(0)
+
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.LogInterruption)
+            advance(0)
+            assertEquals(listOf(state.timelineEvents.first().id), logged)
+
+            vm.onAction(TimerAction.UndoInterruption(logged.single()))
+            advance(0)
+            assertTrue(state.timelineEvents.none { it.title == "Note: Interrupted" })
+            assertTrue(deleted.isEmpty(), "taking the tap back is not a deletion that needs its own Undo")
+        }
+    }
+
+    @Test fun anInterruptionCanBeEditedToSayWhatItWas() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.LogInterruption)
+            val entry = state.timelineEvents.first()
+            vm.onAction(TimerAction.EditNote(entry.id))
+            assertEquals("Interrupted", state.dialogNoteText)
+            vm.onAction(TimerAction.UpdateDialogNoteText("Interrupted: phone call"))
+            vm.onAction(TimerAction.SaveNote)
+            assertEquals("Note: Interrupted: phone call", state.timelineEvents.first { it.id == entry.id }.title)
+        }
+    }
+
+    @Test fun anInterruptionIsSavedWithTheSession() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.onAction(TimerAction.LogInterruption)
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SaveSession)
+            assertTrue(sessions.timenotes.value.single().timelineEvents.any { it.title == "Note: Interrupted" })
+        }
+    }
+
     @Test fun endingAnIdleTimerDoesNothing() = runAppTest {
         timerTest {
             vm.onAction(TimerAction.End)

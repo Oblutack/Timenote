@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_timer.presentation
 
+import com.oblutack.timenote.ui.theme.Palette
+import androidx.compose.material.icons.filled.Bolt
 import com.oblutack.timenote.ui.haptics.rememberHaptics
 import com.oblutack.timenote.ui.haptics.Beat
 import com.oblutack.timenote.feature_timer.domain.canEditWhileRunning
@@ -210,7 +212,7 @@ fun TimerScreen(
             }
         } else {
             BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val ringSize = minOf(maxWidth, 260.dp, windowHeight * 0.28f)
+                val ringSize = minOf(maxWidth, 260.dp, windowHeight * 0.24f)
                 TimerRing(progress = ringProgress, color = ringColor, breathing = state.isRunning && !state.isPaused, size = ringSize) {
                     clockColumn(Modifier.width(ringSize * 0.74f))
                 }
@@ -414,10 +416,12 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
+        // The quick-capture buttons; they wrap onto a second line on narrow screens or with large text
+        @OptIn(ExperimentalLayoutApi::class)
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+            horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedButton(
                 onClick = { viewModel.onAction(TimerAction.OpenAddNoteDialog) },
@@ -429,7 +433,23 @@ fun TimerScreen(
                 Text("+ Add Note")
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            // A call, a colleague: noted at this moment, one tap, the clock keeps running
+            if (state.isRunning) {
+                OutlinedButton(
+                    onClick = { haptics.play(Beat.Tick); viewModel.onAction(TimerAction.LogInterruption) },
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+                    border = BorderStroke(1.dp, TextSecondary.copy(alpha = 0.5f)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Bolt,
+                        contentDescription = null,
+                        tint = Palette.Coral,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Interrupted")
+                }
+            }
 
             if (!state.isRecordingVoiceMemo) {
                 OutlinedButton(
@@ -496,7 +516,7 @@ fun TimerScreen(
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
 
         Column(
@@ -580,6 +600,14 @@ fun TimerScreen(
         viewModel.waypointDeleted.collect { deleted ->
             val result = snackbar.showSnackbar(message = "Waypoint deleted", actionLabel = "Undo", duration = SnackbarDuration.Long)
             if (result == SnackbarResult.ActionPerformed) viewModel.onAction(TimerAction.RestoreWaypoint(deleted))
+        }
+    }
+
+    // After "Interrupted": a short message with Undo, for a tap that was a mistake
+    LaunchedEffect(Unit) {
+        viewModel.interruptionLogged.collect { id ->
+            val result = snackbar.showSnackbar(message = "Interruption noted", actionLabel = "Undo", duration = SnackbarDuration.Short)
+            if (result == SnackbarResult.ActionPerformed) viewModel.onAction(TimerAction.UndoInterruption(id))
         }
     }
 

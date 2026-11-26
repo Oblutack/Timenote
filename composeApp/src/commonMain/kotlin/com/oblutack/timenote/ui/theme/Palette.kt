@@ -13,6 +13,8 @@ object Palette {
     val Green = Color(0xFF4CAF50)
     val Orange = Color(0xFFFF9800)
     val Purple = Color(0xFF9C27B0)
+    /** The colour of an interruption in the timeline: warm, but not the red of delete and errors. */
+    val Coral = Color(0xFFFF7043)
     val Red = Color(0xFFE53935)
     val Cyan = Color(0xFF00BCD4)
     /** A calm amber for time off the task. Kept apart from the saturated tag orange. */
