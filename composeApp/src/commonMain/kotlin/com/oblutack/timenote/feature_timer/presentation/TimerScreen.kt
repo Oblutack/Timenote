@@ -237,30 +237,8 @@ fun TimerScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start
-        ) {
-            Box(
-                modifier = Modifier
-                    .clip(TnShape.Pill)
-                    .background(if (state.selectedCategories.isNotEmpty()) SurfaceDark else Color.Transparent)
-                    .border(1.dp, TextSecondary.copy(alpha = 0.5f), TnShape.Pill)
-                    .clickable { viewModel.onAction(TimerAction.ToggleTagsRowVisibility) }
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Text(
-                    text = when {
-                        state.isTagsRowVisible -> "- Tags"
-                        state.selectedCategories.isNotEmpty() -> "${state.selectedCategories.size} Tags Selected"
-                        else -> "+ Tags"
-                    },
-                    color = if (state.selectedCategories.isNotEmpty() && !state.isTagsRowVisible) TextPrimary else TextSecondary,
-                    fontSize = TnType.Caption,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
+        // The folder and tags of this session, filled in from the last one
+        SessionChips(state = state, onAction = viewModel::onAction)
 
         Spacer(modifier = Modifier.height(8.dp))
 

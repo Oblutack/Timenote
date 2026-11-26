@@ -105,6 +105,9 @@ class TimerViewModel(
     private var pendingRestoreFolderId: String? = null
     private var pendingRestoreCategoryIds: List<String> = emptyList()
 
+    // The folder and tags of the last saved session are put on the chips once, when the app opens
+    private var prefilledFromLastSession = false
+
     // The session currently shown as "your last timenote", so the label can follow its deletion.
     // lastSessionSeen guards against the short gap between saving and the list showing the new note.
     private var lastSessionId: String? = null
@@ -134,6 +137,11 @@ class TimerViewModel(
         viewModelScope.launch {
             sessionRepository.timenotes.collect { notes ->
                 if (_state.value.isRunning || _state.value.isPaused) return@collect
+
+                if (!prefilledFromLastSession && notes.isNotEmpty()) {
+                    prefilledFromLastSession = true
+                    prefillFromLastSession(notes.first())
+                }
 
                 if (lastSessionId != null && notes.any { it.id == lastSessionId }) lastSessionSeen = true
                 // The session shown as "last timenote" was deleted (it had been in the list before)
@@ -394,6 +402,25 @@ class TimerViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * A new session starts with the folder and tags of the last one (the same work again is one tap on Start). Only when
+     * nothing has been chosen yet, so a folder the person came from ("Start session" in a folder) is never replaced.
+     */
+    private fun prefillFromLastSession(last: Timenote) {
+        val now = _state.value
+        if (now.isRunning || now.isPaused || now.selectedCategories.isNotEmpty() || now.selectedFolder != null) return
+
+        val knownTags = sessionRepository.tags.value
+        val knownFolders = sessionRepository.folders.value
+        val tagIds = last.tags.map { it.id }
+        val tags = tagIds.mapNotNull { id -> knownTags.find { it.id == id } }
+        val folder = knownFolders.find { it.id == last.folderId }
+        // When the tag or folder lists have not loaded yet, the collectors above pick the ids up as they arrive
+        if (knownTags.isEmpty()) pendingRestoreCategoryIds = tagIds
+        if (folder == null && knownFolders.isEmpty()) pendingRestoreFolderId = last.folderId
+        _state.update { it.copy(selectedCategories = tags, selectedFolder = folder) }
     }
 
     private fun startTimer() {

@@ -220,6 +220,92 @@ class TimerViewModelTest {
         }
     }
 
+    // --- the chips are filled in from the last session ---
+
+    private fun com.oblutack.timenote.data.repository.SessionRepository.saveLastSession(folderId: String?, tagIds: List<String>) {
+        saveTimenote(
+            com.oblutack.timenote.testutil.testNote("last", createdAt = 5_000L)
+                .copy(folderId = folderId, tags = tagIds.map { id -> testTag(id, id) })
+        )
+    }
+
+    @Test fun aNewSessionStartsWithTheFolderAndTagsOfTheLastOne() = runAppTest {
+        timerTest {
+            sessions.saveFolder(testFolder("writing"))
+            sessions.saveTag(testTag("focus", "Focus"))
+            sessions.saveLastSession("writing", listOf("focus"))
+            vm
+            advance(0)
+
+            assertEquals("writing", state.selectedFolder?.id)
+            assertEquals(listOf("focus"), state.selectedCategories.map { it.id })
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            assertEquals("writing", sessions.timenotes.value.first { it.id != "last" }.folderId, "and they are saved with the new session")
+        }
+    }
+
+    @Test fun withoutAnyEarlierSessionNothingIsChosen() = runAppTest {
+        timerTest {
+            vm
+            advance(0)
+            assertNull(state.selectedFolder)
+            assertTrue(state.selectedCategories.isEmpty())
+        }
+    }
+
+    @Test fun aFolderTheSessionIsStartedFromIsNotReplaced() = runAppTest {
+        timerTest {
+            sessions.saveFolder(testFolder("writing"))
+            sessions.saveFolder(testFolder("reading"))
+            sessions.saveLastSession("writing", emptyList())
+            vm.onAction(TimerAction.PrepareInFolder("reading", null))
+            advance(0)
+            assertEquals("reading", state.selectedFolder?.id)
+        }
+    }
+
+    @Test fun clearingTheChipsIsNotUndoneWhenMoreSessionsArrive() = runAppTest {
+        timerTest {
+            sessions.saveTag(testTag("focus", "Focus"))
+            sessions.saveLastSession(null, listOf("focus"))
+            vm
+            advance(0)
+            assertEquals(1, state.selectedCategories.size)
+
+            vm.onAction(TimerAction.ToggleCategory(state.selectedCategories.single()))
+            sessions.saveTimenote(com.oblutack.timenote.testutil.testNote("other", createdAt = 9_000L))
+            advance(0)
+            assertTrue(state.selectedCategories.isEmpty(), "the person cleared it; the list changing must not bring it back")
+        }
+    }
+
+    @Test fun aDeletedTagOrFolderOfTheLastSessionIsSimplyLeftOut() = runAppTest {
+        timerTest {
+            sessions.saveLastSession("gone-folder", listOf("gone-tag"))
+            vm
+            advance(0)
+            assertNull(state.selectedFolder)
+            assertTrue(state.selectedCategories.isEmpty())
+        }
+    }
+
+    @Test fun changingTheChipsWhileRunningUpdatesTheRunningSession() = runAppTest {
+        timerTest {
+            sessions.saveFolder(testFolder("writing"))
+            sessions.saveTag(testTag("focus", "Focus"))
+            vm.onAction(TimerAction.Start)
+            advance(1_000)
+            vm.onAction(TimerAction.SelectFolder(sessions.folders.value.first { it.id == "writing" }))
+            vm.onAction(TimerAction.ToggleCategory(sessions.tags.value.first { it.id == "focus" }))
+            advance(0)
+            val backup = Json { ignoreUnknownKeys = true }.decodeFromString<ActiveSessionBackup>(settings.activeSessionBackupFlow.first()!!)
+            assertEquals("writing", backup.selectedFolderId)
+            assertEquals(listOf("focus"), backup.selectedCategoryIds)
+        }
+    }
+
     @Test fun endingAnIdleTimerDoesNothing() = runAppTest {
         timerTest {
             vm.onAction(TimerAction.End)
