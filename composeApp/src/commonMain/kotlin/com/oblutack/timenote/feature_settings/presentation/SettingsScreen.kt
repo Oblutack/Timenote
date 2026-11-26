@@ -458,7 +458,7 @@ fun SettingsScreen(
                         if (enableHaptics) {
                             val diff = kotlin.math.abs(newColor.value.toLong() - lastHapticColorValue.toLong())
                             if (diff > 5000000L) { // A math threshold for "significant color change"
-                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 lastHapticColorValue = newColor.value
                             }
                         }

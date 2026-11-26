@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_timer.presentation
 
+import com.oblutack.timenote.ui.haptics.rememberHaptics
+import com.oblutack.timenote.ui.haptics.Beat
 import com.oblutack.timenote.feature_timer.domain.canEditWhileRunning
 import com.oblutack.timenote.feature_timer.domain.canDeleteWhileRunning
 import com.oblutack.timenote.ui.theme.TnShape
@@ -61,8 +63,7 @@ fun TimerScreen(
     val settingsRepository = LocalAppContainer.current.settingsRepository
     val state by viewModel.state.collectAsState()
 
-    val enableHaptics by settingsRepository.enableHapticsFlow.collectAsState(initial = true)
-    val haptic = LocalHapticFeedback.current
+    val haptics = rememberHaptics()
     val focusManager = LocalFocusManager.current
     val permissions = com.oblutack.timenote.core.LocalPermissionAsker.current
 
@@ -344,7 +345,7 @@ fun TimerScreen(
             if (!state.isRunning) {
                 Button(
                     onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptics.play(Beat.Start)
                         // The timer notification needs permission on newer Android; asked here, the first time, then it starts
                         permissions.notifications { viewModel.onAction(TimerAction.Start) }
                     },
@@ -362,7 +363,7 @@ fun TimerScreen(
             } else if (!state.isPaused) {
                 Button(
                     onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // A lighter tap for pause
+                        haptics.play(Beat.Pause)
                         viewModel.onAction(TimerAction.Pause)
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -378,7 +379,7 @@ fun TimerScreen(
                 }
             } else {
                 Button(
-                    onClick = { viewModel.onAction(TimerAction.Resume) },
+                    onClick = { haptics.play(Beat.Tick); viewModel.onAction(TimerAction.Resume) },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = DefaultAccentColor,
                         contentColor = TnTheme.colors.onAccent
@@ -396,7 +397,7 @@ fun TimerScreen(
             if (state.isRunning) {
                 OutlinedButton(
                     onClick = {
-                        if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        haptics.play(Beat.End)
                         viewModel.onAction(TimerAction.End)
                     },
                     colors = ButtonDefaults.outlinedButtonColors(
@@ -550,7 +551,7 @@ fun TimerScreen(
                             // notes and voice memos of the running session can be edited or deleted
                             onLongClick = if (state.isRunning && event.canDeleteWhileRunning()) {
                                 {
-                                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    haptics.play(Beat.Start)
                                     menuFor = event.id
                                 }
                             } else null
@@ -564,7 +565,7 @@ fun TimerScreen(
                             }
                             DropdownMenuItem(
                                 text = { Text("Delete", color = TnTheme.colors.danger) },
-                                onClick = { menuFor = null; viewModel.onAction(TimerAction.DeleteWaypoint(event.id)) }
+                                onClick = { menuFor = null; haptics.play(Beat.Tick); viewModel.onAction(TimerAction.DeleteWaypoint(event.id)) }
                             )
                         }
                     }

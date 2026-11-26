@@ -380,7 +380,7 @@ fun TimenoteDetailScreen(
                                                 interactionSource = remember { MutableInteractionSource() },
                                                 indication = null
                                             ) {
-                                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                                 val newLines = lines.toMutableList()
                                                 newLines[lineIndex] = if (isChecked) line.replaceFirst(Regex("\\[[xX]\\]"), "[ ]") else line.replaceFirst("[ ]", "[x]")
                                                 val toggled = newLines.joinToString("\n")
@@ -565,7 +565,7 @@ fun TimenoteDetailScreen(
                             .clip(TnShape.Pill)
                             .background(if (!isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 isNotesOnlyView = false
                             }
                             .padding(vertical = 10.dp),
@@ -584,7 +584,7 @@ fun TimenoteDetailScreen(
                             .clip(TnShape.Pill)
                             .background(if (isNotesOnlyView) activeBg else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 isNotesOnlyView = true
                             }
                             .padding(vertical = 10.dp),

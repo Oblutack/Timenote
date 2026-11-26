@@ -272,7 +272,7 @@ fun HistoryScreen(
                             .clip(TnShape.Pill)
                             .background(if (selectedTab == 0) TnTheme.colors.surfaceRaised else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick) // <-- ADD THIS
                                 onTabSelected(0)
                             },
 
@@ -292,7 +292,7 @@ fun HistoryScreen(
                             .clip(TnShape.Pill)
                             .background(if (selectedTab == 1) TnTheme.colors.surfaceRaised else Color.Transparent)
                             .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) // <-- ADD THIS
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick) // <-- ADD THIS
                                 onTabSelected(1)
                             },
 

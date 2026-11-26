@@ -1,4 +1,6 @@
 package com.oblutack.timenote.feature_timer.presentation
+import com.oblutack.timenote.ui.haptics.rememberHaptics
+import com.oblutack.timenote.ui.haptics.Beat
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TagColorChoices
 import com.oblutack.timenote.ui.theme.TnTheme
@@ -49,6 +51,7 @@ fun AddNoteSheet(
     customColors: List<Long>,
     onAction: (TimerAction) -> Unit
 ) {
+        val haptics = rememberHaptics()
         val noteFocus = remember { FocusRequester() }
         LaunchedEffect(Unit) { noteFocus.requestFocus() } // ready to type as soon as the sheet opens
 
@@ -113,7 +116,7 @@ fun AddNoteSheet(
                         Text("Cancel", color = TextSecondary)
                     }
                     Button(
-                        onClick = { onAction(TimerAction.SaveNote) },
+                        onClick = { haptics.play(Beat.Tick); onAction(TimerAction.SaveNote) },
                         modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                     ) {
@@ -146,6 +149,7 @@ fun SessionSummarySheet(
     onAction: (TimerAction) -> Unit
 ) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        val haptics = rememberHaptics()
         var menuOpen by remember { mutableStateOf(false) }
         var confirmDiscard by remember { mutableStateOf(false) }
 
@@ -173,7 +177,7 @@ fun SessionSummarySheet(
                         DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = SurfaceDark) {
                             DropdownMenuItem(
                                 text = { Text("Keep going", color = TextPrimary) },
-                                onClick = { menuOpen = false; onAction(TimerAction.KeepGoing) }
+                                onClick = { menuOpen = false; haptics.play(Beat.Tick); onAction(TimerAction.KeepGoing) }
                             )
                             DropdownMenuItem(
                                 text = { Text("Discard session", color = TnTheme.colors.danger) },
