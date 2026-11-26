@@ -157,8 +157,8 @@ class TimerViewModelTest {
             advance(30_000)
             vm.onAction(TimerAction.End)
 
-            assertTrue(state.isCategoryPopupOpen, "no tags selected, so the save popup is shown")
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            assertNotNull(state.summary, "the summary is shown every time a session ends")
+            vm.onAction(TimerAction.SaveSession)
 
             val saved = sessions.timenotes.value.single()
             assertEquals("Deep work", saved.title)
@@ -176,7 +176,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.Start)
             advance(5_000)
             vm.onAction(TimerAction.End)
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            vm.onAction(TimerAction.SaveSession)
             assertEquals("Untitled Session", sessions.timenotes.value.single().title)
         }
     }
@@ -195,7 +195,7 @@ class TimerViewModelTest {
         }
     }
 
-    @Test fun endingWithTagsSelectedSavesWithoutAsking() = runAppTest {
+    @Test fun endingWithTagsSelectedStillShowsTheSummaryAndSavesThemOnSave() = runAppTest {
         timerTest {
             sessions.saveTag(testTag("focus", "Focus"))
             vm.onAction(TimerAction.Start)
@@ -203,7 +203,10 @@ class TimerViewModelTest {
             advance(10_000)
             vm.onAction(TimerAction.End)
 
-            assertFalse(state.isCategoryPopupOpen)
+            assertNotNull(state.summary)
+            assertTrue(sessions.timenotes.value.isEmpty(), "nothing is saved until the summary is left")
+            vm.onAction(TimerAction.SaveSession)
+            assertNull(state.summary)
             assertEquals(listOf("Focus"), sessions.timenotes.value.single().tags.map { it.name })
         }
     }
@@ -215,7 +218,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.SelectFolder(sessions.folders.value.single()))
             advance(10_000)
             vm.onAction(TimerAction.End)
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            vm.onAction(TimerAction.SaveSession)
             assertEquals("writing", sessions.timenotes.value.single().folderId)
         }
     }
@@ -242,6 +245,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.Start)
             advance(5_000)
             vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SaveSession)
             assertEquals("writing", sessions.timenotes.value.first { it.id != "last" }.folderId, "and they are saved with the new session")
         }
     }
@@ -306,10 +310,139 @@ class TimerViewModelTest {
         }
     }
 
+    // --- the summary at the end of a session (F9, F10) ---
+
+    @Test fun theSummaryShowsFocusBreaksAndNotes() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(60_000)
+            vm.onAction(TimerAction.Pause)
+            advance(20_000)
+            vm.onAction(TimerAction.Resume)
+            advance(40_000)
+            vm.onAction(TimerAction.OpenAddNoteDialog)
+            vm.onAction(TimerAction.UpdateDialogNoteText("an idea"))
+            vm.onAction(TimerAction.SaveNote)
+            vm.onAction(TimerAction.End)
+
+            val summary = state.summary!!
+            assertEquals(100, summary.activeSeconds)
+            assertEquals(20, summary.pauseSeconds)
+            assertEquals(120, summary.totalSeconds)
+            assertEquals(1, summary.noteCount)
+        }
+    }
+
+    @Test fun closingTheSummaryNeverLosesTheSession() = runAppTest {
+        timerTest {
+            sessions.saveTag(testTag("focus", "Focus"))
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.ToggleCategory(sessions.tags.value.first { it.id == "focus" }))
+            advance(10_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SaveSession) // what swiping the sheet away does
+            val saved = sessions.timenotes.value.single()
+            assertEquals(listOf("Focus"), saved.tags.map { it.name }, "the tags chosen are kept, not dropped")
+            assertEquals(10, saved.activeSeconds)
+        }
+    }
+
+    @Test fun theBackupStaysUntilTheSessionIsSavedSoAKillDuringTheSummaryLosesNothing() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(10_000)
+            vm.onAction(TimerAction.End)
+            assertNotNull(settings.activeSessionBackupFlow.first(), "still there while the summary is open")
+            vm.onAction(TimerAction.SaveSession)
+            assertNull(settings.activeSessionBackupFlow.first())
+        }
+    }
+
+    @Test fun aTitleChangedInTheSummaryIsSavedAndShownInTheEndEvent() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(10_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.UpdateSessionTitle("Renamed"))
+            vm.onAction(TimerAction.SaveSession)
+            val saved = sessions.timenotes.value.single()
+            assertEquals("Renamed", saved.title)
+            assertEquals("Session Ended: Renamed", saved.timelineEvents.first { it.type == EventType.END }.title)
+        }
+    }
+
+    @Test fun keepGoingTakesTheEndBackAndCountsTheGapAsABreak() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(60_000)
+            vm.onAction(TimerAction.End)
+            advance(15_000) // the summary was open for 15 s
+            vm.onAction(TimerAction.KeepGoing)
+
+            assertNull(state.summary)
+            assertTrue(state.isRunning)
+            assertFalse(state.isPaused)
+            assertTrue(state.timelineEvents.none { it.type == EventType.END }, "the end is gone from the timeline")
+            assertEquals("Resumed (Break was 00:00:15)", state.timelineEvents.first().title)
+            assertEquals(2, service.startCalls, "the service is started again")
+
+            advance(30_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SaveSession)
+            val saved = sessions.timenotes.value.single()
+            assertEquals(90, saved.activeSeconds, "60 s before and 30 s after")
+            assertEquals(15, saved.pauseSeconds, "the gap is a break, not work")
+        }
+    }
+
+    @Test fun keepGoingAfterEndingWhilePausedStaysPaused() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(60_000)
+            vm.onAction(TimerAction.Pause)
+            advance(10_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.KeepGoing)
+            assertTrue(state.isRunning)
+            assertTrue(state.isPaused)
+            assertNotNull(settings.activeSessionBackupFlow.first())
+        }
+    }
+
+    @Test fun discardingThrowsTheSessionAwayAndKeepsTheChips() = runAppTest {
+        timerTest {
+            sessions.saveTag(testTag("focus", "Focus"))
+            vm.onAction(TimerAction.UpdateSessionTitle("Oops"))
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.ToggleCategory(sessions.tags.value.first { it.id == "focus" }))
+            advance(5_000)
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.DiscardSession)
+
+            assertTrue(sessions.timenotes.value.isEmpty(), "nothing is saved")
+            assertNull(state.summary)
+            assertFalse(state.isRunning)
+            assertEquals("", state.sessionTitle)
+            assertEquals(listOf("focus"), state.selectedCategories.map { it.id }, "the chips stay for the next session")
+            assertNull(settings.activeSessionBackupFlow.first(), "and a restart does not bring it back")
+        }
+    }
+
+    @Test fun savingOrDiscardingWithoutASummaryDoesNothing() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.onAction(TimerAction.SaveSession)
+            vm.onAction(TimerAction.DiscardSession)
+            vm.onAction(TimerAction.KeepGoing)
+            assertTrue(state.isRunning)
+            assertTrue(sessions.timenotes.value.isEmpty())
+        }
+    }
+
     @Test fun endingAnIdleTimerDoesNothing() = runAppTest {
         timerTest {
             vm.onAction(TimerAction.End)
-            assertFalse(state.isCategoryPopupOpen)
+            assertNull(state.summary)
             assertTrue(sessions.timenotes.value.isEmpty())
         }
     }
@@ -402,7 +535,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.Start)
             advance(5_000)
             vm.onAction(TimerAction.End)
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            vm.onAction(TimerAction.SaveSession)
 
             val child = sessions.timenotes.value.first { it.id != "parent" }
             assertEquals("parent", child.parentTimenoteId)
@@ -424,7 +557,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.Start)
             advance(5_000)
             vm.onAction(TimerAction.End)
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            vm.onAction(TimerAction.SaveSession)
 
             // the branch is finished: no banner, and a fresh session must not claim to be a branch
             assertNull(state.parentSessionTitle)
@@ -444,7 +577,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.Start)
             advance(5_000)
             vm.onAction(TimerAction.End)
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            vm.onAction(TimerAction.SaveSession)
             assertNull(state.parentTimenoteId)
 
             // the Timer tab is re-entered (saved state restores the same arguments): must be ignored
@@ -486,7 +619,7 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.Start)
             advance(5_000)
             vm.onAction(TimerAction.End)
-            vm.onAction(TimerAction.SkipCategoriesAndSave)
+            vm.onAction(TimerAction.SaveSession)
             assertEquals("Untitled Session", state.lastSessionTitle)
 
             sessions.deleteTimenote(sessions.timenotes.value.single().id)

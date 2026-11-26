@@ -30,6 +30,11 @@ import kotlinx.coroutines.flow.Flow
 import com.oblutack.timenote.core.newId
 import com.oblutack.timenote.core.AudioFiles
 
+/** What the summary shows about a session that just ended. */
+data class SessionSummary(val activeSeconds: Int, val pauseSeconds: Int, val noteCount: Int) {
+    val totalSeconds: Int get() = activeSeconds + pauseSeconds
+}
+
 data class TimerState(
     val displayTime: String = "00:00:00",
     val currentPauseTime: String = "00:00:00",
@@ -47,7 +52,8 @@ data class TimerState(
     val dialogNoteColor: Color = Palette.Blue,
 
     val selectedCategories: List<TimenoteFolder> = emptyList(),
-    val isCategoryPopupOpen: Boolean = false,
+    /** Set while the summary is open: the session has ended but is not saved yet. */
+    val summary: SessionSummary? = null,
     val availableTags: List<TimenoteFolder> = emptyList(),
 
     val isCreateTagDialogOpen: Boolean = false,
@@ -99,6 +105,8 @@ class TimerViewModel(
 
     private var frozenActiveSeconds = 0
     private var frozenPauseSeconds = 0
+    // When End was pressed: "Keep going" counts the time since then as a break
+    private var endedAtMillis = 0L
 
     // Folder/tag ids from a restored backup. The repository flows may not have emitted yet
     // when the backup is read, so these are resolved whenever the flows deliver data.
@@ -293,8 +301,9 @@ class TimerViewModel(
                 }
                 if (_state.value.isRunning) backupCurrentState()
             }
-            is TimerAction.SkipCategoriesAndSave -> executeSave(emptyList())
-            is TimerAction.ConfirmCategoriesAndSave -> executeSave(_state.value.selectedCategories)
+            is TimerAction.SaveSession -> if (_state.value.summary != null) executeSave(_state.value.selectedCategories)
+            is TimerAction.KeepGoing -> keepGoing()
+            is TimerAction.DiscardSession -> discardSession()
 
             is TimerAction.OpenCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = true) }
             is TimerAction.CloseCreateTagDialog -> _state.update { it.copy(isCreateTagDialogOpen = false, newTagName = "", newTagDescription = "") }
@@ -495,6 +504,8 @@ class TimerViewModel(
         frozenPauseSeconds = clock.pauseSeconds(now)
         // -----------------------------------------------------------------------
 
+        endedAtMillis = now
+
         // 1. SET TO FALSE IMMEDIATELY so backups are blocked!
         _state.update { it.copy(isRunning = false, isPaused = false) }
 
@@ -502,18 +513,67 @@ class TimerViewModel(
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
         addEventToTimeline("Session Ended: $title", EventType.END)
 
-        // 3. Nuke the backup permanently
-        viewModelScope.launch { settingsRepository.saveActiveSession(null) }
-
-        if (forceSave || _state.value.selectedCategories.isNotEmpty()) {
+        // The backup of the running session stays until the session is saved or discarded: if the app is killed while
+        // the summary is open, the session comes back instead of being lost.
+        if (forceSave) {
             executeSave(_state.value.selectedCategories)
         } else {
-            _state.update { it.copy(isCategoryPopupOpen = true) }
+            _state.update { it.copy(summary = SessionSummary(frozenActiveSeconds, frozenPauseSeconds, noteCount(it.timelineEvents))) }
         }
+    }
+
+    private fun noteCount(events: List<TimelineEvent>): Int =
+        events.count { it.type == EventType.NOTE && !it.title.startsWith("Branched from:") }
+
+    /**
+     * Takes the end back. The time between End and now counts as a break (the session was not worked on), unless the
+     * session was paused when it ended: then the pause simply goes on.
+     */
+    private fun keepGoing() {
+        if (_state.value.summary == null) return
+        val current = now()
+        val wasPaused = clock.isPaused
+        val timeline = _state.value.timelineEvents.let { events -> if (events.firstOrNull()?.type == EventType.END) events.drop(1) else events }
+        _state.update { it.copy(timelineEvents = timeline, summary = null, isRunning = true, isPaused = wasPaused) }
+
+        if (!wasPaused) {
+            clock.pause(endedAtMillis)
+            val gap = clock.resume(current)
+            addEventToTimeline("Resumed (Break was ${formatTime((gap / 1000).toInt())})", EventType.RESUME)
+        }
+        timerServiceManager.startService()
+        backupCurrentState()
+        startTicking()
+    }
+
+    /** Throws the ended session away: nothing is saved, the backup is removed, the chips stay for the next one. */
+    private fun discardSession() {
+        if (_state.value.summary == null) return
+        viewModelScope.launch { settingsRepository.saveActiveSession(null) }
+        val latest = sessionRepository.timenotes.value.firstOrNull()
+        _state.update { it.copy(
+            summary = null,
+            sessionTitle = "",
+            displayTime = latest?.duration ?: "00:00:00",
+            lastSessionTitle = latest?.title ?: "",
+            timelineEvents = latest?.timelineEvents ?: emptyList(),
+            parentTimenoteId = null,
+            parentWaypointId = null,
+            parentSessionTitle = null,
+            parentWaypointTitle = null
+        ) }
     }
 
     private fun executeSave(categories: List<TimenoteFolder>) {
         val title = _state.value.sessionTitle.ifBlank { "Untitled Session" }
+
+        // Saved: the running-session backup is no longer needed
+        viewModelScope.launch { settingsRepository.saveActiveSession(null) }
+
+        // The title may have been changed in the summary
+        val events = _state.value.timelineEvents.map { e ->
+            if (e.type == EventType.END) e.copy(title = "Session Ended: $title") else e
+        }
 
         val timestampId = newId()
         lastSessionId = timestampId
@@ -531,7 +591,7 @@ class TimerViewModel(
             createdAt = now(),
             // ----------------------------------------------------
             tags = categories,
-            timelineEvents = _state.value.timelineEvents,
+            timelineEvents = events,
             parentTimenoteId = _state.value.parentTimenoteId,
             parentWaypointId = _state.value.parentWaypointId
         )
@@ -539,7 +599,8 @@ class TimerViewModel(
         sessionRepository.saveTimenote(newTimenote)
 
         _state.update { it.copy(
-            isCategoryPopupOpen = false,
+            summary = null,
+            timelineEvents = events,
             selectedCategories = categories,
             lastSessionTitle = title,
             sessionTitle = "",
@@ -686,8 +747,12 @@ sealed class TimerAction {
     data class UpdateDialogNoteColor(val color: Color) : TimerAction()
     data object SaveNote : TimerAction()
     data class ToggleCategory(val category: TimenoteFolder) : TimerAction()
-    data object SkipCategoriesAndSave : TimerAction()
-    data object ConfirmCategoriesAndSave : TimerAction()
+    /** Saves the ended session with the chosen folder and tags (also what closing the summary does: nothing is ever lost). */
+    data object SaveSession : TimerAction()
+    /** From the summary: take the end back and carry on. */
+    data object KeepGoing : TimerAction()
+    /** From the summary: throw the session away (the screen asks first). */
+    data object DiscardSession : TimerAction()
     data object OpenCreateTagDialog : TimerAction()
     data object CloseCreateTagDialog : TimerAction()
     data class UpdateNewTagName(val name: String) : TimerAction()

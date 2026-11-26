@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -123,16 +124,33 @@ fun AddNoteSheet(
         }
 }
 
+/** One number of the summary: a caption over a value. */
+@Composable
+private fun SummaryStat(label: String, value: String, modifier: Modifier = Modifier) {
+    Column(modifier = modifier) {
+        Text(label, color = TextSecondary, fontSize = TnType.Caption)
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(value, color = TextPrimary, fontSize = TnType.Subtitle, fontFamily = TnTheme.mono, fontWeight = FontWeight.Medium)
+    }
+}
+
+/**
+ * Shown every time a session ends. Nothing is saved until here is left: Save saves, closing the sheet saves too (a swipe
+ * must never lose a session), "Keep going" takes the end back and "Discard session" throws the session away (after asking).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SaveTimenoteSheet(
+fun SessionSummarySheet(
     state: TimerState,
+    summary: SessionSummary,
     onAction: (TimerAction) -> Unit
 ) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        var menuOpen by remember { mutableStateOf(false) }
+        var confirmDiscard by remember { mutableStateOf(false) }
 
         ModalBottomSheet(
-            onDismissRequest = { onAction(TimerAction.SkipCategoriesAndSave) },
+            onDismissRequest = { onAction(TimerAction.SaveSession) },
             sheetState = sheetState,
             containerColor = SurfaceDark
         ) {
@@ -142,8 +160,60 @@ fun SaveTimenoteSheet(
                     .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
                     .verticalScroll(rememberScrollState())
             ) {
-                Text("Save Timenote", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Session summary", color = TextPrimary, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Box {
+                        IconButton(onClick = { menuOpen = true }) {
+                            Icon(Icons.Default.MoreVert, contentDescription = "More", tint = TextSecondary)
+                        }
+                        DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = SurfaceDark) {
+                            DropdownMenuItem(
+                                text = { Text("Keep going", color = TextPrimary) },
+                                onClick = { menuOpen = false; onAction(TimerAction.KeepGoing) }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Discard session", color = TnTheme.colors.danger) },
+                                onClick = { menuOpen = false; confirmDiscard = true }
+                            )
+                        }
+                    }
+                }
                 Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = state.sessionTitle,
+                    onValueChange = { onAction(TimerAction.UpdateSessionTitle(it)) },
+                    placeholder = { Text("Untitled Session", color = TextSecondary) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = TnShape.Medium,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = BackgroundDark,
+                        unfocusedContainerColor = BackgroundDark,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary
+                    )
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    SummaryStat("Total", com.oblutack.timenote.core.formatDuration(summary.totalSeconds), Modifier.weight(1f))
+                    SummaryStat("Focus", com.oblutack.timenote.core.formatDuration(summary.activeSeconds), Modifier.weight(1f))
+                    SummaryStat("Breaks", com.oblutack.timenote.core.formatDuration(summary.pauseSeconds), Modifier.weight(1f))
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = if (summary.noteCount == 1) "1 note" else "${summary.noteCount} notes",
+                    color = TextSecondary,
+                    fontSize = TnType.Body
+                )
+                Spacer(modifier = Modifier.height(24.dp))
 
                 // --- NEW: FOLDER SELECTION ---
                 if (state.availableFolders.isNotEmpty()) {
@@ -257,26 +327,36 @@ fun SaveTimenoteSheet(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Save & Skip Buttons
-                Row(
+                Button(
+                    onClick = { onAction(TimerAction.SaveSession) },
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
                 ) {
-                    OutlinedButton(
-                        onClick = { onAction(TimerAction.SkipCategoriesAndSave) },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Skip", color = TextSecondary)
-                    }
-                    Button(
-                        onClick = { onAction(TimerAction.ConfirmCategoriesAndSave) },
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.buttonColors(containerColor = DefaultAccentColor, contentColor = TnTheme.colors.onAccent)
-                    ) {
-                        Text("Save")
-                    }
+                    Text("Save")
                 }
             }
+        }
+
+        if (confirmDiscard) {
+            AlertDialog(
+                onDismissRequest = { confirmDiscard = false },
+                containerColor = SurfaceDark,
+                title = { Text("Discard this session?", color = TextPrimary) },
+                text = {
+                    Text(
+                        "Its time and ${if (summary.noteCount == 1) "1 note" else "${summary.noteCount} notes"} will be thrown away. This cannot be undone.",
+                        color = TextSecondary
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = { confirmDiscard = false; onAction(TimerAction.DiscardSession) }) {
+                        Text("Discard", color = TnTheme.colors.danger)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmDiscard = false }) { Text("Cancel", color = TextSecondary) }
+                }
+            )
         }
 }
 

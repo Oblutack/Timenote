@@ -70,7 +70,7 @@ fun TimerScreen(
     val enableBlur by settingsRepository.enableBackgroundBlurFlow.collectAsState(initial = true)
 
     // 2. Check if ANY popup is open
-    val isPopupOpen = state.isAddNoteDialogOpen || state.isCategoryPopupOpen || state.isCreateTagDialogOpen || state.isManageTagsSheetOpen
+    val isPopupOpen = state.isAddNoteDialogOpen || state.summary != null || state.isCreateTagDialogOpen || state.isManageTagsSheetOpen
 
     // 3. The Premium Physics Animation
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
@@ -542,8 +542,8 @@ fun TimerScreen(
         AddNoteSheet(state = state, customColors = customColors, onAction = viewModel::onAction)
     }
 
-    if (state.isCategoryPopupOpen) {
-        SaveTimenoteSheet(state = state, onAction = viewModel::onAction)
+    state.summary?.let { summary ->
+        SessionSummarySheet(state = state, summary = summary, onAction = viewModel::onAction)
     }
 
     if (state.isCreateTagDialogOpen) {
