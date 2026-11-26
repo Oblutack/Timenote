@@ -34,6 +34,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.FlowRow
+import com.oblutack.timenote.feature_history.domain.identityColor
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.ui.draw.blur
@@ -111,72 +112,107 @@ fun TimerScreen(
             }
         }
 
-        // --- NEW: Smooth Fade-In "Last Session" Label ---
-        // 1. Determine if we should show it
-        val showLastLabel = !state.isRunning && !state.isPaused && state.timelineEvents.isNotEmpty()
+        // The three looks of the timer: ready (idle), running, on a break (paused)
+        val isIdle = !state.isRunning && !state.isPaused
+        val showLastLabel = isIdle && state.timelineEvents.isNotEmpty()
 
-        // 2. Animate the opacity (alpha) from 0f (invisible) to 1f (fully visible)
-        val labelAlpha by androidx.compose.animation.core.animateFloatAsState(
-            targetValue = if (showLastLabel) 1f else 0f,
-            label = "fadeAnimation"
+        // Above the ring: "LAST SESSION" and its title while idle, "ON A BREAK" while paused. The space is always kept,
+        // only the opacity changes, so nothing jumps when the state does.
+        val topLabelAlpha by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (showLastLabel || state.isPaused) 1f else 0f,
+            label = "topLabelFade"
         )
-
-        // 3. Always draw the text to reserve the space, but apply the animated alpha!
+        val lastSessionAlpha by androidx.compose.animation.core.animateFloatAsState(
+            targetValue = if (showLastLabel) 1f else 0f,
+            label = "lastSessionFade"
+        )
         Text(
-            text = "LAST SESSION",
-            color = TextSecondary,
+            text = if (state.isPaused) "ON A BREAK" else "LAST SESSION",
+            color = if (state.isPaused) TnTheme.colors.pause else TextSecondary,
             fontSize = TnType.Body,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.5.sp,
-            modifier = Modifier.alpha(labelAlpha)
+            modifier = Modifier.alpha(topLabelAlpha)
         )
-
-        // --- NEW: Display the actual name of the last session ---
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             // While idle, displayTime holds how long that last session was: shown here, in small type
             text = "${state.lastSessionTitle.ifEmpty { "Untitled Session" }.uppercase()} · ${state.displayTime}",
-            color = TextSecondary,             // <-- Changed to Gray
-            fontSize = TnType.Body,                  // <-- Matched size
-            fontWeight = FontWeight.SemiBold,  // <-- Matched weight
-            letterSpacing = 1.5.sp,            // <-- Matched premium letter spacing
-            modifier = Modifier.alpha(labelAlpha)
-        )
-        // --------------------------------------------------------
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            // Idle: the big clock is a clock at zero, ready to start; it no longer looks like a timer that is still running
-            text = if (showLastLabel) "00:00:00" else state.displayTime,
-            fontSize = 64.sp,
-            fontWeight = FontWeight.Light,
-            fontFamily = TnTheme.mono,
-            color = TextPrimary,
-            // one line always: with a large system font the clock shrinks instead of wrapping
-            maxLines = 1,
-            softWrap = false,
-            autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 64.sp)
+            color = TextSecondary,
+            fontSize = TnType.Body,
+            fontWeight = FontWeight.SemiBold,
+            letterSpacing = 1.5.sp,
+            modifier = Modifier.alpha(lastSessionAlpha)
         )
 
-        // --- NEW: Smooth Fade-In Pause Timer ---
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // The ring: the session's colour while running (grey without a tag), amber on a break, only the track when idle.
+        // One lap is one hour.
+        val ringColor = if (state.isPaused) TnTheme.colors.pause else state.selectedCategories.identityColor(TnTheme.colors.untagged)
+        val ringProgress = when {
+            state.isPaused -> ringFraction(state.pauseSeconds)
+            state.isRunning -> ringFraction(state.elapsedSeconds)
+            else -> null
+        }
         val pauseAlpha by androidx.compose.animation.core.animateFloatAsState(
             targetValue = if (state.isPaused) 1f else 0f,
             label = "pauseFadeAnimation"
         )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "PAUSED: ${state.currentPauseTime}",
-            fontFamily = TnTheme.mono,
-            color = TnTheme.colors.pause,
-            fontSize = TnType.Body,
-            fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.5.sp,
-            modifier = Modifier.alpha(pauseAlpha)
-        )
-        // ---------------------------------------
+        // The clock and what belongs under it. Shared by the ring layout and the plain layout used for large text.
+        val clockColumn: @Composable (Modifier) -> Unit = { clockModifier ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    // Idle: "Ready". Running: the session clock. On a break: the break, large.
+                    text = when {
+                        isIdle -> "Ready"
+                        state.isPaused -> state.currentPauseTime
+                        else -> state.displayTime
+                    },
+                    fontSize = 48.sp,
+                    fontWeight = FontWeight.Light,
+                    fontFamily = if (isIdle) null else TnTheme.mono,
+                    color = when {
+                        isIdle -> TextSecondary
+                        state.isPaused -> TnTheme.colors.pause
+                        else -> TextPrimary
+                    },
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    // one line always: with a large system font the clock shrinks instead of wrapping
+                    maxLines = 1,
+                    softWrap = false,
+                    autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = 48.sp),
+                    modifier = clockModifier
+                )
+                // On a break the session clock stays visible, smaller (it is frozen while paused)
+                Text(
+                    text = "SESSION ${state.displayTime}",
+                    fontFamily = TnTheme.mono,
+                    color = TextSecondary,
+                    fontSize = TnType.Caption,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp,
+                    maxLines = 1,
+                    modifier = Modifier.alpha(pauseAlpha)
+                )
+            }
+        }
+        // With a large system font the ring would push the buttons off the screen, so the clock stands alone then.
+        // On a short screen the ring is smaller.
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val windowHeight = with(density) { androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height.toDp() }
+        if (density.fontScale > RING_MAX_FONT_SCALE) {
+            Box(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
+                clockColumn(Modifier.fillMaxWidth())
+            }
+        } else {
+            BoxWithConstraints(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                val ringSize = minOf(maxWidth, 260.dp, windowHeight * 0.28f)
+                TimerRing(progress = ringProgress, color = ringColor, breathing = state.isRunning && !state.isPaused, size = ringSize) {
+                    clockColumn(Modifier.width(ringSize * 0.74f))
+                }
+            }
+        }
 
         Spacer(modifier = Modifier.height(24.dp))
 

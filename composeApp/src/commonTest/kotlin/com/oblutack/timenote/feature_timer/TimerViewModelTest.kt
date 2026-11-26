@@ -129,6 +129,23 @@ class TimerViewModelTest {
         }
     }
 
+    @Test fun theRingGetsTheClockAndTheBreakAsNumbers() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(90_000)
+            assertEquals(90L, state.elapsedSeconds)
+            assertEquals(0L, state.pauseSeconds)
+            vm.onAction(TimerAction.Pause)
+            advance(20_000)
+            assertEquals(90L, state.elapsedSeconds, "the session clock is frozen while paused")
+            assertEquals(20L, state.pauseSeconds)
+            vm.onAction(TimerAction.Resume)
+            advance(10_000)
+            assertEquals(120L, state.elapsedSeconds, "90 s of work, 20 s of break and 10 s more: the clock counts all of it")
+            assertEquals(0L, state.pauseSeconds)
+        }
+    }
+
     @Test fun endingSavesTimenoteWithActiveAndPauseTime() = runAppTest {
         timerTest {
             vm.onAction(TimerAction.UpdateSessionTitle("Deep work"))

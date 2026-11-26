@@ -68,6 +68,10 @@ interface PlatformTheme {
     @Composable
     fun dynamicColors(dark: Boolean): DynamicColors?
 
+    /** False when the person turned system animations off: nothing may loop or pulse then. */
+    @Composable
+    fun animationsEnabled(): Boolean = true
+
     /** Colour of the status and navigation bars, and whether their icons should be dark (on a light background). */
     fun applySystemBars(background: Color, lightBackground: Boolean)
 }

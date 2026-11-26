@@ -1,5 +1,6 @@
 package com.oblutack.timenote
 
+import androidx.compose.runtime.remember
 import android.app.Activity
 import android.graphics.drawable.ColorDrawable
 import android.os.Build
@@ -33,6 +34,13 @@ class AndroidPlatformTheme(private val activity: Activity) : PlatformTheme {
             accent = scheme.primary,
             onAccent = scheme.onPrimary
         )
+    }
+
+    @Composable
+    override fun animationsEnabled(): Boolean {
+        val resolver = LocalContext.current.contentResolver
+        // Settings > Accessibility > Remove animations sets the animator scale to 0
+        return remember { android.provider.Settings.Global.getFloat(resolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) != 0f }
     }
 
     @Suppress("DEPRECATION")

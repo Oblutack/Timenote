@@ -33,6 +33,9 @@ import com.oblutack.timenote.core.AudioFiles
 data class TimerState(
     val displayTime: String = "00:00:00",
     val currentPauseTime: String = "00:00:00",
+    /** The big clock in seconds (frozen while paused) and the break in progress: what the ring draws. */
+    val elapsedSeconds: Long = 0,
+    val pauseSeconds: Long = 0,
     val isRunning: Boolean = false,
     val isPaused: Boolean = false,
     val sessionTitle: String = "",
@@ -555,7 +558,9 @@ class TimerViewModel(
 
                     _state.update { it.copy(
                         currentPauseTime = formattedPause,
-                        displayTime = formattedFrozenTotal // <-- Now it stops moving!
+                        displayTime = formattedFrozenTotal, // <-- Now it stops moving!
+                        elapsedSeconds = clock.displayElapsedMillis(now) / 1000,
+                        pauseSeconds = clock.currentPauseMillis(now) / 1000
                     ) }
 
                     val pausedKey = "paused|$formattedPause"
@@ -570,7 +575,7 @@ class TimerViewModel(
                     val totalElapsedMillis = clock.displayElapsedMillis(now)
                     val formattedTotal = formatTime((totalElapsedMillis / 1000).toInt())
 
-                    _state.update { it.copy(displayTime = formattedTotal) }
+                    _state.update { it.copy(displayTime = formattedTotal, elapsedSeconds = totalElapsedMillis / 1000, pauseSeconds = 0) }
 
                     // NATIVE MATH: Tell Android OS to count the Total Time too!
                     val baseTimeForOS = now() - totalElapsedMillis
