@@ -1,5 +1,9 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Folder
+import com.oblutack.timenote.ui.components.EmptyState
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.Palette
 import com.oblutack.timenote.ui.theme.TnTheme
@@ -93,6 +97,7 @@ fun HistoryScreen(
     onTrashClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onGraphClick: () -> Unit,
+    onStartSessionClick: () -> Unit,
     viewModel: HistoryViewModel = historyViewModel()
 ) {
     val settingsRepository = LocalAppContainer.current.settingsRepository
@@ -553,20 +558,31 @@ fun HistoryScreen(
 
                     if (finalDisplaySessions.isEmpty()) {
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = when {
-                                        isCalendarView && selectedDate != null -> "No sessions recorded on this date."
-                                        searchQuery.isNotBlank() || selectedFilterTags.isNotEmpty() -> "No sessions match your search or filters."
-                                        else -> "No sessions yet. Start one on the Timer tab."
-                                    },
-                                    color = TextSecondary,
-                                    fontSize = TnType.BodyLarge
+                            when (historyEmptyReason(dayPicked = isCalendarView && selectedDate != null, hasSearchOrFilter = searchQuery.isNotBlank() || selectedFilterTags.isNotEmpty())) {
+                                HistoryEmpty.NothingOnThatDay -> EmptyState(
+                                    icon = Icons.Default.DateRange,
+                                    title = "Nothing on this day",
+                                    hint = "No session was recorded on this date.",
+                                    actionLabel = "Show all days",
+                                    onAction = { selectedDate = null }
+                                )
+                                HistoryEmpty.NoMatches -> EmptyState(
+                                    icon = Icons.Default.Search,
+                                    title = "No matches",
+                                    hint = "Try other words, or fewer tags.",
+                                    actionLabel = "Clear search and filters",
+                                    onAction = {
+                                        viewModel.updateSearchQuery("")
+                                        viewModel.clearTagFilters()
+                                        isSearchActive = false
+                                    }
+                                )
+                                HistoryEmpty.NothingYet -> EmptyState(
+                                    icon = Icons.Default.PlayArrow,
+                                    title = "No sessions yet",
+                                    hint = "Start one on the Timer. It appears here with its notes and tags.",
+                                    actionLabel = "Go to the Timer",
+                                    onAction = onStartSessionClick
                                 )
                             }
                         }
@@ -612,19 +628,20 @@ fun HistoryScreen(
             }
         } else {
             val dashColor = TextSecondary
+            val openNewFolder = {
+                newFolderName = ""
+                newFolderDescription = ""
+                newFolderColor = Palette.Blue
+                folderBeingEditedId = null
+                isCreateFolderDialogOpen = true
+            }
             Column(modifier = Modifier.fillMaxSize()) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
                         .clip(TnShape.Card)
-                        .clickable {
-                            newFolderName = ""
-                            newFolderDescription = ""
-                            newFolderColor = Palette.Blue
-                            folderBeingEditedId = null
-                            isCreateFolderDialogOpen = true
-                        }
+                        .clickable { openNewFolder() }
                         .drawBehind {
                             drawRoundRect(
                                 color = dashColor.copy(alpha = 0.5f),
@@ -648,6 +665,16 @@ fun HistoryScreen(
                 Spacer(modifier = Modifier.height(16.dp))
 
                 val sortedFolders = folders.sortedByDescending { it.isPinned }
+
+                if (sortedFolders.isEmpty()) {
+                    EmptyState(
+                        icon = Icons.Default.Folder,
+                        title = "No folders yet",
+                        hint = "A folder groups the sessions of one project, course or habit.",
+                        actionLabel = "Create a folder",
+                        onAction = { openNewFolder() }
+                    )
+                }
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(2),

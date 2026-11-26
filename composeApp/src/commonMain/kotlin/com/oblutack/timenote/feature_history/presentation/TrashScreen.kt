@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.ui.components.EmptyState
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnType
@@ -99,7 +100,11 @@ fun TrashScreen(
 
         if (deletedFolders.isEmpty() && deletedTimenotes.isEmpty()) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Trash is empty.", color = TextSecondary, fontSize = TnType.BodyLarge)
+                EmptyState(
+                    icon = Icons.Default.Delete,
+                    title = "Trash is empty",
+                    hint = "Deleted sessions and folders stay here for 30 days, then they are removed for good."
+                )
             }
         } else {
             LazyColumn(

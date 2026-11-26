@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.material.icons.filled.AccountTree
+import com.oblutack.timenote.ui.components.EmptyState
 import com.oblutack.timenote.feature_history.domain.identityColor
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
@@ -196,6 +198,14 @@ fun GraphScreen(
             val branchColor = TnTheme.colors.branch
             val backgroundColor = BackgroundDark
             val labelColor = TextPrimary
+            if (nodes.isEmpty()) {
+                EmptyState(
+                    modifier = Modifier.align(Alignment.Center),
+                    icon = Icons.Default.AccountTree,
+                    title = "Nothing to draw yet",
+                    hint = "Every session becomes a dot, and a branch is joined to the session it started from."
+                )
+            }
             Canvas(modifier = Modifier.fillMaxSize()) {
                 withTransform({
                     translate(pan.x, pan.y)

@@ -525,6 +525,15 @@ fun TimerScreen(
             // Which entry has its long-press menu open
             var menuFor by remember { mutableStateOf<String?>(null) }
 
+            if (state.timelineEvents.isEmpty()) {
+                // Little room under the ring: one quiet line instead of the full empty-state block
+                Text(
+                    text = "Your start, breaks and notes appear here.",
+                    color = TextSecondary,
+                    fontSize = TnType.Body
+                )
+            }
+
             LazyColumn(
                 state = listState, // <--- Attach the scroll state
                 modifier = Modifier.fillMaxSize() // <--- Let it fill the weight bounds

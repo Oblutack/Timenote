@@ -202,6 +202,13 @@ private fun AppContent(launchRoute: String?, onLaunchRouteHandled: () -> Unit) {
                         onTrashClick = { navController.navigate("trash") },
                         onSettingsClick = { navController.navigate("settings") },
                         onGraphClick = { navController.navigate("graph") },
+                        onStartSessionClick = {
+                            navController.navigate("timer") {
+                                navController.graph.startDestinationRoute?.let { startRoute -> popUpTo(startRoute) { saveState = true } }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
                     )
                 }
 

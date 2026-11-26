@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.material.icons.filled.Folder
+import com.oblutack.timenote.ui.components.EmptyState
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnType
@@ -162,10 +164,12 @@ fun FolderDetailScreen(
                         .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No sessions in this folder yet.",
-                        color = TextSecondary,
-                        fontSize = TnType.BodyLarge
+                    EmptyState(
+                        icon = Icons.Default.Folder,
+                        title = "Nothing in this folder yet",
+                        hint = "Sessions you start here, or add from the list, appear in it.",
+                        actionLabel = "Start a session",
+                        onAction = onStartSessionClick
                     )
                 }
             } else {
