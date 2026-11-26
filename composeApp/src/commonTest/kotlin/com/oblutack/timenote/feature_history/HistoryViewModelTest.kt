@@ -279,6 +279,42 @@ class HistoryViewModelTest {
         assertTrue(trash.deletedFolders.value.isEmpty())
     }
 
+    // --- the filter bar (F17) ---
+
+    @Test fun theFilterChipsSwitchTheirFiltersOnAndOff() = runAppTest {
+        val env = HistoryEnv(this)
+        val vm = env.vm
+        assertTrue(!vm.filter.value.isActive)
+
+        vm.toggleHasNotes(); vm.toggleHasVoice(); vm.toggleHasBranches(); vm.togglePinnedOnly()
+        vm.setFolderFilter("f1")
+        vm.setDateFilter(com.oblutack.timenote.feature_history.domain.DateFilter.Last7Days)
+        val on = vm.filter.value
+        assertTrue(on.hasNotes && on.hasVoice && on.hasBranches && on.pinnedOnly)
+        assertEquals("f1", on.folderId)
+        assertEquals(com.oblutack.timenote.feature_history.domain.DateFilter.Last7Days, on.date)
+
+        vm.toggleHasNotes()
+        assertTrue(!vm.filter.value.hasNotes)
+        vm.setFolderFilter(null)
+        assertNull(vm.filter.value.folderId)
+    }
+
+    @Test fun clearAllTakesEveryFilterTheTagsAndTheSearchWordsOff() = runAppTest {
+        val env = HistoryEnv(this)
+        val vm = env.vm
+        vm.toggleHasVoice()
+        vm.setDateFilter(com.oblutack.timenote.feature_history.domain.DateFilter.Today)
+        vm.toggleFilterTag("t1")
+        vm.updateSearchQuery("review")
+
+        vm.clearAllFilters()
+
+        assertTrue(!vm.filter.value.isActive)
+        assertTrue(vm.selectedFilterTags.value.isEmpty())
+        assertEquals("", vm.searchQuery.value)
+    }
+
     // --- duplicating a session (F23) ---
 
     @Test fun duplicatingCopiesTheFrameButNotTheTimeOrTheTimeline() = runAppTest {

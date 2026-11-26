@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.HistoryFilter
+import com.oblutack.timenote.feature_history.domain.DateFilter
 import com.oblutack.timenote.data.repository.UndoDelete
 import androidx.lifecycle.ViewModel
 import androidx.compose.ui.graphics.Color
@@ -154,6 +156,29 @@ class HistoryViewModel(
 
     fun clearTagFilters() {
         _selectedFilterTags.value = emptySet()
+    }
+
+    // --- the filter bar: everything but the tags (above) and the search words (below) ---
+    private val _filter = MutableStateFlow(HistoryFilter())
+    val filter = _filter.asStateFlow()
+
+    fun setDateFilter(date: DateFilter) { _filter.value = _filter.value.copy(date = date) }
+
+    fun setFolderFilter(folderId: String?) { _filter.value = _filter.value.copy(folderId = folderId) }
+
+    fun toggleHasNotes() { _filter.value = _filter.value.copy(hasNotes = !_filter.value.hasNotes) }
+
+    fun toggleHasVoice() { _filter.value = _filter.value.copy(hasVoice = !_filter.value.hasVoice) }
+
+    fun toggleHasBranches() { _filter.value = _filter.value.copy(hasBranches = !_filter.value.hasBranches) }
+
+    fun togglePinnedOnly() { _filter.value = _filter.value.copy(pinnedOnly = !_filter.value.pinnedOnly) }
+
+    /** Takes every filter and the search words off, so the whole list shows. */
+    fun clearAllFilters() {
+        _filter.value = HistoryFilter()
+        _selectedFilterTags.value = emptySet()
+        _searchQuery.value = ""
     }
 
     fun setSortOption(option: SortOption) {

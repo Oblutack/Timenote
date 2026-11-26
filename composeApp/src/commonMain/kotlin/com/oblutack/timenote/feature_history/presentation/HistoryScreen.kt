@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.filterSessions
+import com.oblutack.timenote.feature_history.domain.DateFilter
 import androidx.compose.material.icons.filled.ViewAgenda
 import androidx.compose.material.icons.filled.ViewList
 import com.oblutack.timenote.feature_history.domain.Timenote
@@ -116,25 +118,9 @@ fun HistoryScreen(
         Instant.fromEpochMilliseconds(getCurrentTimeMillis())
             .toLocalDateTime(TimeZone.currentSystemDefault()).date
     }
-    var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var currentMonth by remember { mutableStateOf(today) }
 
     val searchQuery by viewModel.searchQuery.collectAsState()
-    // The query lives in the ViewModel and survives navigation, so reopen the search bar if one is active
-    var isSearchActive by remember { mutableStateOf(searchQuery.isNotBlank()) }
-
-    val sessionsByDate = remember(recentSessions) {
-        recentSessions.groupBy {
-            Instant.fromEpochMilliseconds(if (it.createdAt > 0L) it.createdAt else getCurrentTimeMillis())
-                .toLocalDateTime(TimeZone.currentSystemDefault()).date
-        }
-    }
-    
-    val displaySessions = if (isCalendarView && selectedDate != null) {
-        sessionsByDate[selectedDate] ?: emptyList()
-    } else {
-        recentSessions
-    }
 
     val selectedFilterTags by viewModel.selectedFilterTags.collectAsState()
     val sortOption by viewModel.sortOption.collectAsState()
@@ -142,30 +128,25 @@ fun HistoryScreen(
 
     var isSortSheetOpen by remember { mutableStateOf(false) }
     var isTagFilterSheetOpen by remember { mutableStateOf(false) }
+    var isDateSheetOpen by remember { mutableStateOf(false) }
+    var isFolderSheetOpen by remember { mutableStateOf(false) }
 
     // --- Apply Filters and Sort ---
-    val tagFiltered = remember(displaySessions, selectedFilterTags) {
-        if (selectedFilterTags.isEmpty()) displaySessions else displaySessions.filter { session ->
-            session.tags.any { tag -> selectedFilterTags.contains(tag.id) }
-        }
+    val extraFilter by viewModel.filter.collectAsState()
+    val filter = extraFilter.copy(tagIds = selectedFilterTags)
+    // A day picked on the heatmap
+    val selectedDate = (filter.date as? DateFilter.Day)?.date
+    val filtered = remember(recentSessions, filter, searchQuery, today) {
+        filterSessions(recentSessions, filter, searchQuery, today, TimeZone.currentSystemDefault(), getCurrentTimeMillis())
     }
 
-    val searchFiltered = remember(tagFiltered, searchQuery) {
-        if (searchQuery.isBlank()) tagFiltered else tagFiltered.filter { session ->
-            session.title.contains(searchQuery, ignoreCase = true) ||
-            session.description.contains(searchQuery, ignoreCase = true) ||
-            session.tags.any { it.name.contains(searchQuery, ignoreCase = true) } ||
-            session.timelineEvents.any { it.title.contains(searchQuery, ignoreCase = true) }
-        }
-    }
-
-    val finalDisplaySessions = remember(searchFiltered, sortOption) {
+    val finalDisplaySessions = remember(filtered, sortOption) {
         when (sortOption) {
             // THE FIX: Explicitly cast to Long to ensure perfect mathematical sorting
-            SortOption.NEWEST -> searchFiltered.sortedByDescending { it.createdAt.toLong() }
-            SortOption.OLDEST -> searchFiltered.sortedBy { it.createdAt.toLong() }
-            SortOption.LONGEST -> searchFiltered.sortedByDescending { it.activeSeconds }
-            SortOption.SHORTEST -> searchFiltered.sortedBy { it.activeSeconds }
+            SortOption.NEWEST -> filtered.sortedByDescending { it.createdAt.toLong() }
+            SortOption.OLDEST -> filtered.sortedBy { it.createdAt.toLong() }
+            SortOption.LONGEST -> filtered.sortedByDescending { it.activeSeconds }
+            SortOption.SHORTEST -> filtered.sortedBy { it.activeSeconds }
         }.sortedByDescending { it.isPinned }
     }
 
@@ -220,271 +201,42 @@ fun HistoryScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        AnimatedContent(
-            targetState = isSearchActive,
-            label = "SearchBarAnimation"
-        ) { targetIsSearchActive ->
-
-        if (targetIsSearchActive) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.updateSearchQuery(it) },
-                placeholder = { Text("Search sessions, notes, tags...", color = TextSecondary) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = TnShape.Pill,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = SurfaceDark,
-                    unfocusedContainerColor = SurfaceDark,
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = TextPrimary,
-                    unfocusedTextColor = TextPrimary
-                ),
-                trailingIcon = {
-                    IconButton(onClick = {
-                        isSearchActive = false
-                        viewModel.updateSearchQuery("")
-                    }) {
-                        Icon(Icons.Default.Close, contentDescription = "Close Search", tint = TextSecondary)
-                    }
-                },
-                singleLine = true
-            )
-        } else {
-            // Custom Segmented Control (Tabs) and Trash Button
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(TnShape.Pill)
-                        .background(SurfaceDark)
-                        .padding(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(TnShape.Pill)
-                            .background(if (selectedTab == 0) TnTheme.colors.surfaceRaised else Color.Transparent)
-                            .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick) // <-- ADD THIS
-                                onTabSelected(0)
-                            },
-
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Sessions",
-                            color = if (selectedTab == 0) TextPrimary else TextSecondary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = TnType.Body
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clip(TnShape.Pill)
-                            .background(if (selectedTab == 1) TnTheme.colors.surfaceRaised else Color.Transparent)
-                            .clickable {
-                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick) // <-- ADD THIS
-                                onTabSelected(1)
-                            },
-
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "Folders",
-                            color = if (selectedTab == 1) TextPrimary else TextSecondary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = TnType.Body
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                // Unified Action Pill
-                Row(
-                    modifier = Modifier
-                        .clip(TnShape.Pill)
-                        .background(SurfaceDark)
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Search
-                    IconButton(
-                        onClick = { isSearchActive = true },
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.Search, contentDescription = "Search", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
-
-                    // Graph
-                    IconButton(
-                        onClick = onGraphClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.AccountTree, contentDescription = "Graph View", tint = DefaultAccentColor, modifier = Modifier.size(18.dp))
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
-
-                    // Settings
-                    IconButton(
-                        onClick = onSettingsClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.Settings, contentDescription = "Settings", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-
-                    Box(modifier = Modifier.width(1.dp).height(16.dp).background(TextSecondary.copy(alpha = 0.3f)))
-
-                    // Trash
-                    IconButton(
-                        onClick = onTrashClick,
-                        modifier = Modifier.size(36.dp)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = "Recently Deleted", tint = TextSecondary, modifier = Modifier.size(18.dp))
-                    }
-                }
+        HistoryTopBar(
+            selectedTab = selectedTab,
+            onTabSelected = {
+                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                onTabSelected(it)
+            },
+            onSettingsClick = onSettingsClick,
+            onGraphClick = onGraphClick,
+            onTrashClick = onTrashClick,
+            sortLabel = sortOption.displayName.split(" ").first(),
+            onSortClick = { isSortSheetOpen = true },
+            density = density,
+            onToggleDensity = {
+                val next = if (density == HistoryDensity.Compact) HistoryDensity.Comfortable else HistoryDensity.Compact
+                coroutineScope.launch { settingsRepository.setHistoryDensity(next) }
             }
-        }
-        }
+        )
         Spacer(modifier = Modifier.height(24.dp))
 
         if (selectedTab == 0) {
             Column(modifier = Modifier.fillMaxSize()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp)
-                        .clip(TnShape.Card)
-                        .background(SurfaceDark)
-                        .height(IntrinsicSize.Min), // Forces the dividers to match the row height!
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    // Button 1: Calendar
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(if (isCalendarView) DefaultAccentColor.copy(alpha = 0.15f) else Color.Transparent)
-                            .clickable {
-                                isCalendarView = !isCalendarView
-                                if (isCalendarView) coroutineScope.launch { listState.animateScrollToItem(0) } else selectedDate = null
-                            }
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.GridOn,
-                            contentDescription = "Calendar",
-                            tint = if (isCalendarView) DefaultAccentColor else TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "Heatmap",
-                            color = if (isCalendarView) DefaultAccentColor else TextSecondary,
-                            fontSize = TnType.Label,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    // Divider 1
-                    Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.6f).background(TextSecondary.copy(alpha = 0.2f)))
-
-                    // Button 2: Tags
-                    val hasTags = selectedFilterTags.isNotEmpty()
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .background(if (hasTags) DefaultAccentColor.copy(alpha = 0.15f) else Color.Transparent)
-                            .clickable { isTagFilterSheetOpen = true }
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Label,
-                            contentDescription = "Tags",
-                            tint = if (hasTags) DefaultAccentColor else TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (hasTags) "${selectedFilterTags.size} Tags" else "Tags",
-                            color = if (hasTags) DefaultAccentColor else TextSecondary,
-                            fontSize = TnType.Label,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    // Divider 2
-                    Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.6f).background(TextSecondary.copy(alpha = 0.2f)))
-
-                    // Button 3: Sort
-                    Row(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .clickable { isSortSheetOpen = true }
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SwapVert,
-                            contentDescription = "Sort",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = sortOption.displayName.split(" ").first(), // e.g., turns "Newest First" into "Newest" to fit perfectly!
-                            color = TextSecondary,
-                            fontSize = TnType.Label,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    // Divider 3 and the density toggle: compact rows or large cards
-                    Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.6f).background(TextSecondary.copy(alpha = 0.2f)))
-                    Box(
-                        modifier = Modifier
-                            .width(52.dp)
-                            .fillMaxHeight()
-                            .clickable {
-                                val next = if (density == HistoryDensity.Compact) HistoryDensity.Comfortable else HistoryDensity.Compact
-                                coroutineScope.launch { settingsRepository.setHistoryDensity(next) }
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (density == HistoryDensity.Compact) Icons.Default.ViewList else Icons.Default.ViewAgenda,
-                            contentDescription = if (density == HistoryDensity.Compact) "Show large cards" else "Show compact rows",
-                            tint = TextSecondary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
+                HistorySearchField(query = searchQuery, onQueryChange = { viewModel.updateSearchQuery(it) })
+                Spacer(modifier = Modifier.height(10.dp))
+                HistoryFilterChips(
+                    filter = filter,
+                    folderName = folders.find { it.id == filter.folderId }?.name,
+                    searchActive = searchQuery.isNotBlank(),
+                    onDate = { isDateSheetOpen = true },
+                    onFolder = { isFolderSheetOpen = true },
+                    onTags = { isTagFilterSheetOpen = true },
+                    onToggleNotes = { viewModel.toggleHasNotes() },
+                    onToggleVoice = { viewModel.toggleHasVoice() },
+                    onToggleBranches = { viewModel.toggleHasBranches() },
+                    onTogglePinned = { viewModel.togglePinnedOnly() },
+                    onClearAll = { isCalendarView = false; viewModel.clearAllFilters() }
+                )
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -551,52 +303,33 @@ fun HistoryScreen(
                                         streaks = streaks,
                                         onDateSelected = { clickedDate ->
                                             // Tapping a day filters the list to it; tapping it again clears the filter
-                                            selectedDate = if (selectedDate == clickedDate) null else clickedDate
-                                            if (selectedDate != null) viewModel.selectDateForSummary(clickedDate)
+                                            if (selectedDate == clickedDate) {
+                                                viewModel.setDateFilter(DateFilter.Any)
+                                            } else {
+                                                viewModel.setDateFilter(DateFilter.Day(clickedDate))
+                                                viewModel.selectDateForSummary(clickedDate)
+                                            }
                                         }
                                     )
                                 }
                             }
 
-                            val filterDate = selectedDate
-                            if (isCalendarView && filterDate != null) {
-                                item {
-                                    Row(
-                                        modifier = Modifier
-                                            .clip(TnShape.Pill)
-                                            .background(DefaultAccentColor.copy(alpha = 0.15f))
-                                            .clickable { selectedDate = null }
-                                            .padding(horizontal = 14.dp, vertical = 6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        val monthName = filterDate.month.name.lowercase().replaceFirstChar { it.uppercase() }.take(3)
-                                        Text("$monthName ${filterDate.dayOfMonth}, ${filterDate.year}", color = DefaultAccentColor, fontSize = TnType.Label, fontWeight = FontWeight.Medium)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Icon(Icons.Default.Close, contentDescription = "Show all days", tint = DefaultAccentColor, modifier = Modifier.size(14.dp))
-                                    }
-                                }
-                            }
-
                     if (finalDisplaySessions.isEmpty()) {
                         item {
-                            when (historyEmptyReason(dayPicked = isCalendarView && selectedDate != null, hasSearchOrFilter = searchQuery.isNotBlank() || selectedFilterTags.isNotEmpty())) {
+                            when (historyEmptyReason(dayPicked = selectedDate != null, hasSearchOrFilter = searchQuery.isNotBlank() || filter.isActive)) {
                                 HistoryEmpty.NothingOnThatDay -> EmptyState(
                                     icon = Icons.Default.DateRange,
                                     title = "Nothing on this day",
                                     hint = "No session was recorded on this date.",
                                     actionLabel = "Show all days",
-                                    onAction = { selectedDate = null }
+                                    onAction = { viewModel.setDateFilter(DateFilter.Any) }
                                 )
                                 HistoryEmpty.NoMatches -> EmptyState(
                                     icon = Icons.Default.Search,
                                     title = "No matches",
                                     hint = "Try other words, or fewer tags.",
                                     actionLabel = "Clear search and filters",
-                                    onAction = {
-                                        viewModel.updateSearchQuery("")
-                                        viewModel.clearTagFilters()
-                                        isSearchActive = false
-                                    }
+                                    onAction = { isCalendarView = false; viewModel.clearAllFilters() }
                                 )
                                 HistoryEmpty.NothingYet -> EmptyState(
                                     icon = Icons.Default.PlayArrow,
@@ -747,6 +480,35 @@ fun HistoryScreen(
                 isSortSheetOpen = false
             },
             onDismiss = { isSortSheetOpen = false }
+        )
+    }
+
+    if (isDateSheetOpen) {
+        DateFilterSheet(
+            current = filter.date,
+            onSelect = {
+                viewModel.setDateFilter(it)
+                isCalendarView = false
+                isDateSheetOpen = false
+            },
+            onPickDay = {
+                // The heatmap opens above the list; tapping a day on it sets the filter
+                isCalendarView = true
+                isDateSheetOpen = false
+            },
+            onDismiss = { isDateSheetOpen = false }
+        )
+    }
+
+    if (isFolderSheetOpen) {
+        FolderFilterSheet(
+            folders = folders,
+            currentId = filter.folderId,
+            onSelect = {
+                viewModel.setFolderFilter(it)
+                isFolderSheetOpen = false
+            },
+            onDismiss = { isFolderSheetOpen = false }
         )
     }
 

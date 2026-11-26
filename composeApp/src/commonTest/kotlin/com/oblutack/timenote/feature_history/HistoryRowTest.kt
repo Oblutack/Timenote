@@ -1,7 +1,7 @@
 package com.oblutack.timenote.feature_history
 
 import com.oblutack.timenote.feature_history.domain.HistoryDensity
-import com.oblutack.timenote.feature_history.presentation.noteCountOf
+import com.oblutack.timenote.feature_history.domain.noteCountOf
 import com.oblutack.timenote.feature_history.presentation.sessionFactsLine
 import com.oblutack.timenote.feature_timer.domain.EventType
 import com.oblutack.timenote.feature_timer.domain.TimelineEvent

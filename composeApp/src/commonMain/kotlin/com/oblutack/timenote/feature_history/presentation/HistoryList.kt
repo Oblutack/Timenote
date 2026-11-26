@@ -35,8 +35,9 @@ import com.oblutack.timenote.feature_history.domain.DayGroup
 import com.oblutack.timenote.feature_history.domain.HistoryDensity
 import com.oblutack.timenote.feature_history.domain.Timenote
 import com.oblutack.timenote.feature_history.domain.checklistProgress
+import com.oblutack.timenote.feature_history.domain.hasVoice
 import com.oblutack.timenote.feature_history.domain.identityColor
-import com.oblutack.timenote.feature_timer.domain.EventType
+import com.oblutack.timenote.feature_history.domain.noteCountOf
 import com.oblutack.timenote.getCurrentTimeMillis
 import com.oblutack.timenote.ui.theme.SurfaceDark
 import com.oblutack.timenote.ui.theme.TextPrimary
@@ -70,10 +71,6 @@ fun sessionFactsLine(
     when (branchCount) { 0 -> null; 1 -> "1 branch"; else -> "$branchCount branches" }
 ).joinToString(" · ")
 
-/** The notes a person wrote: not the clock's entries and not the line that says where a branch came from. */
-fun noteCountOf(session: Timenote): Int =
-    session.timelineEvents.count { it.type == EventType.NOTE && !it.title.startsWith("Branched from:") }
-
 /** Compact row: a dot in the session's colour, the title and facts, the duration. */
 @Composable
 fun SessionRow(
@@ -94,7 +91,7 @@ fun SessionRow(
         folderName = folderName,
         noteCount = noteCountOf(session),
         checklist = checklistProgress(session.description),
-        hasVoice = session.voiceNotes.isNotEmpty() || session.timelineEvents.any { it.audioPath != null },
+        hasVoice = hasVoice(session),
         isBranch = session.parentTimenoteId != null,
         branchCount = allSessions.count { it.parentTimenoteId == session.id }
     )
