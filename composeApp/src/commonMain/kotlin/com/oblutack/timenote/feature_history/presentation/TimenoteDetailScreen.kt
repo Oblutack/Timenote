@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.findBacklinks
 import androidx.compose.material.icons.filled.MoreVert
 import com.oblutack.timenote.feature_history.domain.sessionAsMarkdown
 import com.oblutack.timenote.feature_history.domain.sessionAsText
@@ -758,6 +759,38 @@ fun TimenoteDetailScreen(
                         }
                     }
                     Text(child.duration, color = TextSecondary, fontFamily = TnTheme.mono, fontSize = TnType.Body)
+                }
+            }
+        }
+
+        // Which other sessions mention this one: the mentions work both ways
+        val backlinks = remember(allTimenotes, timenoteId) {
+            findBacklinks(
+                targetId = timenoteId,
+                sessions = allTimenotes,
+                zone = TimeZone.currentSystemDefault(),
+                currentYear = Instant.fromEpochMilliseconds(getCurrentTimeMillis()).toLocalDateTime(TimeZone.currentSystemDefault()).year
+            )
+        }
+        if (backlinks.isNotEmpty()) {
+            Spacer(modifier = Modifier.height(24.dp))
+            Text("MENTIONED IN", color = TextSecondary, fontSize = TnType.Caption, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 4.dp, bottom = 8.dp))
+            backlinks.forEach { link ->
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                        .clip(TnShape.Small)
+                        .background(SurfaceDark)
+                        .clickable { onTimenoteClick(link.sessionId) }
+                        .padding(12.dp)
+                ) {
+                    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                        Text(link.title, color = TextPrimary, fontSize = TnType.BodyLarge, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, modifier = Modifier.weight(1f).padding(end = 12.dp))
+                        Text(link.dateText, color = TextSecondary, fontSize = TnType.Caption)
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(link.snippet, color = TextSecondary, fontSize = TnType.Body, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
             }
         }
