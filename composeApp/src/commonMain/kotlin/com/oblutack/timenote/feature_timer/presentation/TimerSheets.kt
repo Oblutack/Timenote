@@ -61,7 +61,7 @@ fun AddNoteSheet(
                     .fillMaxWidth()
                     .padding(start = 24.dp, end = 24.dp, bottom = 48.dp)
             ) {
-                Text("Add Note", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
+                Text(if (state.editingNoteId != null) "Edit note" else "Add Note", color = TextPrimary, style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = state.dialogNoteText,

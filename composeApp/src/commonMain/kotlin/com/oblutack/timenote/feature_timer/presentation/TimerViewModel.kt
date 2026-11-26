@@ -1,5 +1,9 @@
 package com.oblutack.timenote.feature_timer.presentation
 
+import com.oblutack.timenote.feature_timer.domain.canDeleteWhileRunning
+import com.oblutack.timenote.feature_timer.domain.canEditWhileRunning
+import com.oblutack.timenote.feature_timer.domain.DeletedWaypoint
+import kotlinx.coroutines.flow.asSharedFlow
 import com.oblutack.timenote.ui.theme.Palette
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
@@ -48,6 +52,8 @@ data class TimerState(
     val timelineEvents: List<TimelineEvent> = emptyList(),
 
     val isAddNoteDialogOpen: Boolean = false,
+    /** Set while the note sheet edits an existing note instead of adding one. */
+    val editingNoteId: String? = null,
     val dialogNoteText: String = "",
     val dialogNoteColor: Color = Palette.Blue,
 
@@ -112,6 +118,13 @@ class TimerViewModel(
     // when the backup is read, so these are resolved whenever the flows deliver data.
     private var pendingRestoreFolderId: String? = null
     private var pendingRestoreCategoryIds: List<String> = emptyList()
+
+    // The note being typed before an edit opened the sheet; it comes back when the edit is over
+    private var draftBeforeEdit: Pair<String, Color>? = null
+
+    private val _waypointDeleted = kotlinx.coroutines.flow.MutableSharedFlow<DeletedWaypoint>(extraBufferCapacity = 4)
+    /** Emits after a waypoint was deleted, so the screen can offer Undo. */
+    val waypointDeleted = _waypointDeleted.asSharedFlow()
 
     // The folder and tags of the last saved session are put on the chips once, when the app opens
     private var prefilledFromLastSession = false
@@ -281,9 +294,12 @@ class TimerViewModel(
             is TimerAction.OpenAddNoteDialog -> {
                 if (_state.value.isRunning) _state.update { it.copy(isAddNoteDialogOpen = true) }
             }
-            is TimerAction.CloseAddNoteDialog -> _state.update { it.copy(isAddNoteDialogOpen = false, dialogNoteText = "") }
+            is TimerAction.CloseAddNoteDialog -> if (_state.value.editingNoteId != null) finishEdit() else _state.update { it.copy(isAddNoteDialogOpen = false, dialogNoteText = "") }
             // Closed without choosing (swipe down, tap outside, Back): the draft stays for next time
-            is TimerAction.DismissAddNoteDialog -> _state.update { it.copy(isAddNoteDialogOpen = false) }
+            is TimerAction.DismissAddNoteDialog -> if (_state.value.editingNoteId != null) finishEdit() else _state.update { it.copy(isAddNoteDialogOpen = false) }
+            is TimerAction.EditNote -> startEditingNote(action.id)
+            is TimerAction.DeleteWaypoint -> deleteWaypoint(action.id)
+            is TimerAction.RestoreWaypoint -> restoreWaypoint(action.deleted)
             is TimerAction.UpdateDialogNoteText -> _state.update { it.copy(dialogNoteText = action.text) }
             is TimerAction.UpdateDialogNoteColor -> _state.update { it.copy(dialogNoteColor = action.color) }
             is TimerAction.SaveNote -> saveNote()
@@ -613,9 +629,75 @@ class TimerViewModel(
         ) }
     }
 
+    /** Opens the note sheet on an existing note; what was being typed is kept for afterwards. */
+    private fun startEditingNote(id: String) {
+        val current = _state.value
+        if (!current.isRunning || current.editingNoteId != null) return
+        val event = current.timelineEvents.find { it.id == id } ?: return
+        if (!event.canEditWhileRunning()) return
+        draftBeforeEdit = current.dialogNoteText to current.dialogNoteColor
+        _state.update { it.copy(
+            editingNoteId = id,
+            dialogNoteText = event.title.removePrefix("Note: "),
+            dialogNoteColor = event.color ?: Palette.Blue,
+            isAddNoteDialogOpen = true
+        ) }
+    }
+
+    /** Closes the note sheet after an edit (saved or not) and brings back the note that was being typed. */
+    private fun finishEdit() {
+        val draft = draftBeforeEdit
+        draftBeforeEdit = null
+        _state.update { it.copy(
+            editingNoteId = null,
+            isAddNoteDialogOpen = false,
+            dialogNoteText = draft?.first ?: "",
+            dialogNoteColor = draft?.second ?: Palette.Blue
+        ) }
+    }
+
+    private fun deleteWaypoint(id: String) {
+        val current = _state.value
+        if (!current.isRunning) return
+        val index = current.timelineEvents.indexOfFirst { it.id == id }
+        if (index < 0) return
+        val event = current.timelineEvents[index]
+        if (!event.canDeleteWhileRunning()) return
+        val deleted = DeletedWaypoint(event, olderCount = current.timelineEvents.size - index - 1)
+        _state.update { it.copy(timelineEvents = reflag(it.timelineEvents.filterNot { e -> e.id == id })) }
+        backupCurrentState()
+        _waypointDeleted.tryEmit(deleted)
+    }
+
+    /** Puts a deleted waypoint back where it was, even when newer entries were added since. */
+    private fun restoreWaypoint(deleted: DeletedWaypoint) {
+        if (!_state.value.isRunning) return
+        if (_state.value.timelineEvents.any { it.id == deleted.event.id }) return
+        _state.update { current ->
+            val position = (current.timelineEvents.size - deleted.olderCount).coerceIn(0, current.timelineEvents.size)
+            val events = current.timelineEvents.toMutableList().apply { add(position, deleted.event) }
+            current.copy(timelineEvents = reflag(events))
+        }
+        backupCurrentState()
+    }
+
+    private fun reflag(events: List<TimelineEvent>): List<TimelineEvent> =
+        events.mapIndexed { index, event -> event.copy(isLastItem = index == events.lastIndex) }
+
     private fun saveNote() {
         val noteText = _state.value.dialogNoteText
         if (noteText.isBlank() || !_state.value.isRunning) return
+
+        val editingId = _state.value.editingNoteId
+        if (editingId != null) {
+            val color = _state.value.dialogNoteColor
+            _state.update { s -> s.copy(timelineEvents = s.timelineEvents.map { e ->
+                if (e.id == editingId) e.copy(title = "Note: $noteText", color = color) else e
+            }) }
+            finishEdit()
+            backupCurrentState()
+            return
+        }
 
         addEventToTimeline("Note: $noteText", EventType.NOTE, _state.value.dialogNoteColor)
 
@@ -771,4 +853,8 @@ sealed class TimerAction {
     data class SetParentLinks(val parentId: String?, val waypointId: String?, val token: String? = null) : TimerAction()
     data object StartVoiceMemo : TimerAction()
     data object StopVoiceMemo : TimerAction()
+    /** Long-press menu on a note of the running session. */
+    data class EditNote(val id: String) : TimerAction()
+    data class DeleteWaypoint(val id: String) : TimerAction()
+    data class RestoreWaypoint(val deleted: DeletedWaypoint) : TimerAction()
 }

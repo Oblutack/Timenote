@@ -18,6 +18,8 @@ import com.oblutack.timenote.testutil.testTag
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.currentTime
@@ -436,6 +438,148 @@ class TimerViewModelTest {
             vm.onAction(TimerAction.KeepGoing)
             assertTrue(state.isRunning)
             assertTrue(sessions.timenotes.value.isEmpty())
+        }
+    }
+
+    // --- editing the running session's timeline (F8) ---
+
+    private fun com.oblutack.timenote.feature_timer.presentation.TimerViewModel.addNote(text: String, color: androidx.compose.ui.graphics.Color? = null) {
+        onAction(TimerAction.OpenAddNoteDialog)
+        onAction(TimerAction.UpdateDialogNoteText(text))
+        if (color != null) onAction(TimerAction.UpdateDialogNoteColor(color))
+        onAction(TimerAction.SaveNote)
+    }
+
+    @Test fun aNoteCanBeEditedWhileRunning() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(5_000)
+            vm.addNote("teh idea")
+            val note = state.timelineEvents.first { it.type == EventType.NOTE }
+
+            vm.onAction(TimerAction.EditNote(note.id))
+            assertTrue(state.isAddNoteDialogOpen)
+            assertEquals(note.id, state.editingNoteId)
+            assertEquals("teh idea", state.dialogNoteText, "the sheet opens on the note's own text, without the prefix")
+
+            vm.onAction(TimerAction.UpdateDialogNoteText("the idea"))
+            vm.onAction(TimerAction.UpdateDialogNoteColor(androidx.compose.ui.graphics.Color(0xFFE53935)))
+            vm.onAction(TimerAction.SaveNote)
+
+            val edited = state.timelineEvents.first { it.id == note.id }
+            assertEquals("Note: the idea", edited.title)
+            assertEquals(androidx.compose.ui.graphics.Color(0xFFE53935), edited.color)
+            assertEquals(note.timestamp, edited.timestamp, "the time of the note does not change")
+            assertEquals(state.timelineEvents.size, state.timelineEvents.map { it.id }.distinct().size)
+            assertFalse(state.isAddNoteDialogOpen)
+            assertNull(state.editingNoteId)
+
+            val backup = Json { ignoreUnknownKeys = true }.decodeFromString<ActiveSessionBackup>(settings.activeSessionBackupFlow.first()!!)
+            assertTrue(backup.timelineEvents.any { it.title == "Note: the idea" }, "the edit is in the backup too")
+        }
+    }
+
+    @Test fun cancellingAnEditChangesNothingAndBringsBackTheDraft() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.addNote("original")
+            val note = state.timelineEvents.first { it.type == EventType.NOTE }
+
+            vm.onAction(TimerAction.OpenAddNoteDialog)
+            vm.onAction(TimerAction.UpdateDialogNoteText("half-typed new note"))
+            vm.onAction(TimerAction.DismissAddNoteDialog)
+
+            vm.onAction(TimerAction.EditNote(note.id))
+            vm.onAction(TimerAction.UpdateDialogNoteText("changed my mind"))
+            vm.onAction(TimerAction.CloseAddNoteDialog)
+
+            assertEquals("Note: original", state.timelineEvents.first { it.id == note.id }.title)
+            assertNull(state.editingNoteId)
+            assertEquals("half-typed new note", state.dialogNoteText, "the note that was being typed is back")
+        }
+    }
+
+    @Test fun anEditWithNoTextIsIgnored() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.addNote("keep me")
+            val note = state.timelineEvents.first { it.type == EventType.NOTE }
+            vm.onAction(TimerAction.EditNote(note.id))
+            vm.onAction(TimerAction.UpdateDialogNoteText("   "))
+            vm.onAction(TimerAction.SaveNote)
+            assertEquals("Note: keep me", state.timelineEvents.first { it.id == note.id }.title)
+        }
+    }
+
+    @Test fun theEntriesFromTheClockCannotBeEditedOrDeleted() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            advance(1_000)
+            vm.onAction(TimerAction.Pause)
+            val before = state.timelineEvents
+            before.forEach { vm.onAction(TimerAction.EditNote(it.id)); vm.onAction(TimerAction.DeleteWaypoint(it.id)) }
+            assertEquals(before, state.timelineEvents)
+            assertFalse(state.isAddNoteDialogOpen)
+        }
+    }
+
+    @Test fun deletingAWaypointRemovesItAndOffersUndo() = runAppTest {
+        timerTest {
+            val offered = mutableListOf<com.oblutack.timenote.feature_timer.domain.DeletedWaypoint>()
+            vm.waypointDeleted.onEach { offered += it }.launchIn(backgroundScope)
+            advance(0)
+
+            vm.onAction(TimerAction.Start)
+            vm.addNote("one")
+            val note = state.timelineEvents.first { it.type == EventType.NOTE }
+            vm.onAction(TimerAction.DeleteWaypoint(note.id))
+            advance(0)
+
+            assertTrue(state.timelineEvents.none { it.id == note.id })
+            assertEquals(listOf(note.id), offered.map { it.event.id })
+            assertTrue(state.timelineEvents.last().isLastItem, "the last entry still closes the line")
+        }
+    }
+
+    @Test fun undoPutsTheWaypointBackWhereItWasEvenAfterNewerEntries() = runAppTest {
+        timerTest {
+            val offered = mutableListOf<com.oblutack.timenote.feature_timer.domain.DeletedWaypoint>()
+            vm.waypointDeleted.onEach { offered += it }.launchIn(backgroundScope)
+            advance(0)
+
+            vm.onAction(TimerAction.Start)
+            vm.addNote("first")
+            vm.addNote("second")
+            vm.addNote("third")
+            val titlesBefore = state.timelineEvents.map { it.title }
+            val second = state.timelineEvents.first { it.title == "Note: second" }
+
+            vm.onAction(TimerAction.DeleteWaypoint(second.id))
+            advance(0)
+            vm.addNote("fourth") // a newer entry arrives while the Undo offer is up
+            vm.onAction(TimerAction.RestoreWaypoint(offered.single()))
+
+            assertEquals(
+                listOf("Note: fourth") + titlesBefore,
+                state.timelineEvents.map { it.title },
+                "the entry is back between first and third, and the newer one stays on top"
+            )
+            vm.onAction(TimerAction.RestoreWaypoint(offered.single()))
+            assertEquals(1, state.timelineEvents.count { it.id == second.id }, "restoring twice does not duplicate it")
+        }
+    }
+
+    @Test fun editingAndDeletingWorkOnlyWhileTheSessionRuns() = runAppTest {
+        timerTest {
+            vm.onAction(TimerAction.Start)
+            vm.addNote("x")
+            val note = state.timelineEvents.first { it.type == EventType.NOTE }
+            vm.onAction(TimerAction.End)
+            vm.onAction(TimerAction.SaveSession)
+            vm.onAction(TimerAction.EditNote(note.id))
+            vm.onAction(TimerAction.DeleteWaypoint(note.id))
+            assertFalse(state.isAddNoteDialogOpen)
+            assertTrue(state.timelineEvents.any { it.id == note.id })
         }
     }
 

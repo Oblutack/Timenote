@@ -1,4 +1,5 @@
 package com.oblutack.timenote.feature_timer.presentation
+import androidx.compose.foundation.combinedClickable
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnType
 import androidx.compose.foundation.Canvas
@@ -23,8 +24,15 @@ import com.oblutack.timenote.feature_timer.domain.EventType
 import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.draw.drawBehind
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun TimelineItem(event: TimelineEvent, isLastItem: Boolean, useMonochrome: Boolean) { // <--- ADD useMonochrome: Boolean
+fun TimelineItem(
+    event: TimelineEvent,
+    isLastItem: Boolean,
+    useMonochrome: Boolean,
+    /** Long-press on the entry (null: nothing happens). Used for the edit and delete menu of the running session. */
+    onLongClick: (() -> Unit)? = null
+) {
 
     // 1. Sleek Fade-In Animation (Doesn't break list height!)
     val alpha = remember { Animatable(0f) }
@@ -46,6 +54,7 @@ fun TimelineItem(event: TimelineEvent, isLastItem: Boolean, useMonochrome: Boole
         modifier = Modifier
             .fillMaxWidth()
             .alpha(alpha.value) // Applies the fade-in
+            .then(if (onLongClick != null) Modifier.combinedClickable(onClick = {}, onLongClick = onLongClick) else Modifier)
             .padding(bottom = 8.dp)
             // 2. Draw the vertical line in the background (Removes the need for IntrinsicSize.Min!)
             .drawBehind {

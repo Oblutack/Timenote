@@ -1,5 +1,7 @@
 package com.oblutack.timenote.feature_timer.presentation
 
+import com.oblutack.timenote.feature_timer.domain.canEditWhileRunning
+import com.oblutack.timenote.feature_timer.domain.canDeleteWhileRunning
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
 import com.oblutack.timenote.ui.theme.TnType
@@ -520,6 +522,9 @@ fun TimerScreen(
                 }
             }
 
+            // Which entry has its long-press menu open
+            var menuFor by remember { mutableStateOf<String?>(null) }
+
             LazyColumn(
                 state = listState, // <--- Attach the scroll state
                 modifier = Modifier.fillMaxSize() // <--- Let it fill the weight bounds
@@ -528,13 +533,43 @@ fun TimerScreen(
                     items = state.timelineEvents,
                     key = { _, event -> "${event.id}_${event.hashCode()}" } // CRUCIAL: Tells Compose this is a unique item!
                 ) { index, event ->
-                    TimelineItem(
-                        event = event,
-                        isLastItem = index == state.timelineEvents.size - 1,
-                        useMonochrome = useMonochromeNodes
-                    )
+                    Box {
+                        TimelineItem(
+                            event = event,
+                            isLastItem = index == state.timelineEvents.size - 1,
+                            useMonochrome = useMonochromeNodes,
+                            // notes and voice memos of the running session can be edited or deleted
+                            onLongClick = if (state.isRunning && event.canDeleteWhileRunning()) {
+                                {
+                                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    menuFor = event.id
+                                }
+                            } else null
+                        )
+                        DropdownMenu(expanded = menuFor == event.id, onDismissRequest = { menuFor = null }, containerColor = SurfaceDark) {
+                            if (event.canEditWhileRunning()) {
+                                DropdownMenuItem(
+                                    text = { Text("Edit", color = TextPrimary) },
+                                    onClick = { menuFor = null; viewModel.onAction(TimerAction.EditNote(event.id)) }
+                                )
+                            }
+                            DropdownMenuItem(
+                                text = { Text("Delete", color = TnTheme.colors.danger) },
+                                onClick = { menuFor = null; viewModel.onAction(TimerAction.DeleteWaypoint(event.id)) }
+                            )
+                        }
+                    }
                 }
             }
+        }
+    }
+
+    // After deleting an entry: a short message with Undo, instead of a silent loss
+    val snackbar = com.oblutack.timenote.LocalSnackbarHost.current
+    LaunchedEffect(Unit) {
+        viewModel.waypointDeleted.collect { deleted ->
+            val result = snackbar.showSnackbar(message = "Waypoint deleted", actionLabel = "Undo", duration = SnackbarDuration.Long)
+            if (result == SnackbarResult.ActionPerformed) viewModel.onAction(TimerAction.RestoreWaypoint(deleted))
         }
     }
 
