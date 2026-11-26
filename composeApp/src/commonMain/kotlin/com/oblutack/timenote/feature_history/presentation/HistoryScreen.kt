@@ -350,7 +350,8 @@ fun HistoryScreen(
                             density = density,
                             enableHaptics = enableHaptics,
                             onDelete = { viewModel.requestDelete(it) },
-                            onClick = { onTimenoteClick(session.id) }
+                            onClick = { onTimenoteClick(session.id) },
+                            query = searchQuery
                         )
                     }
                     if (dayGroups.isNotEmpty()) {

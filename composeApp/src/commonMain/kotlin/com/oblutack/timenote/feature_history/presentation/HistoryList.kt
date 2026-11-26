@@ -1,5 +1,10 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.searchSnippet
+import com.oblutack.timenote.feature_history.domain.findMatchRanges
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -71,14 +76,27 @@ fun sessionFactsLine(
     when (branchCount) { 0 -> null; 1 -> "1 branch"; else -> "$branchCount branches" }
 ).joinToString(" · ")
 
+/** [text] with the matched parts of a search in the accent colour and bold. */
+fun highlighted(text: String, ranges: List<IntRange>, color: androidx.compose.ui.graphics.Color): AnnotatedString =
+    buildAnnotatedString {
+        append(text)
+        ranges.forEach { addStyle(SpanStyle(color = color, fontWeight = FontWeight.Bold), it.first, it.last + 1) }
+    }
+
 /** Compact row: a dot in the session's colour, the title and facts, the duration. */
 @Composable
 fun SessionRow(
     session: Timenote,
     allSessions: List<Timenote>,
     folderName: String?,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    query: String = ""
 ) {
+    val title = session.title.ifBlank { "Untitled Session" }
+    val accent = TnTheme.colors.accent
+    // while searching: the matching words in the title, and the line of the description or notes that matched
+    val titleMatches = findMatchRanges(title, query)
+    val snippet = searchSnippet(session, query)
     val header = sessionHeader(
         createdAtMillis = if (session.createdAt > 0L) session.createdAt else getCurrentTimeMillis(),
         activeSeconds = session.activeSeconds,
@@ -108,13 +126,16 @@ fun SessionRow(
         Spacer(modifier = Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f).padding(end = 12.dp)) {
             Text(
-                text = session.title.ifBlank { "Untitled Session" },
+                text = highlighted(title, titleMatches, accent),
                 color = TextPrimary,
                 fontSize = TnType.BodyLarge,
                 fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+            if (snippet != null) {
+                Text(text = highlighted(snippet.text, snippet.ranges, accent), color = TextSecondary, fontSize = TnType.Body, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
             Text(text = facts, color = TextSecondary, fontSize = TnType.Caption, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Text(text = session.duration, color = TextSecondary, fontFamily = TnTheme.mono, fontSize = TnType.Body)
@@ -147,7 +168,8 @@ fun HistorySessionItem(
     density: HistoryDensity,
     enableHaptics: Boolean,
     onDelete: (Timenote) -> Unit,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    query: String = ""
 ) {
     val haptic = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
@@ -173,9 +195,9 @@ fun HistorySessionItem(
         },
         content = {
             if (density == HistoryDensity.Compact) {
-                SessionRow(session = session, allSessions = allSessions, folderName = folderName, onClick = onClick)
+                SessionRow(session = session, allSessions = allSessions, folderName = folderName, onClick = onClick, query = query)
             } else {
-                SessionCard(session = session, allSessions = allSessions, onClick = onClick)
+                SessionCard(session = session, allSessions = allSessions, onClick = onClick, query = query)
             }
         }
     )

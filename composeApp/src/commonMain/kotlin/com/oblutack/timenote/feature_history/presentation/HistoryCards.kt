@@ -114,8 +114,11 @@ fun FolderCard(
 fun SessionCard(
     session: Timenote,
     allSessions: List<Timenote>,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    query: String = ""
 ) {
+    val accent = com.oblutack.timenote.ui.theme.TnTheme.colors.accent
+    val snippet = com.oblutack.timenote.feature_history.domain.searchSnippet(session, query)
     val childCount = allSessions.count { it.parentTimenoteId == session.id }
     val isChild = session.parentTimenoteId != null
 
@@ -147,19 +150,27 @@ fun SessionCard(
                 .padding(end = 16.dp) // Keeps the description from touching the dates
         ) {
             Text(
-                text = session.title,
+                text = highlighted(session.title, com.oblutack.timenote.feature_history.domain.findMatchRanges(session.title, query), accent),
                 color = TextPrimary,
                 fontSize = TnType.BodyLarge,
                 fontWeight = FontWeight.Medium
             )
 
-            // Description (Capped at 2 lines, respects the weight bounds)
-            if (session.description.isNotBlank() && !isLegacyDesc) {
+            // The line that matched the search, or else a plain-words preview of the description (2 lines at most):
+            // no markdown symbols and no big headings in a list
+            if (snippet != null) {
                 Spacer(modifier = Modifier.height(8.dp))
-                // links and mentions in the text are pressable, so without a tag they use the accent
-                val dynamicAccentColor = session.tags.identityColor(DefaultAccentColor)
                 Text(
-                    text = com.oblutack.timenote.core.parseMarkdownToAnnotatedString(session.description, dynamicAccentColor, TextPrimary),
+                    text = highlighted(snippet.text, snippet.ranges, accent),
+                    color = TextSecondary,
+                    fontSize = TnType.Body,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            } else if (session.description.isNotBlank() && !isLegacyDesc) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = com.oblutack.timenote.core.plainText(session.description),
                     color = TextSecondary,
                     fontSize = TnType.Body,
                     maxLines = 2,

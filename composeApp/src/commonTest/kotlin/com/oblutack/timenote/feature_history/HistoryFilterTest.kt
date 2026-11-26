@@ -108,6 +108,16 @@ class HistoryFilterTest {
         assertEquals(listOf("title", "desc", "tag", "note"), run(list, query = "REVIEW"))
     }
 
+    @Test fun searchingForNoteDoesNotFindEveryNoteAndTheBranchLineIsNotSearchable() {
+        val withNote = note("a").copy(timelineEvents = listOf(TimelineEvent("1", "Note: buy milk", "00:01:00", EventType.NOTE)))
+        val branch = note("b").copy(timelineEvents = listOf(TimelineEvent("1", "Branched from: Outline (Parent)", "00:00:00", EventType.NOTE)))
+        val clock = note("c").copy(timelineEvents = listOf(TimelineEvent("1", "Paused", "00:01:00", EventType.PAUSE)))
+        assertTrue(run(listOf(withNote, branch, clock), query = "note").isEmpty())
+        assertTrue(run(listOf(withNote, branch, clock), query = "outline").isEmpty())
+        assertTrue(run(listOf(withNote, branch, clock), query = "paused").isEmpty())
+        assertEquals(listOf("a"), run(listOf(withNote, branch, clock), query = "milk"))
+    }
+
     @Test fun filtersAndSearchWorkTogether() {
         val list = listOf(
             note("a", "2026-11-26T08:00:00Z").copy(title = "Plan", isPinned = true),

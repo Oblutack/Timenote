@@ -39,11 +39,20 @@ fun noteCountOf(session: Timenote): Int =
 /** A session has a voice memo when one is attached to it or recorded during it. */
 fun hasVoice(session: Timenote): Boolean = session.voiceNotes.isNotEmpty() || session.timelineEvents.any { it.audioPath != null }
 
+/**
+ * What the person wrote in the session's notes: the text without the "Note: " prefix, and not the clock's entries, the line
+ * that says where a branch came from, or voice memos. (Searching "note" must not find every note.)
+ */
+fun writtenNoteTexts(session: Timenote): List<String> =
+    session.timelineEvents
+        .filter { it.type == EventType.NOTE && it.audioPath == null && !it.title.startsWith("Branched from:") }
+        .map { it.title.removePrefix("Note: ") }
+
 private fun matchesQuery(session: Timenote, query: String): Boolean =
     session.title.contains(query, ignoreCase = true) ||
         session.description.contains(query, ignoreCase = true) ||
         session.tags.any { it.name.contains(query, ignoreCase = true) } ||
-        session.timelineEvents.any { it.title.contains(query, ignoreCase = true) }
+        writtenNoteTexts(session).any { it.contains(query, ignoreCase = true) }
 
 private fun matchesDate(filter: DateFilter, date: LocalDate, today: LocalDate): Boolean = when (filter) {
     DateFilter.Any -> true
