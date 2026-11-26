@@ -1,5 +1,6 @@
 package com.oblutack.timenote.data
 
+import com.oblutack.timenote.feature_history.domain.HistoryDensity
 import com.oblutack.timenote.ui.theme.ThemeMode
 import com.oblutack.timenote.data.repository.SettingsRepository
 import com.oblutack.timenote.testutil.FakeDataStore
@@ -39,6 +40,15 @@ class SettingsRepositoryTest {
         assertEquals(ThemeMode.Light, repo.themeModeFlow.first())
         repo.setDynamicColors(true)
         assertEquals(true, repo.dynamicColorsFlow.first())
+    }
+
+    @Test fun theHistoryListIsCompactUntilTheCardsAreChosen() = runAppTest {
+        val repo = newRepository()
+        assertEquals(HistoryDensity.Compact, repo.historyDensityFlow.first())
+        repo.setHistoryDensity(HistoryDensity.Comfortable)
+        assertEquals(HistoryDensity.Comfortable, repo.historyDensityFlow.first())
+        repo.setHistoryDensity(HistoryDensity.Compact)
+        assertEquals(HistoryDensity.Compact, repo.historyDensityFlow.first())
     }
 
     @Test fun phoneColoursAreOffByDefault() = runAppTest {

@@ -1,5 +1,6 @@
 package com.oblutack.timenote.data.repository
 
+import com.oblutack.timenote.feature_history.domain.HistoryDensity
 import com.oblutack.timenote.ui.theme.ThemeMode
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.*
@@ -35,6 +36,7 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
     private val BACKUP_REMINDER_NOTIFIED_AT = longPreferencesKey("backup_reminder_notified_at")
     private val THEME_MODE = stringPreferencesKey("theme_mode")
     private val DYNAMIC_COLORS = booleanPreferencesKey("dynamic_colors")
+    private val HISTORY_DENSITY = stringPreferencesKey("history_density")
 
     // --- DEFAULT TAGS (see DefaultTagsState) ---
     override suspend fun isSeeded(): Boolean = dataStore.data
@@ -96,6 +98,15 @@ class SettingsRepository(private val dataStore: DataStore<Preferences>) : Defaul
 
     suspend fun setDynamicColors(enabled: Boolean) {
         dataStore.edit { it[DYNAMIC_COLORS] = enabled }
+    }
+
+    // --- HISTORY LIST: compact rows (the default) or the large cards ---
+    val historyDensityFlow: Flow<HistoryDensity> = dataStore.data
+        .catch { emit(emptyPreferences()) }
+        .map { HistoryDensity.fromKey(it[HISTORY_DENSITY]) }
+
+    suspend fun setHistoryDensity(density: HistoryDensity) {
+        dataStore.edit { it[HISTORY_DENSITY] = density.key }
     }
 
     // --- BACKUP FILE: when one was last exported, and when the reminder was last dismissed ---

@@ -1,5 +1,10 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.material.icons.filled.ViewAgenda
+import androidx.compose.material.icons.filled.ViewList
+import com.oblutack.timenote.feature_history.domain.Timenote
+import com.oblutack.timenote.feature_history.domain.groupSessionsByDay
+import com.oblutack.timenote.feature_history.domain.HistoryDensity
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Folder
@@ -162,6 +167,15 @@ fun HistoryScreen(
             SortOption.LONGEST -> searchFiltered.sortedByDescending { it.activeSeconds }
             SortOption.SHORTEST -> searchFiltered.sortedBy { it.activeSeconds }
         }.sortedByDescending { it.isPinned }
+    }
+
+    // Compact rows or large cards (remembered), and the sessions grouped by day when sorted by date
+    val density by settingsRepository.historyDensityFlow.collectAsState(initial = HistoryDensity.Compact)
+    val untaggedColor = TnTheme.colors.untagged
+    val dayGroups = remember(finalDisplaySessions, sortOption, today, untaggedColor) {
+        if (sortOption == SortOption.NEWEST || sortOption == SortOption.OLDEST) {
+            groupSessionsByDay(finalDisplaySessions, today, TimeZone.currentSystemDefault(), getCurrentTimeMillis(), untaggedColor)
+        } else emptyList()
     }
 
     var folderBeingEditedId by remember { mutableStateOf<String?>(null) }
@@ -450,6 +464,26 @@ fun HistoryScreen(
                             overflow = TextOverflow.Ellipsis
                         )
                     }
+
+                    // Divider 3 and the density toggle: compact rows or large cards
+                    Box(modifier = Modifier.width(1.dp).fillMaxHeight(0.6f).background(TextSecondary.copy(alpha = 0.2f)))
+                    Box(
+                        modifier = Modifier
+                            .width(52.dp)
+                            .fillMaxHeight()
+                            .clickable {
+                                val next = if (density == HistoryDensity.Compact) HistoryDensity.Comfortable else HistoryDensity.Compact
+                                coroutineScope.launch { settingsRepository.setHistoryDensity(next) }
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (density == HistoryDensity.Compact) Icons.Default.ViewList else Icons.Default.ViewAgenda,
+                            contentDescription = if (density == HistoryDensity.Compact) "Show large cards" else "Show compact rows",
+                            tint = TextSecondary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -471,7 +505,7 @@ fun HistoryScreen(
 
                 LazyColumn(
                     state = listState,
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(if (density == HistoryDensity.Compact) 6.dp else 16.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f)
@@ -575,41 +609,24 @@ fun HistoryScreen(
                         }
                     }
 
-                    items(finalDisplaySessions, key = { it.id }) { session ->
-                        val dismissState = androidx.compose.material3.rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.EndToStart) {
-                                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                    viewModel.requestDelete(session) // <-- THE NEW INTERCEPTOR
-                                    false // Bounce back
-                                } else false
-                            }
+                    val itemContent: @Composable (Timenote) -> Unit = { session ->
+                        HistorySessionItem(
+                            session = session,
+                            allSessions = recentSessions,
+                            folderName = folders.find { it.id == session.folderId }?.name,
+                            density = density,
+                            enableHaptics = enableHaptics,
+                            onDelete = { viewModel.requestDelete(it) },
+                            onClick = { onTimenoteClick(session.id) }
                         )
-
-
-                        SwipeToDismissBox(
-                            state = dismissState,
-                            enableDismissFromStartToEnd = false,
-                            backgroundContent = {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .clip(TnShape.Card)
-                                        .background(TnTheme.colors.danger)
-                                        .padding(end = 24.dp),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        tint = Color.White
-                                    )
-                                }
-                            },
-                            content = {
-                                SessionCard(session = session, allSessions = recentSessions, onClick = { onTimenoteClick(session.id) })
-                            }
-                        )
+                    }
+                    if (dayGroups.isNotEmpty()) {
+                        dayGroups.forEach { group ->
+                            item(key = "day_${group.date}_${group.title}") { DayHeader(group) }
+                            items(group.sessions, key = { it.id }) { session -> itemContent(session) }
+                        }
+                    } else {
+                        items(finalDisplaySessions, key = { it.id }) { session -> itemContent(session) }
                     }
                 }
             }
