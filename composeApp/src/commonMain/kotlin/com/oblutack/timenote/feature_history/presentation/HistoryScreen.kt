@@ -1,5 +1,6 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import com.oblutack.timenote.feature_history.domain.tagCoverage
 import com.oblutack.timenote.feature_history.domain.filterSessions
 import com.oblutack.timenote.feature_history.domain.DateFilter
 import androidx.compose.material.icons.filled.ViewAgenda
@@ -174,13 +175,22 @@ fun HistoryScreen(
 
     val sessionPendingDelete by viewModel.sessionPendingDelete.collectAsState()
     val descendantCount by viewModel.descendantCount.collectAsState()
+
+    // Several sessions selected (long-press): only the ones that still exist count
+    val rawSelection by viewModel.selectedIds.collectAsState()
+    val selectedSessions = remember(rawSelection, recentSessions) { recentSessions.filter { it.id in rawSelection } }
+    val selecting = selectedTab == 0 && selectedSessions.isNotEmpty()
+    val bulkPendingDelete by viewModel.bulkPendingDelete.collectAsState()
+    var isMoveSheetOpen by remember { mutableStateOf(false) }
+    var isBulkTagSheetOpen by remember { mutableStateOf(false) }
+    com.oblutack.timenote.ui.components.BackPress(enabled = selecting) { viewModel.clearSelection() }
     val streaks by viewModel.streaks.collectAsState()
     val selectedDailySummary by viewModel.selectedDailySummary.collectAsState()
     val backupReminder by viewModel.backupReminder.collectAsState()
 
     // selectedTab (0 = Timenotes, 1 = Folders) is hoisted into App.kt so it survives navigation
 
-    val isPopupOpen = folderBeingEditedId != null || sessionPendingDelete != null || selectedDailySummary != null
+    val isPopupOpen = folderBeingEditedId != null || sessionPendingDelete != null || bulkPendingDelete != null || selectedDailySummary != null
 
     val blurRadius by androidx.compose.animation.core.animateDpAsState(
         targetValue = if (enableBlur && isPopupOpen) 16.dp else 0.dp,
@@ -201,10 +211,23 @@ fun HistoryScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        HistoryTopBar(
+        if (selecting) {
+            SelectionBar(
+                count = selectedSessions.size,
+                allSelected = selectedSessions.size == finalDisplaySessions.size,
+                allPinned = selectedSessions.none { !it.isPinned },
+                onClose = { viewModel.clearSelection() },
+                onSelectAll = { viewModel.selectAll(finalDisplaySessions.map { it.id }) },
+                onPin = { viewModel.pinSelected() },
+                onFolder = { isMoveSheetOpen = true },
+                onTags = { isBulkTagSheetOpen = true },
+                onDelete = { viewModel.requestDeleteSelected() }
+            )
+        } else HistoryTopBar(
             selectedTab = selectedTab,
             onTabSelected = {
                 if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                viewModel.clearSelection()
                 onTabSelected(it)
             },
             onSettingsClick = onSettingsClick,
@@ -350,7 +373,14 @@ fun HistoryScreen(
                             density = density,
                             enableHaptics = enableHaptics,
                             onDelete = { viewModel.requestDelete(it) },
-                            onClick = { onTimenoteClick(session.id) },
+                            onTogglePin = { viewModel.togglePinOf(it) },
+                            onClick = { if (selecting) viewModel.toggleSelected(session.id) else onTimenoteClick(session.id) },
+                            onLongClick = {
+                                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                viewModel.toggleSelected(session.id)
+                            },
+                            selecting = selecting,
+                            selected = session.id in rawSelection,
                             query = searchQuery
                         )
                     }
@@ -520,6 +550,40 @@ fun HistoryScreen(
             onToggle = { viewModel.toggleFilterTag(it) },
             onClear = { viewModel.clearTagFilters() },
             onDismiss = { isTagFilterSheetOpen = false }
+        )
+    }
+
+    if (isMoveSheetOpen && selecting) {
+        FolderPickerSheet(
+            folders = folders,
+            currentFolderId = selectedSessions.firstNotNullOfOrNull { it.folderId },
+            onAssign = {
+                viewModel.moveSelectedToFolder(it)
+                isMoveSheetOpen = false
+            },
+            onDismiss = { isMoveSheetOpen = false }
+        )
+    }
+
+    if (isBulkTagSheetOpen) {
+        if (selecting) {
+            BulkTagSheet(
+                allTags = allTags,
+                coverage = { tag -> tagCoverage(selectedSessions, tag.id) },
+                selectedCount = selectedSessions.size,
+                onToggle = { viewModel.toggleTagOnSelected(it) },
+                onDismiss = { isBulkTagSheetOpen = false; viewModel.clearSelection() }
+            )
+        } else isBulkTagSheetOpen = false
+    }
+
+    bulkPendingDelete?.let { pending ->
+        DeleteSelectedSheet(
+            selectedCount = pending.ids.size,
+            branchCount = pending.branchCount,
+            onDeleteAll = { viewModel.confirmDeleteSelected(cascade = true) },
+            onDeleteOnly = { viewModel.confirmDeleteSelected(cascade = false) },
+            onCancel = { viewModel.cancelDeleteSelected() }
         )
     }
 

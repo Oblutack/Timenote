@@ -1,5 +1,9 @@
 package com.oblutack.timenote.feature_history.presentation
 
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.foundation.border
+import androidx.compose.foundation.combinedClickable
 import com.oblutack.timenote.feature_history.domain.searchSnippet
 import com.oblutack.timenote.feature_history.domain.findMatchRanges
 import androidx.compose.ui.text.buildAnnotatedString
@@ -90,7 +94,8 @@ fun SessionRow(
     allSessions: List<Timenote>,
     folderName: String?,
     onClick: () -> Unit,
-    query: String = ""
+    query: String = "",
+    onLongClick: (() -> Unit)? = null
 ) {
     val title = session.title.ifBlank { "Untitled Session" }
     val accent = TnTheme.colors.accent
@@ -118,7 +123,7 @@ fun SessionRow(
             .fillMaxWidth()
             .clip(TnShape.Medium)
             .background(SurfaceDark)
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -159,7 +164,10 @@ fun DayHeader(group: DayGroup) {
     }
 }
 
-/** One session of the list in either density, with swipe-left to delete (the delete itself asks about branches). */
+/**
+ * One session of the list in either density. Swipe left deletes (the delete itself asks about branches), swipe right pins or
+ * unpins, long-press starts selecting several. While selecting, a tap selects, and the swipes are off.
+ */
 @Composable
 fun HistorySessionItem(
     session: Timenote,
@@ -168,36 +176,71 @@ fun HistorySessionItem(
     density: HistoryDensity,
     enableHaptics: Boolean,
     onDelete: (Timenote) -> Unit,
+    onTogglePin: (Timenote) -> Unit,
     onClick: () -> Unit,
+    onLongClick: () -> Unit,
+    selecting: Boolean = false,
+    selected: Boolean = false,
     query: String = ""
 ) {
     val haptic = LocalHapticFeedback.current
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
-            if (value == SwipeToDismissBoxValue.EndToStart) {
-                if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                onDelete(session)
-                false // Bounce back
-            } else false
+            when (value) {
+                SwipeToDismissBoxValue.EndToStart -> {
+                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onDelete(session)
+                }
+                SwipeToDismissBoxValue.StartToEnd -> {
+                    if (enableHaptics) haptic.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onTogglePin(session)
+                }
+                else -> Unit
+            }
+            false // Bounce back
         }
     )
     val shape = if (density == HistoryDensity.Compact) TnShape.Medium else TnShape.Card
+    val accent = TnTheme.colors.accent
+    val rowModifier = if (selected) Modifier.border(2.dp, accent, shape) else Modifier
     SwipeToDismissBox(
         state = dismissState,
-        enableDismissFromStartToEnd = false,
+        enableDismissFromStartToEnd = !selecting,
+        enableDismissFromEndToStart = !selecting,
         backgroundContent = {
-            Box(
-                modifier = Modifier.fillMaxSize().clip(shape).background(TnTheme.colors.danger).padding(end = 24.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = androidx.compose.ui.graphics.Color.White)
+            if (dismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) {
+                Row(
+                    modifier = Modifier.fillMaxSize().clip(shape).background(accent).padding(start = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(imageVector = Icons.Default.PushPin, contentDescription = null, tint = TnTheme.colors.onAccent)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(if (session.isPinned) "Unpin" else "Pin", color = TnTheme.colors.onAccent, fontWeight = FontWeight.SemiBold)
+                }
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize().clip(shape).background(TnTheme.colors.danger).padding(end = 24.dp),
+                    contentAlignment = Alignment.CenterEnd
+                ) {
+                    Icon(imageVector = Icons.Default.Delete, contentDescription = "Delete", tint = androidx.compose.ui.graphics.Color.White)
+                }
             }
         },
         content = {
-            if (density == HistoryDensity.Compact) {
-                SessionRow(session = session, allSessions = allSessions, folderName = folderName, onClick = onClick, query = query)
-            } else {
-                SessionCard(session = session, allSessions = allSessions, onClick = onClick, query = query)
+            Box(modifier = rowModifier) {
+                if (density == HistoryDensity.Compact) {
+                    SessionRow(session = session, allSessions = allSessions, folderName = folderName, onClick = onClick, query = query, onLongClick = onLongClick)
+                } else {
+                    SessionCard(session = session, allSessions = allSessions, onClick = onClick, query = query, onLongClick = onLongClick)
+                }
+                if (selected) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "Selected",
+                        tint = accent,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(6.dp).size(20.dp).background(TnTheme.colors.surface, CircleShape)
+                    )
+                }
             }
         }
     )

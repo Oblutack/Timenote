@@ -18,6 +18,7 @@ import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import com.oblutack.timenote.core.DirectoryAudioFiles
@@ -437,5 +438,207 @@ class HistoryViewModelTest {
 
         env.vm.requestDelete(env.sessions.getTimenoteById("b")!!) // a different session is a different delete
         assertEquals(2, offers.size)
+    }
+
+    // --- Selecting several sessions (F19) ---
+
+    private fun offersOf(env: HistoryEnv, scope: TestScope): MutableList<com.oblutack.timenote.data.repository.UndoDelete> {
+        val offers = mutableListOf<com.oblutack.timenote.data.repository.UndoDelete>()
+        scope.backgroundScope.launch { env.vm.undoDelete.collect { offers += it } }
+        return offers
+    }
+
+    @Test fun tappingSelectsAndDeselectsAndClearEmptiesTheSelection() = runAppTest {
+        val env = HistoryEnv(this)
+        env.vm.toggleSelected("a")
+        env.vm.toggleSelected("b")
+        assertEquals(setOf("a", "b"), env.vm.selectedIds.value)
+        env.vm.toggleSelected("a")
+        assertEquals(setOf("b"), env.vm.selectedIds.value)
+        env.vm.selectAll(listOf("x", "y"))
+        assertEquals(setOf("x", "y"), env.vm.selectedIds.value)
+        env.vm.clearSelection()
+        assertTrue(env.vm.selectedIds.value.isEmpty())
+    }
+
+    @Test fun deletingSeveralSelectedIsOneTrashAndOneUndo() = runAppTest {
+        val env = HistoryEnv(this)
+        listOf("a", "b", "c").forEach { env.sessions.saveTimenote(testNote(it)) }
+        val offers = offersOf(env, this)
+        env.vm.selectAll(listOf("a", "b"))
+
+        env.vm.requestDeleteSelected()
+
+        assertEquals(listOf("c"), env.sessions.timenotes.value.map { it.id })
+        assertEquals(1, offers.size)
+        assertEquals("2 sessions moved to trash", offers.single().message)
+        assertEquals(setOf("a", "b"), offers.single().ids.toSet())
+        assertTrue(env.vm.selectedIds.value.isEmpty(), "the selection ends after the action")
+        env.vm.restoreTimenotes(offers.single().ids)
+        assertEquals(setOf("a", "b", "c"), env.sessions.timenotes.value.map { it.id }.toSet())
+    }
+
+    @Test fun selectingAWholeBranchDeletesItWithoutAskingAnything() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("p"))
+        env.sessions.saveTimenote(testNote("c", "p"))
+        env.vm.selectAll(listOf("p", "c"))
+
+        env.vm.requestDeleteSelected()
+
+        assertNull(env.vm.bulkPendingDelete.value)
+        assertTrue(env.sessions.timenotes.value.isEmpty())
+    }
+
+    @Test fun branchesLeftBehindAreAskedAboutOnceForAllSelected() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("p1"))
+        env.sessions.saveTimenote(testNote("c1", "p1"))
+        env.sessions.saveTimenote(testNote("p2"))
+        env.sessions.saveTimenote(testNote("c2", "p2"))
+        env.sessions.saveTimenote(testNote("c2b", "c2"))
+        env.vm.selectAll(listOf("p1", "p2"))
+
+        env.vm.requestDeleteSelected()
+
+        val pending = env.vm.bulkPendingDelete.value!!
+        assertEquals(setOf("p1", "p2"), pending.ids)
+        assertEquals(3, pending.branchCount)
+        assertEquals(5, env.sessions.timenotes.value.size, "nothing is deleted until the answer")
+    }
+
+    @Test fun answeringDeleteAllTrashesTheBranchesToo() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("p"))
+        env.sessions.saveTimenote(testNote("c", "p"))
+        env.sessions.saveTimenote(testNote("keep"))
+        val offers = offersOf(env, this)
+        env.vm.selectAll(listOf("p"))
+        env.vm.requestDeleteSelected()
+
+        env.vm.confirmDeleteSelected(cascade = true)
+
+        assertEquals(listOf("keep"), env.sessions.timenotes.value.map { it.id })
+        assertEquals("2 sessions moved to trash", offers.single().message)
+        assertEquals(setOf("p", "c"), offers.single().ids.toSet())
+        assertNull(env.vm.bulkPendingDelete.value)
+        assertTrue(env.vm.selectedIds.value.isEmpty())
+    }
+
+    @Test fun answeringDeleteOnlyTheSelectedKeepsTheBranchesAsRoots() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("p"))
+        env.sessions.saveTimenote(testNote("c", "p"))
+        env.sessions.saveTimenote(testNote("g", "c"))
+        env.vm.selectAll(listOf("p"))
+        env.vm.requestDeleteSelected()
+
+        env.vm.confirmDeleteSelected(cascade = false)
+
+        assertEquals(setOf("p"), env.sessions.deletedTimenotes.value.map { it.id }.toSet())
+        assertNull(env.sessions.getTimenoteById("c")?.parentTimenoteId, "the direct branch becomes a root")
+        assertEquals("c", env.sessions.getTimenoteById("g")?.parentTimenoteId, "its own branch stays attached")
+    }
+
+    @Test fun keepingBranchesDoesNotDetachABranchThatIsDeletedToo() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("p"))
+        env.sessions.saveTimenote(testNote("c", "p"))
+        env.sessions.saveTimenote(testNote("g", "c"))
+        val offers = offersOf(env, this)
+        env.vm.selectAll(listOf("p", "c"))
+        env.vm.requestDeleteSelected()
+        env.vm.confirmDeleteSelected(cascade = false)
+
+        // c was deleted along with p, so its own link to p must survive; only g (left behind) becomes a root
+        assertEquals("p", env.sessions.deletedTimenotes.value.single { it.id == "c" }.parentTimenoteId)
+        assertNull(env.sessions.getTimenoteById("g")?.parentTimenoteId)
+        assertTrue(offers.isEmpty(), "branches were detached, so no Undo is offered (as for one session)")
+    }
+
+    @Test fun cancellingTheBulkQuestionDeletesNothingAndKeepsTheSelection() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("p"))
+        env.sessions.saveTimenote(testNote("c", "p"))
+        env.vm.selectAll(listOf("p"))
+        env.vm.requestDeleteSelected()
+
+        env.vm.cancelDeleteSelected()
+
+        assertNull(env.vm.bulkPendingDelete.value)
+        assertEquals(2, env.sessions.timenotes.value.size)
+        assertEquals(setOf("p"), env.vm.selectedIds.value)
+    }
+
+    @Test fun aSelectedSessionThatIsGoneIsIgnored() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a"))
+        val offers = offersOf(env, this)
+        env.vm.selectAll(listOf("a", "ghost"))
+
+        env.vm.requestDeleteSelected()
+
+        assertEquals(listOf("a"), offers.single().ids)
+        assertEquals("\"a\" moved to trash", offers.single().message)
+    }
+
+    @Test fun pinningTheSelectionPinsAllOrUnpinsAllWhenAllArePinned() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a"))
+        env.sessions.saveTimenote(testNote("b").copy(isPinned = true))
+        env.vm.selectAll(listOf("a", "b"))
+        env.vm.pinSelected()
+        assertTrue(env.sessions.getTimenoteById("a")!!.isPinned && env.sessions.getTimenoteById("b")!!.isPinned)
+        assertTrue(env.vm.selectedIds.value.isEmpty())
+
+        env.vm.selectAll(listOf("a", "b"))
+        env.vm.pinSelected()
+        assertFalse(env.sessions.getTimenoteById("a")!!.isPinned || env.sessions.getTimenoteById("b")!!.isPinned)
+    }
+
+    @Test fun swipingRightTogglesThePinOfThatSession() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveTimenote(testNote("a"))
+        env.vm.togglePinOf(env.sessions.getTimenoteById("a")!!)
+        assertTrue(env.sessions.getTimenoteById("a")!!.isPinned)
+        env.vm.togglePinOf(env.sessions.getTimenoteById("a")!!)
+        assertFalse(env.sessions.getTimenoteById("a")!!.isPinned)
+    }
+
+    @Test fun movingTheSelectionToAFolderAndOutOfIt() = runAppTest {
+        val env = HistoryEnv(this)
+        env.sessions.saveFolder(testFolder("f"))
+        env.sessions.saveTimenote(testNote("a"))
+        env.sessions.saveTimenote(testNote("b"))
+        env.sessions.saveTimenote(testNote("c"))
+        env.vm.selectAll(listOf("a", "b"))
+        env.vm.moveSelectedToFolder("f")
+        assertEquals("f", env.sessions.getTimenoteById("a")!!.folderId)
+        assertEquals("f", env.sessions.getTimenoteById("b")!!.folderId)
+        assertNull(env.sessions.getTimenoteById("c")!!.folderId)
+        assertTrue(env.vm.selectedIds.value.isEmpty())
+
+        env.vm.selectAll(listOf("a"))
+        env.vm.moveSelectedToFolder(null)
+        assertNull(env.sessions.getTimenoteById("a")!!.folderId)
+        assertEquals("f", env.sessions.getTimenoteById("b")!!.folderId)
+    }
+
+    @Test fun taggingTheSelectionAddsThenRemovesAndKeepsTheSelection() = runAppTest {
+        val env = HistoryEnv(this)
+        val red = testTag("red")
+        val blue = testTag("blue")
+        env.sessions.saveTimenote(testNote("a").copy(tags = listOf(blue)))
+        env.sessions.saveTimenote(testNote("b"))
+        env.vm.selectAll(listOf("a", "b"))
+
+        env.vm.toggleTagOnSelected(red)
+        assertEquals(listOf("blue", "red"), env.sessions.getTimenoteById("a")!!.tags.map { it.id })
+        assertEquals(listOf("red"), env.sessions.getTimenoteById("b")!!.tags.map { it.id })
+        assertEquals(setOf("a", "b"), env.vm.selectedIds.value, "more tags can be changed before closing the sheet")
+
+        env.vm.toggleTagOnSelected(red) // now on all of them: takes it off
+        assertEquals(listOf("blue"), env.sessions.getTimenoteById("a")!!.tags.map { it.id })
+        assertTrue(env.sessions.getTimenoteById("b")!!.tags.isEmpty())
     }
 }

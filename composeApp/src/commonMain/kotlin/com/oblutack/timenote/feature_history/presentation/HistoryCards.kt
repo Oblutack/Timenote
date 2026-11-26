@@ -1,4 +1,5 @@
 package com.oblutack.timenote.feature_history.presentation
+import androidx.compose.foundation.combinedClickable
 import com.oblutack.timenote.feature_history.domain.identityColor
 import com.oblutack.timenote.ui.theme.TnShape
 import com.oblutack.timenote.ui.theme.TnTheme
@@ -115,7 +116,8 @@ fun SessionCard(
     session: Timenote,
     allSessions: List<Timenote>,
     onClick: () -> Unit,
-    query: String = ""
+    query: String = "",
+    onLongClick: (() -> Unit)? = null
 ) {
     val accent = com.oblutack.timenote.ui.theme.TnTheme.colors.accent
     val snippet = com.oblutack.timenote.feature_history.domain.searchSnippet(session, query)
@@ -138,7 +140,7 @@ fun SessionCard(
             .fillMaxWidth()
             .clip(TnShape.Card)
             .background(SurfaceDark)
-            .clickable { onClick() }
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .padding(16.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.Top // Align everything to the top

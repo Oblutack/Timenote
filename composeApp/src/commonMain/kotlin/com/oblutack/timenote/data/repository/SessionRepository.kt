@@ -197,6 +197,23 @@ class SessionRepository(
         }
     }
 
+    /**
+     * Moves every one of [ids] to the trash. With [keepBranches] the branches that are not in [ids] become roots first
+     * (as when one session is deleted "just this session"); otherwise [ids] is expected to hold the branches already.
+     */
+    fun deleteTimenotes(ids: Set<String>, keepBranches: Boolean) {
+        write {
+            val time = now()
+            if (keepBranches) {
+                _timenotes.value.filter { it.parentTimenoteId in ids && it.id !in ids }.forEach { child ->
+                    dao.orphanTimenote(child.id, time)
+                    stamp(SyncKind.NOTE, child.id, time, listOf(FieldNames.PARENT_ID, FieldNames.PARENT_WAYPOINT_ID))
+                }
+            }
+            ids.forEach { softDeleteNote(it, time) }
+        }
+    }
+
     fun assignFolderToTimenote(timenoteId: String, folderId: String?) {
         write {
             val time = now()
@@ -260,6 +277,19 @@ class SessionRepository(
             val time = now()
             dao.updateTimenotePin(id, !note.isPinned, time)
             stamp(SyncKind.NOTE, id, time, listOf(FieldNames.IS_PINNED))
+        }
+    }
+
+    /** Pins or unpins every one of [ids] (the ones that already are as asked are left alone). */
+    fun setTimenotesPinned(ids: Set<String>, pinned: Boolean) {
+        write {
+            val time = now()
+            ids.forEach { id ->
+                val note = getTimenoteById(id) ?: return@forEach
+                if (note.isPinned == pinned) return@forEach
+                dao.updateTimenotePin(id, pinned, time)
+                stamp(SyncKind.NOTE, id, time, listOf(FieldNames.IS_PINNED))
+            }
         }
     }
 

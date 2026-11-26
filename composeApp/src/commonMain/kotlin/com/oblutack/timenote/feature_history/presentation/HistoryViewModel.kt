@@ -2,6 +2,12 @@ package com.oblutack.timenote.feature_history.presentation
 
 import com.oblutack.timenote.feature_history.domain.HistoryFilter
 import com.oblutack.timenote.feature_history.domain.DateFilter
+import com.oblutack.timenote.feature_history.domain.BulkDelete
+import com.oblutack.timenote.feature_history.domain.branchesOutside
+import com.oblutack.timenote.feature_history.domain.shouldPinAll
+import com.oblutack.timenote.feature_history.domain.tagCoverage
+import com.oblutack.timenote.feature_history.domain.tagsAfterBulkToggle
+import com.oblutack.timenote.feature_history.domain.trashMessage
 import com.oblutack.timenote.data.repository.UndoDelete
 import androidx.lifecycle.ViewModel
 import androidx.compose.ui.graphics.Color
@@ -389,6 +395,90 @@ class HistoryViewModel(
     fun cancelDelete() {
         _sessionPendingDelete.value = null
         _descendantCount.value = 0
+    }
+
+    // --- SELECTING SEVERAL SESSIONS (long-press starts it; it ends when the last one is deselected or an action ran) ---
+    private val _selectedIds = MutableStateFlow<Set<String>>(emptySet())
+    val selectedIds = _selectedIds.asStateFlow()
+
+    fun toggleSelected(id: String) {
+        _selectedIds.update { if (id in it) it - id else it + id }
+    }
+
+    fun selectAll(ids: Collection<String>) {
+        _selectedIds.value = ids.toSet()
+    }
+
+    fun clearSelection() {
+        _selectedIds.value = emptySet()
+    }
+
+    /** The selected sessions that still exist (one may have been deleted on another device meanwhile). */
+    private fun selectedSessions(): List<Timenote> {
+        val ids = _selectedIds.value
+        return sessions.value.filter { it.id in ids }
+    }
+
+    /** Pins all the selected sessions, or unpins them all when every one is pinned already. */
+    fun pinSelected() {
+        val chosen = selectedSessions()
+        if (chosen.isEmpty()) return
+        sessionRepository.setTimenotesPinned(chosen.map { it.id }.toSet(), pinned = shouldPinAll(chosen))
+        clearSelection()
+    }
+
+    /** Swipe right on one session. */
+    fun togglePinOf(session: Timenote) {
+        sessionRepository.toggleTimenotePin(session.id)
+    }
+
+    fun moveSelectedToFolder(folderId: String?) {
+        selectedSessions().forEach { sessionRepository.assignFolderToTimenote(it.id, folderId) }
+        clearSelection()
+    }
+
+    /** Puts [tag] on every selected session, or takes it off them all when every one has it. The selection stays. */
+    fun toggleTagOnSelected(tag: com.oblutack.timenote.feature_history.domain.TimenoteFolder) {
+        val chosen = selectedSessions()
+        val coverage = tagCoverage(chosen, tag.id)
+        chosen.forEach { sessionRepository.updateTimenoteTags(it.id, tagsAfterBulkToggle(it, tag, coverage)) }
+    }
+
+    // Asked when a selected session has branches that are not selected
+    private val _bulkPendingDelete = MutableStateFlow<BulkDelete?>(null)
+    val bulkPendingDelete = _bulkPendingDelete.asStateFlow()
+
+    /** Moves the selected sessions to the trash with one Undo; asks first when branches would be left behind. */
+    fun requestDeleteSelected() {
+        val chosen = selectedSessions()
+        if (chosen.isEmpty()) return
+        val ids = chosen.map { it.id }.toSet()
+        val outside = branchesOutside(sessions.value, ids)
+        if (outside.isNotEmpty()) {
+            _bulkPendingDelete.value = BulkDelete(ids, outside.size)
+            return
+        }
+        sessionRepository.deleteTimenotes(ids, keepBranches = false)
+        sessionRepository.offerUndo(UndoDelete(trashMessage(chosen, ids.size), ids.toList()))
+        clearSelection()
+    }
+
+    /** [cascade]: delete the branches too (with Undo); otherwise only the selected sessions, and the branches become roots. */
+    fun confirmDeleteSelected(cascade: Boolean) {
+        val pending = _bulkPendingDelete.value ?: return
+        if (cascade) {
+            val all = pending.ids + branchesOutside(sessions.value, pending.ids)
+            sessionRepository.deleteTimenotes(all, keepBranches = false)
+            sessionRepository.offerUndo(UndoDelete("${all.size} sessions moved to trash", all.toList()))
+        } else {
+            sessionRepository.deleteTimenotes(pending.ids, keepBranches = true)
+        }
+        _bulkPendingDelete.value = null
+        clearSelection()
+    }
+
+    fun cancelDeleteSelected() {
+        _bulkPendingDelete.value = null
     }
 
     // --- GRAPH SCREEN STATE ---
